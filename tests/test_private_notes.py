@@ -41,7 +41,7 @@ def _make_private(client, session, content):
 
 def test_opening_a_private_note_leaves_an_audit_trail(client, session):
     """The whole value of a private note is confidence, and nothing recorded
-    *when* one was decrypted for viewing — asked about directly. A regular
+    *when* one was decrypted for viewing, asked about directly. A regular
     note doesn't get this extra log line (it already has plenty of other
     activity logged), only a private one."""
     private = _make_private(client, session, "the spare key is under the mat")
@@ -92,7 +92,7 @@ def test_making_a_note_private_and_back_again_loses_nothing(client, session):
 
 
 def test_a_private_note_has_its_embedding_removed(client, session):
-    """A vector encodes what the note is about — keeping one leaks the point."""
+    """A vector encodes what the note is about, keeping one leaks the point."""
     entry = client.post("/entries", json={"content": "something to embed"}).json()
     session.add(
         EmbeddingRecord(entry_id=entry["id"], embedding=b"\x00" * 8, dim=2, model_version="test")
@@ -125,7 +125,7 @@ def test_private_notes_never_reach_the_model(ai_client, fake_ollama, session):
     """The one that matters most: the AI must not be handed a private note.
 
     The secret is deliberately different from the question, so finding it in
-    the prompt can only mean the note leaked — not that the query echoed.
+    the prompt can only mean the note leaked, not that the query echoed.
     """
     secret = "codeword ELDERFLOWER opens the safe"
     _make_private(ai_client, session, f"about submarines: {secret}")
@@ -142,7 +142,7 @@ def test_private_notes_never_reach_the_model(ai_client, fake_ollama, session):
 def test_a_private_note_cannot_be_attached_by_id_either(ai_client, fake_ollama, session):
     """The gap the search-side guard above doesn't cover: `note_ids` is a
     client-supplied list, the one path into the chat prompt that never went
-    through `tools._require_note` — the only other thing that refuses a
+    through `tools._require_note`, the only other thing that refuses a
     private note. A forged or stale id in that list must not put the note's
     id, category or content in front of the model just because it was named
     directly instead of found."""
@@ -152,7 +152,7 @@ def test_a_private_note_cannot_be_attached_by_id_either(ai_client, fake_ollama, 
     fake_ollama.librarian_reply = "Here's what I found."
 
     # Everything up to here (creating and filing both notes) is allowed to
-    # have shown the model the plaintext — that's the janitor auto-filing a
+    # have shown the model the plaintext, that's the janitor auto-filing a
     # note that only became private afterwards, unrelated to this request.
     # Only what the /chat call itself sends is under test.
     before = len(fake_ollama.chat_calls)
@@ -170,7 +170,7 @@ def test_a_private_note_cannot_be_attached_by_id_either(ai_client, fake_ollama, 
 
 def test_generate_title_refuses_a_private_note(ai_client, fake_ollama, session):
     """`generate-title` reads `readable_content` (decrypted) and writes the
-    result straight back to `entry.content` — for a private note that would
+    result straight back to `entry.content`, for a private note that would
     silently replace the ciphertext with plaintext, un-encrypting the note
     as a side effect of titling it. Refused outright."""
     private = _make_private(ai_client, session, "a private thought")
@@ -227,7 +227,7 @@ def test_exports_decrypt_while_unlocked(client, session):
 
 
 def test_exports_do_not_leak_when_locked(client, session):
-    """With no key there is nothing to decrypt with — say so, don't guess."""
+    """With no key there is nothing to decrypt with, say so, don't guess."""
     secret = "ELDERFLOWER locked export"
     _make_private(client, session, secret)
     vault.close()
@@ -289,7 +289,7 @@ def _note(session, content="a note", tags=None, private=False):
 )
 def test_the_batch_write_tools_still_refuse_a_private_note(session, name, extra):
     """`tag_note` and `link_notes` grew batch arguments and, in doing so,
-    stopped calling `_require_note` for the notes in the batch — which is the
+    stopped calling `_require_note` for the notes in the batch, which is the
     single place that refuses a private note. Tagging one worked; linking to
     one leaked its existence into the graph."""
     public = _note(session, "public")
@@ -306,7 +306,7 @@ def test_a_batch_tag_does_not_rewrite_the_callers_arguments(session):
     """The id list was built by appending to `args["note_ids"]` in place.
 
     The agent loop fingerprints a call as `json.dumps(arguments)` *before*
-    running it, to spot repeats — so a tool that edits that dict leaves the
+    running it, to spot repeats, so a tool that edits that dict leaves the
     ledger holding a fingerprint the arguments no longer match, and the
     repeated-call guard stops recognising the repeat.
     """
@@ -339,3 +339,58 @@ def test_a_single_note_tag_still_reports_its_id_and_tags(session):
     assert result["tags"] == ["a"]
     # The change list reads the note id back out of the result; it must find one.
     assert agent._change_note_id("tag_note", result) == entry.id
+
+
+def test_a_locked_vault_hands_out_no_private_text_anywhere(client, session):
+    """The promise of a private note, checked across every read at once.
+
+    `test_a_private_note_is_not_stored_in_the_clear` proves the bytes on disk;
+    this proves the surfaces. Twelve read endpoints plus the retrieval path
+    that feeds the model, because the exclusion is only as good as its least
+    careful caller and one missed path hands a private note to an LLM.
+
+    **The trap this test carries, found while writing it.** `/search` echoes
+    the query back in its own response, so searching for the secret word and
+    then grepping the response for that word finds it every time, hits or no
+    hits. A first run of this reported a locked vault leaking plaintext; it
+    was the probe reading its own input. The echo is stripped below, and the
+    lesson is worth more than the test: a privacy check that greps a response
+    must first subtract whatever the caller put into the request.
+    """
+    from memorymap.core import deps
+    from memorymap.search import search_manager
+
+    secret = "zarquonsecret"
+    made = _make_private(client, session, f"a private thought about {secret}")
+    entry_id = made["id"]
+
+    paths = [
+        "/entries", f"/search?q={secret}", "/graph", "/timeline", "/insights",
+        "/duplicates", "/tags", "/entries/link-suggestions", "/resurface",
+        "/entries/most-accessed", "/ask-history", "/library/all",
+    ]
+
+    def leaking() -> list[str]:
+        out = []
+        for path in paths:
+            reply = client.get(path)
+            if reply.status_code != 200:
+                continue
+            body = reply.text.replace(f'"query":"{secret}"', '"query":""')
+            if secret in body:
+                out.append(path)
+        return out
+
+    # With the key loaded the owner is reading their own notebook, so the note
+    # is theirs to see. Asserting *that* it appears somewhere keeps this test
+    # honest: a version that hid everything would pass the locked half for the
+    # wrong reason.
+    assert leaking(), "the private note vanished even with the vault open"
+
+    vault.close()
+    assert leaking() == [], "a locked vault handed out the plaintext"
+
+    vault.create(session, "test-passphrase")
+    session.commit()
+    entries, _mode = search_manager.retrieve(session, secret, deps.get_embeddings(), limit=10)
+    assert entry_id not in [e.id for e in entries], "retrieval fed a private note to the model"

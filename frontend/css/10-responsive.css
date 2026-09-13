@@ -1,0 +1,641 @@
+/* ==========================================================================
+   RESPONSIVE, CONTINUED, AND THE LIQUID GLASS ADOPTIONS
+   (UI_MODERNISATION_PLAN.md Phases 9 and 10)
+   ==========================================================================
+
+   Why this file exists and is not another block at the end of
+   07-whiteboard-misc.css: three agents were editing the stylesheets at once
+   when it was written, and 07 is the file every one of them reaches for. A
+   new file loaded last conflicts with nobody, and `tests/test_css_braces.py`
+   makes the append-two-sections-and-lose-a-brace failure impossible to ship
+   from either half.
+
+   It is loaded after 08-consistency.css, so it wins ties on source order.
+   That is a licence to be precise, not a licence to be lazy: every rule here
+   names the band it belongs to and the number that made it necessary.
+
+   The four bands are stated once, at the top of the responsive section in
+   07-whiteboard-misc.css, and nothing here restates them. Half-open,
+   [lower, upper): >= 1100 desktop, 820-1100 iPad landscape, 600-820 iPad
+   portrait, < 600 phone. The phone band is deliberately untouched by this
+   file: it gets a session of its own.
+   ====================================================================== */
+
+/* --- band 3 (600 to 820): the tab strip fits on its own row ---------------
+
+   Measured, `scratchpad/ui-sweeps/tabfit.js` at commit 684f152: at 600 the
+   seven tabs need 640px and the row they wrapped onto is 574px wide, so the
+   strip scrolled sideways inside its own full-width row and two tabs sat
+   out of reach behind an edge fade. At 720 and above the same 640px fits,
+   which is why this was invisible at every width the app is usually driven
+   at, and why it is a band rule rather than a component fix.
+
+   Wrapping is the right answer here and stays: the strip cannot fit beside
+   the wordmark in this band whatever it is wearing (one row needs 640px
+   against 171px of space at 600 and 376px at 819), and the wordmark is what
+   tells you which app this is, reported twice when it was hidden.
+
+   So the strip gets smaller instead. The caption steps down one token and
+   the horizontal padding one step, which takes the seven tabs from 640px to
+   under 500px: they fit at 600 with room to spare, nothing scrolls, nothing
+   is clipped and no caption is abbreviated. The button's *height* does not
+   move: it is `--target-min` in this band and a 44px hit target is the point
+   of the band.
+
+   Deliberately not a grid of equal columns, which was tried first and is a
+   trap: `tabContentWidth` (app.js) sums the buttons' own widths to decide
+   whether to wrap, so stretching them to fill the row makes the strip report
+   that it needs the whole header, and the header can then never unwrap as
+   the window grows back. */
+@media (min-width: 600px) and (max-width: 819.98px) {
+
+  #tab-bar button {
+    padding-inline: var(--space-4);
+  }
+
+  #tab-bar .tab-label {
+    font-size: var(--text-xs);
+  }
+
+  /* The band's own rule, applied to the one strip that was exempt from it by
+     accident. Below 820 a hit target is 44px (`--target-min`, set once at the
+     root); the tab buttons take `--header-control-h` instead, because they
+     are levelled with the rest of the header's controls, and that is 40px.
+     Measured with `touch.js` at 800x1180 with `hasTouch`: all seven tab
+     buttons came back at 40.0px tall while every dock control on Notes,
+     Library and Chat passed. `min-height`, not `height`, so the levelling
+     rule still owns the desktop and only the touch band is raised. */
+  #tab-bar button {
+    min-height: var(--target-min);
+  }
+}
+
+/* --- band 2 (820 to 1100): the tabs are icons, and the header is one row --
+
+   The measurement that made this worth doing (`tabfit.js`, 1440x900 down to
+   600): between 600 and 1100 the tab strip cannot fit beside the wordmark
+   and the header controls, so `syncTabOverflowFade` gives it a row of its
+   own. That costs 52px of every screen in the band: the header is 108px at
+   1024 and 1099 against 56px at 1440, on a laptop, above every page.
+
+   At 1024 the strip needs 696px of captions and the row beside the wordmark
+   has 521px. No amount of tightening closes 175px with seven words in it.
+   Seven *icons* need about 280px, which fits with room to spare, and the
+   selected tab keeps its caption so the strip still says where you are: the
+   HIG's own tab-bar guidance, and the shape the phone band already uses
+   (icon over caption) turned on its side.
+
+   Deliberately not applied below 820. There the space beside the wordmark is
+   376px at 819 and 171px at 600, which even icons do not fit, so band 3
+   keeps its own row and the smaller captions above. And not above 1100,
+   where the captions fit and a word beats a glyph. */
+@media (min-width: 820px) and (max-width: 1099.98px) {
+
+  .tab-icon {
+    display: inline-flex;
+  }
+
+  /* The accessible name is on the button (`aria-label` in the markup), so
+     hiding the caption costs a screen reader nothing. `title` is what a
+     pointer gets, and app.js already sets neither, so the label element
+     stays in the DOM as the tooltip's source rather than being removed. */
+  #tab-bar button:not(.active) .tab-label {
+    display: none;
+  }
+
+  #tab-bar button {
+    gap: var(--space-2);
+  }
+}
+
+/* --- Phase 10, INBOX 100: the scroll edge effect --------------------------
+
+   DESIGN.md, "Taken from Liquid Glass and the HIG", rule 2: "Optimize for
+   legibility when content scrolls beneath controls." A bar with content
+   moving under it says so with a soft edge; a bar with nothing under it says
+   nothing, which is the half that makes the first half mean something.
+
+   `data-scrolled="1"` is set by one listener in app.js, on the *one* bar
+   whose bottom edge is against the top of the region that scrolled. The
+   listener picks it by measuring, not by name, and the reasoning is written
+   there: on Notes three bars are stacked above the list and only the last of
+   them has anything passing behind it.
+
+   A token of its own rather than a shadow: `--glass-shadow` is a drop shadow
+   around a whole surface, and what this needs is a one-sided fall-off from
+   the bar into the content. Its light value is the border ink at a tenth;
+   its dark value is real black, because on a dark page a translucent grey
+   lightens what it covers and the effect inverts into a glow. */
+:root {
+  --scroll-edge: rgba(31, 36, 48, 0.10);
+}
+
+:root[data-mode="dark"] {
+  --scroll-edge: rgba(0, 0, 0, 0.38);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --scroll-edge: rgba(0, 0, 0, 0.38);
+  }
+}
+
+/* --- Phase 10, INBOX 101: concentric corners -----------------------------
+
+   DESIGN.md rule 3, from the HIG's "rounded shapes that are concentric to
+   their containers": a shape inside a rounded container looks wrong at the
+   container's own radius and wrong at a hand-picked one. The right value is
+   the outer radius minus the padding between the two, which is what makes
+   the two arcs share a centre.
+
+   `--space-3` is that padding: it is the inset a `.card` puts between its
+   edge and its contents, so one token expresses the whole relationship and
+   the pair still moves with the radius slider in Settings.
+
+   `max()` with a floor of zero, and this is not defensive dressing: at the
+   square end of the slider `--radius` is 2px and the subtraction is negative.
+   A negative `border-radius` is invalid, the declaration is dropped, and the
+   element quietly falls back to whatever it inherited, which is the
+   APPEARANCE_DEFAULTS shape from CLAUDE.md: a value that is invalid where it
+   is used does its damage nowhere near the code that set it. */
+:root {
+  --radius-inner: max(0px, calc(var(--radius) - var(--space-3)));
+}
+
+/* **A shadow, not the `::after` gradient the rule was written as**, and the
+   reason is a measurement rather than a preference. The gradient was built
+   first, as `position: absolute; top: 100%; height: 1rem` on each bar. An
+   absolutely positioned box extends its containing block's *scrollable*
+   overflow, so every bar that carries the effect gained 16px of vertical
+   scroll: `#notes-subtabs` is `overflow: auto` in both axes and turned from
+   a horizontal strip into a 60/44 vertical scroller, which the sweep caught
+   as a new scroll region on the Notes tab. Clipping it back with
+   `overflow-y: hidden` hides the gradient with it, because the pseudo-element
+   is a child of the bar and the bar is what clips.
+
+   A box shadow is drawn outside the border box, is not clipped by the
+   element's own overflow, and adds nothing to scrollable overflow. Same
+   16px fall-off, none of the side effects, and one declaration instead of
+   three. The two strips restate `--shadow-sm` because they already carry it
+   and `box-shadow` replaces rather than adds. */
+header#top-bar[data-scrolled="1"],
+.dock[data-scrolled="1"] {
+  box-shadow: 0 var(--space-2) var(--space-6) calc(-1 * var(--space-3)) var(--scroll-edge);
+}
+
+.notes-subtabs[data-scrolled="1"],
+.library-subtabs[data-scrolled="1"] {
+  box-shadow:
+    var(--shadow-sm),
+    0 var(--space-2) var(--space-6) calc(-1 * var(--space-3)) var(--scroll-edge);
+}
+
+/* `transition` is a shorthand, so this is only safe because none of the four
+   declares one: checked in the stylesheets and confirmed in the browser,
+   where each of them computed to no transition before this rule. A fifth bar
+   added to the effect later needs the same check, or its own transition goes
+   silently missing.
+
+   Under Reduce motion the edge still appears; it just stops being animated
+   about it, which is the rule DESIGN.md states for every one of these. */
+header#top-bar,
+.dock,
+.notes-subtabs,
+.library-subtabs {
+  transition: box-shadow var(--motion-base) ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  header#top-bar,
+  .dock,
+  .notes-subtabs,
+  .library-subtabs {
+    transition: none;
+  }
+}
+
+/* --- Phase 10, INBOX 103: a menu opens out of the control that opened it --
+
+   DESIGN.md rule 12, from the HIG: controls "fluidly morph into menus and
+   popovers", and rule 6: "an action sheet originates from the element that
+   initiates the action". A menu that simply appears has no relationship to
+   the button you pressed; one that grows out of that button's corner is the
+   same object continuing.
+
+   **A clip, not a scale, and the reason is a measurement rather than
+   taste.** `openActionMenu` (app.js) reads `menu.getBoundingClientRect()` in
+   the same turn it removes `.hidden`, twice: once to decide whether the menu
+   would spill past its scroll parent and flip upward, and again inside
+   `escapeMenuIfClipped`, which reparents a clipped menu to the body and
+   positions it from those coordinates. A transform is included in that rect,
+   so a menu scaling in from 0.92 would be measured at 92% of itself and
+   placed accordingly, permanently. `clip-path` changes nothing about the
+   box; it only decides which of it is painted.
+
+   The circle grows from the opener's own corner: `.action-menu` is anchored
+   `right: 0; top: calc(100% + 4px)` under its opener, so the top-right
+   corner *is* the button, and the flipped variant's origin moves to the
+   bottom with it. 140% is the diagonal of a box, so the last frame is a
+   whole menu rather than a clipped rectangle. */
+@keyframes menu-open-from-opener {
+  from {
+    opacity: 0;
+    clip-path: circle(0% at var(--menu-origin-x) var(--menu-origin-y));
+  }
+
+  to {
+    opacity: 1;
+    clip-path: circle(140% at var(--menu-origin-x) var(--menu-origin-y));
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+
+  .action-menu:not(.hidden),
+  .dock-menu[open] > .dock-menu-list {
+    /* Declared here rather than as a `var()` fallback: a fallback on a token
+       that is declared somewhere is dead code, and `test_style_scale.py`
+       says so by name. */
+    --menu-origin-x: 100%;
+    --menu-origin-y: 0%;
+    animation: menu-open-from-opener var(--motion-base) cubic-bezier(0.2, 0.9, 0.3, 1);
+  }
+
+  /* Flipped upward, so it grew out of the bottom of the button instead. */
+  .action-menu.action-menu-flip:not(.hidden) {
+    --menu-origin-y: 100%;
+  }
+
+  /* A dock's `<details>` menu hangs under the left edge of its summary. */
+  .dock-menu[open] > .dock-menu-list {
+    --menu-origin-x: 0%;
+  }
+}
+
+/* --- INBOX 60: the dashboard's start band uses its own width --------------
+
+   The owner: the band is "all left-aligned in a band with most of its width
+   empty". Measured at 1440x900 with `scratchpad/ui-sweeps/dashstart.js`
+   before this: the "Start something" row filled its 1408px, the "Jump to"
+   row used 476px of it and left 932px empty, and the four stat tiles used
+   573px and left 835px. Two thirds of two rows was nothing.
+
+   The answer is not more pills naming tabs. That was tried and undone with
+   its reason recorded in dashboard.js: the dashboard ended up showing its
+   own navigation three times. It is to let the rows own the width they are
+   already given, and to spend the space the stats had on the one thing four
+   numbers cannot say, which is the shape of the fortnight. */
+/* Everything that stretches is behind `min-width: 600px`, and that is not
+   caution: the phone band gives `.launch-row > *` a `flex: 0 0 auto` so the
+   rows scroll sideways instead of squeezing, and this file loads after the
+   file that says so. A stretched pill there would undo the phone's own
+   design, which belongs to Phase 11 rather than to this change. */
+@media (min-width: 600px) {
+
+  .dash-stats > .stat-tile {
+    /* Equal columns, and `0` basis so a longer label does not buy its tile a
+       wider share of the row than the tile beside it. */
+    flex: 1 1 0;
+  }
+
+  .dash-stats > .stat-spark {
+    /* Twice a tile: it is a chart, and fourteen bars in a tile's width is a
+       texture rather than a reading. */
+    flex: 2 1 0;
+  }
+
+  /* The navigation row: three constants and, when there is one, a Continue
+     pill in front of them. They share the row rather than huddling at its
+     left edge, and they keep their reading order. */
+  .launch-row-go > .quick-link {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  /* Continue is the one pill whose text is a note's own first line, so it is
+     the one that needs room; the three beside it are two words each. */
+  .launch-row-go > .quick-link-continue {
+    flex: 2 1 0;
+  }
+}
+
+/* Not written as `.dash-stats > .stat-spark`: `test_style_scale.py` reads
+   any rule whose selector *starts* with a page container's name as that
+   container setting its own outer inset, and `.dash-stats` is one of them.
+   The class is unique to this chart, so the descendant part buys nothing. */
+.stat-spark {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-6);
+  background: var(--card);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  min-width: 0;
+}
+
+.stat-spark-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-1);
+  flex: 1 1 auto;
+  /* The row's own height decides the chart's, so the strip does not grow:
+     INBOX 60 asks for the band's height to be unchanged. */
+  align-self: stretch;
+  min-width: 0;
+}
+
+.stat-spark-bars > span {
+  flex: 1 1 0;
+  min-width: 0;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  opacity: 0.75;
+}
+
+.stat-spark-bars > span.empty {
+  background: var(--divider);
+  opacity: 1;
+}
+
+.stat-spark-label {
+  color: var(--muted);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+/* --- dark glass reads flatter, and here is which half of it does ----------
+
+   The owner: "glass looks better on light mode and not dark but idk if thats
+   an actual thing or if the values are different." It is an actual thing, and
+   measuring it (`scratchpad/ui-sweeps/glassdepth.js`, a one-pixel column
+   through a card's top edge on the running app, in composited luminance
+   units) says which half:
+
+     light   page 238, rim 254, fill 248: rim over fill 5.6, card over page 10
+     dark    page  21, rim  53, fill  28: rim over fill 24.9, card over page 7.1
+
+   The **rim is not the problem**: in dark it is four times stronger than in
+   light, which is why mirroring the alphas would have been the wrong move
+   (`--glass-highlight` is 0.75 against 0.11, and those are alphas over
+   opposite grounds, not comparable numbers). What is missing in dark is the
+   surface separating from the page at all: 7.1 units of lift against light's
+   10, on a page whose own luminance is 21, so a blurred backdrop with almost
+   nothing in it to blur.
+
+   Two changes, both to the dark palette only, and both aimed at that one
+   number. `brightness` was in the light filter and absent from the dark one
+   entirely, which is the asymmetry the report is feeling. And the light
+   catch, the sheen across the top of a pane, is a quarter of its light-mode
+   strength; halfway back is enough to be seen without becoming a stripe. */
+:root[data-mode="dark"] {
+  --card: color-mix(in srgb, rgba(40, 45, 60, 0.55) calc(var(--glass-opacity) * 100%), transparent);
+  --glass-filter: blur(var(--glass-blur)) saturate(140%) brightness(1.12);
+  /* Through `color-mix` with `--glass-sheen-strength`, like every other catch
+     in the app. Written as a flat rgba here, this override silently undid
+     INBOX 89's own fix ("sheen strength ... doesn't do anything") for dark
+     mode only: measured, light's catch computed
+     `color-mix(... calc(1 * 100%) ...)` and dark's computed a bare
+     `rgba(255, 255, 255, 0.14)`, so the Appearance slider moved the sheen in
+     one mode and not the other. 0.14 is unchanged, it is now the strength
+     slider's 100%. */
+  --glass-catch: radial-gradient(70% 90px at 22% -30px, color-mix(in srgb, rgba(255, 255, 255, 0.14) calc(var(--glass-sheen-strength) * 100%), transparent), transparent 65%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --card: color-mix(in srgb, rgba(40, 45, 60, 0.55) calc(var(--glass-opacity) * 100%), transparent);
+    --glass-filter: blur(var(--glass-blur)) saturate(140%) brightness(1.12);
+    /* See the `[data-mode="dark"]` copy above for why this is a color-mix. */
+    --glass-catch: radial-gradient(70% 90px at 22% -30px, color-mix(in srgb, rgba(255, 255, 255, 0.14) calc(var(--glass-sheen-strength) * 100%), transparent), transparent 65%);
+  }
+}
+
+/* --- the one control in a dock that was not the dock's height -------------
+
+   Found by `docks.js` the moment it stopped counting a segment's buttons as
+   controls (the artefact that had every dock with a segment reporting
+   `28/36`). With the phantoms gone, exactly one bar still reports two
+   heights: Chat's, where `#chat-active-model` is 28px in a row of 36px
+   controls. It takes `min-height: var(--target-min)` and no height at all,
+   and the dock's own `height: var(--control-h)` rule does not reach it.
+
+   `line-height` with the height so the single line stays centred: the button
+   is `display: block` on purpose (see its rule in 07-whiteboard-misc.css:
+   that is what anchors the ellipsis at the start of a long model name), and a
+   block does not centre its text the way a flex row would. */
+.dock .chat-model-button {
+  height: var(--control-h);
+  line-height: var(--control-h);
+}
+
+/* --- INBOX 68: the board and map previews ---------------------------------
+
+   The owner, twice: "Boards & maps preview looks so bad, especially in the
+   dashboard", and "the boards and maps dashboard widget is ugly and needs
+   fixing".
+
+   **The dashboard's thumbnail was drawn for 44px and displayed at 293px.**
+   Measured with `scratchpad/ui-sweeps/preview.js` before this: the widget's
+   miniatures rendered 293.2 by 293.2 while `mapPreview(board, {size: "row"})`
+   had drawn them with the row geometry (a 40-unit box, blocks of 4 by 3, no
+   labels), so every row was a 300px-tall square of six blown-up grey blocks
+   and the widget's own body scrolled at 602 against 320. The cause is one
+   declaration: `.board-minimap-row` sets `width: auto` to stop the card rule
+   sizing it, and it is declared *after* `.dash-list-thumb`'s `width: 2.75em`,
+   so it took that with it and the square grew to fill the row.
+
+   The row thumbnail is a fixed box again. `height` as well as `width`, because
+   `aspect-ratio` with an auto height is what turned one loose width into a
+   293px box in the first place.
+
+   **Landscape, at the Library's row size.** The square this first became was
+   the wrong shape for the thing in it: boards are wide (the two seeded here
+   measure 1.52:1 and 1.41:1), `preserveAspectRatio="xMidYMid meet"` letterboxes
+   them, and a wide board in a square box is 7.6px of empty ground top and
+   bottom. `.library-list .board-minimap` had already answered this with
+   4.5rem by 2.5rem, so the dashboard row now uses the same box and the two
+   surfaces that show a board in a row show it at the same size and shape. */
+.dash-list .board-minimap-row {
+  width: 4.5rem;
+  height: 2.5rem;
+  min-width: 4.5rem;
+  aspect-ratio: auto;
+  flex: 0 0 auto;
+}
+
+/* A label that fits inside its own shape sits on it, so it needs to read
+   against a filled block rather than against the paper.
+
+   The two inks are picked in `mapPreviewOnColour` (app.js) from the branch
+   colour's own luminance, and they are *classes* rather than a `fill`
+   attribute because `.board-minimap-label` declares `fill` in the stylesheet
+   and a CSS declaration beats a presentation attribute. Measured with
+   `scratchpad/ui-sweeps/preview.js`: the app's ink on a mid-tone branch blue
+   is 3.82:1, under the 4.5 the rest of the app is held to, and the attribute
+   version changed that number by nothing at all. Fixed values, not tokens:
+   this is the ink for *that node's colour*, which does not change with the
+   theme, and `--ink` inverting under dark would take white text onto a pale
+   branch. */
+.board-minimap-label-inside {
+  opacity: 0.95;
+}
+
+.board-minimap-label-light {
+  fill: #ffffff;
+  opacity: 1;
+}
+
+.board-minimap-label-dark {
+  fill: #12151c;
+  opacity: 1;
+}
+
+/* --- the quick-nav chord's guide -----------------------------------------
+
+   The owner, with a screenshot: "when I press 'm' for the quick nav, the
+   popup notification is broken visually. also I want it to be more of a whole
+   screen subtle but noticable guide like with the zoom visual thingo."
+
+   It was a `.toast`: a corner notification sized for one sentence, holding
+   ten key-and-label pairs in a row that wrapped mid-pair, which is why "m"
+   and "then" ended up on separate lines beside the chips. And a notification
+   is the wrong kind of thing for it: a toast says something happened, while
+   this is the app waiting for your next keystroke, which is a mode.
+
+   So it takes the HUD's idiom (`.hud`, 07-whiteboard-misc.css: centred,
+   accent-edged, momentary, never interactive) at the size this content needs,
+   over a scrim that dims the page just enough to say the next key means
+   something.
+
+   **The scrim stays click-through-to-close; the rows do not.** This block used
+   to say "`pointer-events: none` throughout: a guide that eats the click you
+   were about to make is worse than no guide at all", which was an argument
+   about a guide sitting beside your work. This one dims the page and holds the
+   next keystroke, so there is no click it could steal that was meant for
+   something else, and the rows are drawn as pills with a key chip in them,
+   which is the shape of a control. The owner: "also make these popup options
+   when I press m, actual clickable nav buttons". A click on the dimmed page
+   still means "not this", the same as Escape and a second `m`. */
+.chord-guide {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-6);
+  /* Subtle, the word the report used: enough to lift the guide off whatever
+     is behind it, not enough to read as a modal that has taken over. */
+  background: color-mix(in srgb, var(--scrim) 55%, transparent);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  pointer-events: none;
+}
+
+/* `.lightbox-close` is `position: fixed`, so it places itself in the
+   viewport corner independent of `.chord-guide`'s own flex centring; this
+   is the one thing that recipe does not already carry, since it has never
+   before sat inside a `pointer-events: none` ancestor. */
+.chord-guide-close {
+  pointer-events: auto;
+}
+
+.chord-guide-lead {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--ink);
+  font-size: var(--text-h3);
+  font-weight: 700;
+}
+
+.chord-guide-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.chord-guide-title {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.chord-guide-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+  max-width: min(52rem, 90vw);
+}
+
+/* One pair per chip, so a key and its destination can never be split across
+   a line break: the exact fault in the screenshot. */
+.chord-guide-row {
+  /* A real `<button>` now, so the base button rule has to be undone where it
+     disagrees with this pill: it is not the app's filled control, it carries
+     its own accent edge and glow, and its label is a destination rather than a
+     verb the button rule sizes for. */
+  pointer-events: auto;
+  cursor: pointer;
+  font: inherit;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-pill);
+  background: var(--modal-bg-opaque);
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow: var(--shadow-lg), 0 0 0 6px color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--ink);
+  font-weight: 600;
+  white-space: nowrap;
+  transition: transform var(--motion-fast) ease, border-color var(--motion-fast) ease;
+}
+
+/* Hover and focus say the same thing, because half the point of this sheet is
+   that it is reachable both ways. */
+.chord-guide-row:hover,
+.chord-guide-row:focus-visible {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.chord-guide-row:active {
+  transform: translateY(0);
+}
+
+@media (max-width: 819.98px) {
+  /* Measured at 43px, a pixel under the floor, which only matters now that
+     these are things a finger is meant to land on. */
+  .chord-guide-row {
+    min-height: var(--target-min);
+  }
+}
+
+/* The heatmap's gap was costing more than its cells (the owner: "the heatmap
+   on the dashboard is a little small"). Measured in a 306px column: 53 weekly
+   columns at a 3px gap spend 156px on gaps and leave 2.8px per cell. At 1px
+   the same column gives 4.8px, and in the full-width section the widget now
+   starts in, the cells reach their 12px cap. A denser grid is also the right
+   shape for the thing: this is a year read as a texture, not a table. */
+.heatmap {
+  gap: 1px;
+}
+
+/* The chart is the first thing to go when there is no width to spend on it:
+   at phone widths the strip is already a sideways scroller of four numbers,
+   and a fifth item that is only a shape would be scrolled past. */
+@media (max-width: 599.98px) {
+
+  .stat-spark {
+    display: none;
+  }
+}

@@ -1,5 +1,7 @@
 # The brief for the next session (Fable)
 
+> **Executed.** This was the prompt for the session that produced the current plans; what it asked for is recorded in [HANDOVER.md](HANDOVER.md). The next brief is [WORLD_CLASS_PLAN.md](WORLD_CLASS_PLAN.md) §11. Do not start work from this file.
+
 The user pastes §2 of this file as the session prompt. §1 exists so the file
 explains itself if it is found later without that context.
 
@@ -18,6 +20,17 @@ Lead-Product-Engineer audit brief. The ordered plan lives at the top of
 You are working on **MemoryMap AI** — a 100% offline, local-first notebook
 (Python + FastAPI, vanilla JS, SQLite, no build step). You are my Lead Product
 Engineer, UX Director and Staff Architect in one.
+
+### Added after the first night (by direct instruction)
+
+Three more plans, to be worked **after** the ones listed below, in
+[ROADMAP.md](../ROADMAP.md)'s order (rows 10–12):
+[UI_MODERNISATION_PLAN.md](UI_MODERNISATION_PLAN.md) Phase 8 (the dock
+grammar — every tab's control dock designed, not assembled), Phase 9
+(responsive by device: iPad, tablet, iPhone), and
+[DOCUMENTS_PLAN.md](DOCUMENTS_PLAN.md) (the documents editor reimagined:
+click an underline and see suggestions first, then the chrome, then the
+surface). Each carries the instruction verbatim and its measured baseline.
 
 ### Read before you touch anything
 

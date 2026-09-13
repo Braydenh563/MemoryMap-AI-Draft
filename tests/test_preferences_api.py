@@ -2,7 +2,7 @@
 don't have a larger domain file of their own.
 
 (Auth flow moved to test_account.py, recycle-bin tests to
-test_recycle_bin.py — same domain as their other coverage.)"""
+test_recycle_bin.py: same domain as their other coverage.)"""
 
 from __future__ import annotations
 
@@ -82,7 +82,7 @@ def test_audit_viewer_lists_actions(client):
 
 
 def test_clearing_the_audit_log_only_removes_the_named_entity_type(client):
-    """The AI Skills sidebar's own "Clear" button — asked for directly. Scoped
+    """The AI Skills sidebar's own "Clear" button: asked for directly. Scoped
     to one entity_type at a time on purpose: this must never be a way to
     wipe the whole audit trail (note edits/deletes are real accountability
     history), only the one filtered slice the caller names."""
@@ -160,7 +160,7 @@ def test_preferences_validated(client):
 
 
 def test_show_console_on_startup_defaults_to_dev_view(client):
-    """A fresh install starts on "Dev view" (console visible) — asked for
+    """A fresh install starts on "Dev view" (console visible): asked for
     directly, reversing an earlier default in this same app. "User view"
     is the one a person opts into, via the first-run prompt or Settings."""
     assert client.get("/preferences").json()["show_console_on_startup"] is True
@@ -168,7 +168,7 @@ def test_show_console_on_startup_defaults_to_dev_view(client):
 
 def test_console_mode_route_saves_the_preference_even_off_the_desktop_app(client):
     """Not running as the desktop app (no MEMORYMAP_DESKTOP=1, which the
-    test client never sets) — still saves the preference for next launch,
+    test client never sets), still saves the preference for next launch,
     just doesn't try to restart anything live."""
     body = client.post(
         "/system/console-mode", json={"show_console_on_startup": False}
@@ -180,18 +180,18 @@ def test_console_mode_route_saves_the_preference_even_off_the_desktop_app(client
 def test_console_mode_route_does_not_restart_when_nothing_actually_changed(
     client, monkeypatch
 ):
-    """Picking the option that already matches the current mode — the
+    """Picking the option that already matches the current mode, the
     common case for the first-run intro prompt, since Dev view is already
-    the default it's asking about — must not trigger a restart. A route
+    the default it's asking about: must not trigger a restart. A route
     that always restarts on any POST would bounce the app the user just
     opened for confirming a choice they hadn't changed."""
-    # Imported (and, transitively, uvicorn along with it — memorymap.__main__
+    # Imported (and, transitively, uvicorn along with it, memorymap.__main__
     # does `import uvicorn` at module level) BEFORE sys.platform is patched
     # below: this is the same module the route imports lazily, and if THIS
     # is the first time anything in the whole test session imports it, doing
     # so while sys.platform lies about being "win32" makes uvicorn.server's
-    # own module-level `signal.SIGBREAK` reference — real on Windows, absent
-    # on Linux — blow up at import time, taking every test after this one
+    # own module-level `signal.SIGBREAK` reference: real on Windows, absent
+    # on Linux: blow up at import time, taking every test after this one
     # down with a confusing unrelated-looking collection error.
     import memorymap.__main__  # noqa: F401
 
@@ -203,7 +203,7 @@ def test_console_mode_route_does_not_restart_when_nothing_actually_changed(
         lambda hidden: restarted.append(hidden),
     )
 
-    # Preference already defaults to True — asking for True again is a no-op.
+    # Preference already defaults to True, asking for True again is a no-op.
     body = client.post(
         "/system/console-mode", json={"show_console_on_startup": True}
     ).json()
@@ -219,7 +219,7 @@ def test_console_mode_route_does_not_restart_when_nothing_actually_changed(
 
 
 def test_restart_route_is_a_no_op_off_the_desktop_app(client):
-    """ROADMAP item C's "second caller" — not tied to any preference
+    """ROADMAP item C's "second caller", not tied to any preference
     changing. Same platform gate as /system/console-mode: nothing to
     restart into off the desktop app, so it says so rather than pretending."""
     body = client.post("/system/restart").json()
@@ -227,9 +227,9 @@ def test_restart_route_is_a_no_op_off_the_desktop_app(client):
 
 
 def test_restart_route_restarts_on_the_desktop_app(client, monkeypatch):
-    """The mechanism is the same one console-mode switching already uses —
+    """The mechanism is the same one console-mode switching already uses, 
     this call just doesn't change what it's restarting into."""
-    import memorymap.__main__  # noqa: F401 — see the console-mode test above
+    import memorymap.__main__  # noqa: F401  # see the console-mode test above
 
     monkeypatch.setenv("MEMORYMAP_DESKTOP", "1")
     monkeypatch.setattr(sys, "platform", "win32")
@@ -242,15 +242,15 @@ def test_restart_route_restarts_on_the_desktop_app(client, monkeypatch):
     body = client.post("/system/restart").json()
     assert body == {"restarting": True}
     # hidden=False because show_console_on_startup defaults to True and this
-    # restart doesn't touch it — restart_in_console_mode's own `hidden`
+    # restart doesn't touch it: restart_in_console_mode's own `hidden`
     # param is "hide the console," the inverse of "show it."
     assert restarted == [False]
 
 
 def test_autonomous_and_battery_preferences_round_trip_through_get(client):
-    """`get_preferences()` is a hand-built dict, and eight keys — every
+    """`get_preferences()` is a hand-built dict, and eight keys, every
     Autonomous Background Workers toggle, the battery mode switch, and smart
-    model routing — were settable and correctly *honoured* (`autonomous.py`
+    model routing: were settable and correctly *honoured* (`autonomous.py`
     and `model_manager.py` both read them straight from storage) but never
     once echoed back here. Every Settings checkbox bound to one of them
     showed unchecked again the moment the page reloaded, regardless of what
@@ -284,7 +284,7 @@ def test_autonomous_and_battery_preferences_round_trip_through_get(client):
 def test_auto_stale_review_preference_was_silently_dropped_before_this_fix(client):
     """The checkbox (#pref-auto-stale-review) called setPreference exactly
     like its tag/link/dedupe siblings, but PreferencesBody never declared
-    this field — so the PUT below returned 200 while quietly discarding the
+    this field: so the PUT below returned 200 while quietly discarding the
     value, and `config.get_preference("auto_stale_review_enabled")`, which
     `autonomous.py`'s optimisation pass actually reads, stayed False no
     matter what the checkbox showed. Asserting the config layer directly
@@ -300,7 +300,7 @@ def test_auto_stale_review_preference_was_silently_dropped_before_this_fix(clien
 
 def test_session_idle_ttl_minutes_round_trips_through_get(client):
     """Was settable and honoured (routes_auth.py's idle-timeout checks all
-    read it) but never echoed back — Settings -> Account showed its HTML
+    read it) but never echoed back, Settings -> Account showed its HTML
     default on every reload no matter what had actually been saved."""
     assert client.get("/preferences").json()["session_idle_ttl_minutes"] == 720
     client.put("/preferences", json={"session_idle_ttl_minutes": 30})
@@ -310,7 +310,7 @@ def test_session_idle_ttl_minutes_round_trips_through_get(client):
 def test_response_mode_was_silently_dropped_before_this_fix(client):
     """setResponseMode (app.js) PUTs response_mode on every pick in the
     Quick/Normal/Detailed dropdown, but PreferencesBody never declared the
-    field — same shape as auto_stale_review_enabled above. The dropdown
+    field: same shape as auto_stale_review_enabled above. The dropdown
     itself updates its own <select> client-side regardless of whether the
     save actually worked, so this was invisible until the next reload
     silently reverted to the default."""
@@ -339,7 +339,7 @@ def test_notification_mute_preference_round_trips_through_get(client):
 
 def test_saving_an_autonomous_preference_wakes_the_scheduler(client, monkeypatch):
     """Battery mode, the on/off toggle and the interval used to only be read
-    once per scheduled tick — up to six hours away — so switching one off
+    once per scheduled tick, up to six hours away, so switching one off
     (or back on) silently did nothing until then. Saving one now has to wake
     the loop so the change is read on the very next tick."""
     from memorymap.ai import autonomous

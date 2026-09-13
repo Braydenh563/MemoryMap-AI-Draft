@@ -2,7 +2,7 @@
 
 The risk this file guards is specific: the vault key is wrapped with a key
 derived from the password, so a password change that doesn't re-wrap it leaves
-a notebook whose password no longer opens its own private notes — silently,
+a notebook whose password no longer opens its own private notes, silently,
 and unrecoverably.
 """
 
@@ -22,7 +22,7 @@ def test_account_reports_the_current_state(client):
     assert body["configured"] is True
     assert body["username"] == "owner"
     assert body["active_sessions"] == 1
-    # Nothing secret is exposed — no hash, no token.
+    # Nothing secret is exposed, no hash, no token.
     assert "password_hash" not in body
     assert "token" not in body
 
@@ -146,7 +146,7 @@ def test_rotate_vault_key_invalidates_old_tokens_and_unlock_still_works(client):
     assert rotated.json()["rotated"] is True
 
     # Every session live before the rotation is gone, including the caller's
-    # old token — a fresh one came back in the response instead.
+    # old token: a fresh one came back in the response instead.
     assert client.get("/auth/account", headers=other_headers).status_code == 401
     assert client.get("/auth/account", headers=headers).status_code == 401
     fresh_headers = {"X-Auth-Token": rotated.json()["token"]}
@@ -206,7 +206,7 @@ def test_rotate_vault_key_refuses_a_wrong_current_password(client):
         headers=headers,
     )
     assert response.status_code == 401
-    # The session survives a refused rotation — nothing was touched.
+    # The session survives a refused rotation, nothing was touched.
     assert client.get("/auth/account", headers=headers).status_code == 200
     still_there = client.get(f"/entries/{entry['id']}", headers=headers).json()
     assert still_there["content"] == "a private thought"
@@ -254,8 +254,8 @@ def test_rotate_vault_key_interrupted_leaves_notes_readable_with_the_old_key(
     assert calls["n"] >= 1
     monkeypatch.setattr(routes_auth.crypto, "encrypt", real_encrypt)
 
-    # The session token from before the crash is still valid — commit never
-    # ran — and the note is still readable under the untouched, old key.
+    # The session token from before the crash is still valid, commit never
+    # ran: and the note is still readable under the untouched, old key.
     still_there = client.get(f"/entries/{entry['id']}", headers=headers).json()
     assert still_there["content"] == "a private thought"
 
@@ -266,7 +266,7 @@ def test_rotate_vault_key_interrupted_leaves_notes_readable_with_the_old_key(
 def test_unlock_throttles_a_run_of_wrong_passwords(client, monkeypatch):
     """bcrypt makes each guess slow; this makes *many* guesses slow. The app
     binds localhost, but people put it behind tunnels to reach it from a
-    phone — a server log showed a public address arriving through a proxy —
+    phone, a server log showed a public address arriving through a proxy , 
     and a four-character floor is PIN territory without a throttle."""
     from memorymap.api import routes_auth
 
@@ -275,7 +275,7 @@ def test_unlock_throttles_a_run_of_wrong_passwords(client, monkeypatch):
     for _ in range(routes_auth._FAILURE_ALLOWANCE):
         assert client.post("/auth/unlock", json={"password": "nope"}).status_code == 401
 
-    # Inside the earned wait even the right password is refused — the 429
+    # Inside the earned wait even the right password is refused, the 429
     # names the wait so the owner knows it is a throttle, not a lockout.
     refused = client.post("/auth/unlock", json={"password": "first-pass"})
     assert refused.status_code == 429

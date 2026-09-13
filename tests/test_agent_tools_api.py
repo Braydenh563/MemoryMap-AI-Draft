@@ -159,7 +159,7 @@ def test_execute_bad_arguments_return_error_not_crash(ai_client, session):
 
 def test_an_unexpected_exception_is_a_tool_error_not_a_crash(ai_client, session, monkeypatch):
     """A handler can raise something that isn't a ToolError/KeyError/
-    TypeError/ValueError — a SQLAlchemy error, a filesystem error, a plain
+    TypeError/ValueError: a SQLAlchemy error, a filesystem error, a plain
     bug. That used to propagate straight through execute_tool: agent.py's
     tool loop has no try/except of its own, so one such call killed the
     whole SSE stream mid-turn with no rollback and nothing the model or the
@@ -183,7 +183,7 @@ def test_agent_runs_tool_then_answers(ai_client, fake_ollama):
     fake_ollama.tool_script = [
         [{"name": "create_note", "arguments": {"content": "buy milk", "category": "Shopping"}}]
     ]
-    fake_ollama.librarian_reply = "Done — I saved that to Shopping."
+    fake_ollama.librarian_reply = "Done: I saved that to Shopping."
 
     events = _stream_events(ai_client, "save a note to buy milk")
 
@@ -192,7 +192,7 @@ def test_agent_runs_tool_then_answers(ai_client, fake_ollama):
     assert tool_events[0]["ok"] is True
     assert "Created note" in tool_events[0]["label"]
     answer = "".join(e["delta"] for e in events if e["type"] == "answer")
-    assert answer == "Done — I saved that to Shopping."
+    assert answer == "Done: I saved that to Shopping."
     assert events[-1]["type"] == "done"
 
     # The note really exists now.
@@ -225,7 +225,7 @@ def test_agent_destructive_call_waits_for_confirmation(ai_client, fake_ollama):
     assert len(confirms) == 1
     assert confirms[0]["name"] == "delete_note"
     assert str(saved["id"]) in confirms[0]["label"]
-    # Nothing was deleted — the tool never ran.
+    # Nothing was deleted: the tool never ran.
     assert not [e for e in events if e["type"] == "tool"]
     entries = ai_client.get("/entries").json()
     assert any(e["id"] == saved["id"] for e in entries)
@@ -342,7 +342,7 @@ def test_extract_text_tool_calls_ignores_unknown_tool():
 
 def test_extract_text_tool_calls_bare_json_with_nested_arguments():
     # A bare (untagged) call whose arguments are themselves an object with a
-    # list inside — an entirely ordinary shape, not an edge case, and the one
+    # list inside: an entirely ordinary shape, not an edge case, and the one
     # the old `\{[^{}]*"name"[^{}]*\}` regex could never match: `[^{}]*`
     # cannot cross a brace at all, so any nested `{` in `arguments` broke the
     # match outright and the whole call was silently dropped. Reported live
@@ -361,7 +361,7 @@ def test_extract_text_tool_calls_bare_json_with_nested_arguments():
 
 
 def test_extract_text_tool_calls_multiple_in_one_wrapper():
-    # Two calls inside one <tool_call>...</tool_call> pair — both should
+    # Two calls inside one <tool_call>...</tool_call> pair: both should
     # come back, not just whichever the parser happened to find first.
     from memorymap.ai.ollama_client import extract_text_tool_calls
 
@@ -378,7 +378,7 @@ def test_extract_text_tool_calls_multiple_in_one_wrapper():
 
 
 def test_agent_recovers_text_emitted_tool_call(ai_client, fake_ollama):
-    # The model "narrates" a create as text instead of a structured call —
+    # The model "narrates" a create as text instead of a structured call, 
     # the client recovers it, so the note is really made (Wave O).
     fake_ollama.text_tool_reply = (
         '<tool_call>{"name": "create_note", "arguments": '
@@ -395,13 +395,13 @@ def test_agent_warns_on_hallucinated_write(ai_client, fake_ollama):
     #
     # The wording changed in §35B: the warning now names *which* claim was
     # unsupported, because a turn that claims five things and did one needs to
-    # say which four did not happen. The property under test is unchanged —
+    # say which four did not happen. The property under test is unchanged, 
     # the user is told, in the answer, that nothing was saved.
     fake_ollama.librarian_reply = "I created a new note titled “Jokes”. Enjoy!"
     events = _stream_events(ai_client, "add a note of jokes")
     answer = "".join(e["delta"] for e in events if e["type"] == "answer")
     # Was `assert "" in answer`. The warning glyph went away with the rest of
-    # the colour emoji — this is prose appended to the model's own answer, and
+    # the colour emoji: this is prose appended to the model's own answer, and
     # a bitmap emoji in it renders at the OS's whim and cannot follow the
     # theme. What the test is actually for is that the user is TOLD, so it
     # pins the words rather than the decoration.
@@ -452,7 +452,7 @@ def test_disabled_tools_preference_roundtrips(client):
 def test_find_similar_notes_is_a_read_not_a_write():
     """It was added to WRITE_TOOLS. A read listed there counts as work for the
     "you claimed you saved it" checker, labels search-only skills as acting,
-    and — the expensive one — trips the write branch in `run_agent`, which
+    and, the expensive one, trips the write branch in `run_agent`, which
     clears the read-dedup ledger and re-opens every answered read."""
     assert "find_similar_notes" not in tools.WRITE_TOOLS
 
@@ -465,3 +465,38 @@ def test_there_is_only_one_skill_writing_tool():
     have raised."""
     assert "generate_skill" not in tools.TOOLS
     assert "save_skill" in tools.TOOLS
+
+
+def test_listing_reminders_hands_the_model_a_page_not_the_table(session):
+    """Everything a tool returns is spent from the model's context window.
+
+    `_list_reminders` read the whole table; its sibling `list_documents` has
+    paged since it was written. A notebook with three hundred reminders would
+    have filled the window with reminders and left no room to reason about
+    them. The `done` filter moved into SQL at the same time, because
+    filtering a page after limiting it is how "show me ten" quietly returns
+    two.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    from memorymap.ai import tools
+    from memorymap.core.database import Reminder
+
+    now = datetime.now(timezone.utc)
+    for i in range(60):
+        session.add(
+            Reminder(text=f"reminder {i}", due_at=now + timedelta(hours=i), done=i % 2 == 0)
+        )
+    session.commit()
+
+    page = tools.execute_tool(session, "list_reminders", {})
+    assert len(page["reminders"]) < 30, "the whole table went to the model"
+    assert page["total"] == 30, page["total"]
+    assert all(not r["done"] for r in page["reminders"]), "a done reminder reached the model"
+
+    second = tools.execute_tool(session, "list_reminders", {"offset": len(page["reminders"])})
+    first_ids = {r["id"] for r in page["reminders"]}
+    assert first_ids.isdisjoint({r["id"] for r in second["reminders"]}), "offset returned the same page"
+
+    withdone = tools.execute_tool(session, "list_reminders", {"include_done": True})
+    assert withdone["total"] == 60, withdone["total"]

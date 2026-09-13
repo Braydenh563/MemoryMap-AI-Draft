@@ -3,7 +3,7 @@
 `core/database.py`'s `LINK_TYPES` comment says `contradicts` "is the one
 worth having built this for: a notebook that can show you where you disagreed
 with yourself is not something an embedding similarity score can ever
-produce". It was right, and until now nothing produced one — `link_type` was
+produce". It was right, and until now nothing produced one, `link_type` was
 writable only by a person choosing it from a dropdown.
 
 **The standing caveat applies and is not papered over here.** There is no
@@ -11,7 +11,7 @@ Ollama in this sandbox, so every test below drives `tests/fakes.py`'s fake
 transport. What is genuinely exercised is the part that decides things: which
 pairs are worth a model call, how a reply is parsed, what is rejected, and
 what accepting one writes. What has *never* run is a real local model judging
-a real pair — so the prompt's actual hit rate is unmeasured, and that is
+a real pair: so the prompt's actual hit rate is unmeasured, and that is
 stated rather than implied.
 """
 
@@ -71,7 +71,7 @@ def test_two_notes_from_the_same_few_days_are_not_a_change_of_mind(session):
     """One idea being worked out in a sitting is not a contradiction.
 
     This is the filter that keeps the feature from flagging ordinary drafting,
-    and it runs before any model call — so it also bounds the work.
+    and it runs before any model call, so it also bounds the work.
     """
     a = _note(session, "The launch is in May", 2)
     b = _note(session, "Actually the launch is in August", 0)
@@ -99,7 +99,7 @@ def test_order_is_by_time_not_by_argument_order(session):
 def test_an_undated_note_is_skipped_rather_than_guessed_at(session):
     """Defensive, and worth saying why it cannot be tested through the DB.
 
-    `entries.created_at` is NOT NULL, so an undated note cannot be *stored* —
+    `entries.created_at` is NOT NULL, so an undated note cannot be *stored*, 
     trying it raises `IntegrityError`, which is how this test was written the
     first time. The guard in `order_by_time` still earns its place because it
     is handed `Entry` objects, and an unsaved one has no timestamp until the
@@ -115,7 +115,7 @@ def test_an_undated_note_is_skipped_rather_than_guessed_at(session):
 
 def test_an_empty_result_says_why_it_is_empty(client):
     """"No model running" and "your notebook is consistent" are different
-    answers, and a bare `[]` renders them identically — which is how a
+    answers, and a bare `[]` renders them identically: which is how a
     feature that never ran gets reported as one that found nothing."""
     body = client.get("/entries/tensions").json()
     assert body["tensions"] == []
@@ -165,7 +165,7 @@ def test_the_dismissed_key_does_not_depend_on_which_note_came_first():
 
 
 def test_the_agent_has_a_tool_for_this_and_it_never_links_anything(client, session):
-    """Reachable by asking, not only by clicking — and read-only.
+    """Reachable by asking, not only by clicking, and read-only.
 
     The whole feature's rule is that accusing someone of contradicting
     themselves is a claim a person has to agree with first, so the tool

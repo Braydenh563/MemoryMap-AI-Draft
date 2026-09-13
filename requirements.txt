@@ -79,6 +79,12 @@ cryptography>=50.0.1,<51.0
 # File attachments (Wave B) — multipart form parsing
 python-multipart>=0.0.32,<1.0
 
+# OPML import (mind maps, routes_whiteboard._parse_opml). The stdlib parser
+# expands internal entities — the billion-laughs shape — and CodeQL flags
+# every stdlib parse of user input for exactly that. defusedxml is the fix
+# the scanner recognises; pure Python, no transitive dependencies.
+defusedxml>=0.7.1,<1.0
+
 # Tests
 pytest>=9.1.1,<10.0
 httpx>=0.28.1,<1.0  # FastAPI's TestClient needs this

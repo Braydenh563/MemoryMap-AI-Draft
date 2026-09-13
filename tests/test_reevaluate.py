@@ -36,7 +36,7 @@ def test_reevaluate_leaves_user_filed_category_alone(ai_client):
 
 
 def test_reevaluate_survives_ai_offline(client):
-    # The default `client` fixture has all AI unavailable — re-evaluate must
+    # The default `client` fixture has all AI unavailable, re-evaluate must
     # still return (empty) suggestions rather than error.
     entry = _save(client, "some note with no AI available")
     response = client.post(f"/entries/{entry['id']}/reevaluate")

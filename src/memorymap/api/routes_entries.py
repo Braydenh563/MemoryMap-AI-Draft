@@ -11,6 +11,7 @@ import json
 import logging
 import re
 import threading
+from types import SimpleNamespace
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
@@ -18,7 +19,7 @@ from sqlalchemy import delete as sa_delete
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from memorymap.ai import extractor, janitor, librarian, links
+from memorymap.ai import extractor, janitor, learning, librarian, links
 from memorymap.ai.ollama_client import OllamaError
 from memorymap.api.schemas import (
     AttachmentOut,
@@ -31,8 +32,9 @@ from memorymap.api.schemas import (
     LinkOut,
     SimilarOut,
 )
-from memorymap.core import deps, vault
+from memorymap.core import deps, events, vault
 from memorymap.core.database import (  # noqa: F401 (EntryLink used in link_suggestions)
+    AuditLog,
     Bookmark,
     Document,
     DocumentLink,
@@ -43,9 +45,11 @@ from memorymap.core.database import (  # noqa: F401 (EntryLink used in link_sugg
     EntryRevision,
     MediaUpload,
     WhiteboardNode,
+    utcnow,
 )
 from memorymap.core.deps import get_session
 from memorymap.entry import duplicates, manager
+from memorymap.search import engine as search_engine
 from memorymap.search import search_manager
 
 router = APIRouter(prefix="/entries", tags=["entries"])
@@ -57,7 +61,7 @@ def _preview(text: str, length: int = 60) -> str:
     """A short, readable version of a note for link chips and lists.
 
     The [[link]] syntax is scaffolding rather than content, so a preview shows
-    the words without the brackets — seeing "[[bread proving]]" on a link chip
+    the words without the brackets, seeing "[[bread proving]]" on a link chip
     that already means "linked to bread proving" is just noise.
     """
     plain = manager.WIKI_LINK.sub(r"\1", text or "")
@@ -74,14 +78,15 @@ def _to_out(
     dates: list | None = None,
     documents: list | None = None,
     links: list | None = None,
+    attachments: list | None = None,
 ) -> EntryOut:
-    # Decrypted here if private and the vault is open — every read of a
+    # Decrypted here if private and the vault is open, every read of a
     # note's text goes through this one helper.
     #
     # The four `category_name`/`dates`/`documents`/`links` overrides let a
     # list endpoint pass in pre-fetched, bulk-queried values instead of this
     # function issuing one query per entry per field (ROADMAP.md #0 priority,
-    # item 1 — `GET /entries` was doing exactly that). Single-entry callers
+    # item 1: `GET /entries` was doing exactly that). Single-entry callers
     # (create/update/get) pass none of them and keep the original per-entry
     # queries below, unchanged.
     content = manager.readable_content(entry)
@@ -90,6 +95,9 @@ def _to_out(
         manager.documents_for_entry(session, entry) if documents is None else documents
     )
     resolved_links = manager.links_for_entry(session, entry) if links is None else links
+    resolved_attachments = (
+        manager.attachments_for(session, entry) if attachments is None else attachments
+    )
     return EntryOut(
         id=entry.id,
         content=content,
@@ -100,6 +108,7 @@ def _to_out(
         tags=manager.entry_tags(entry),
         ai_confidence=entry.ai_confidence,
         access_count=entry.access_count,
+        last_opened_at=getattr(entry, "last_opened_at", None),
         parent_id=entry.parent_id,
         pinned=entry.pinned,
         user_filed=entry.user_filed,
@@ -109,6 +118,7 @@ def _to_out(
         source_title=getattr(entry, "source_title", None),
         source_path=getattr(entry, "source_path", "") or "",
         is_board=bool(getattr(entry, "is_board", False)),
+        workspace_id=getattr(entry, "workspace_id", "default") or "default",
         created_at=entry.created_at,
         deleted_at=entry.deleted_at if entry.is_deleted else None,
         archived_at=entry.archived_at,
@@ -139,7 +149,7 @@ def _to_out(
                 size=a.size,
                 is_image=a.mime.startswith("image/"),
             )
-            for a in manager.attachments_for(session, entry)
+            for a in resolved_attachments
         ],
         filed_by=filed_by,
         filing_state=getattr(entry, "filing_state", "done") or "done",
@@ -155,6 +165,7 @@ def _to_out_bulk(session: Session, entries: list) -> list[EntryOut]:
     dates_by_id = manager.entry_dates_bulk(session, ids)
     documents_by_id = manager.documents_for_entries_bulk(session, ids)
     links_by_id = manager.links_for_entries_bulk(session, ids)
+    attachments_by_id = manager.attachments_for_entries_bulk(session, ids)
     return [
         _to_out(
             session,
@@ -163,6 +174,7 @@ def _to_out_bulk(session: Session, entries: list) -> list[EntryOut]:
             dates=dates_by_id.get(e.id, []),
             documents=documents_by_id.get(e.id, []),
             links=links_by_id.get(e.id, []),
+            attachments=attachments_by_id.get(e.id, []),
         )
         for e in entries
     ]
@@ -170,7 +182,7 @@ def _to_out_bulk(session: Session, entries: list) -> list[EntryOut]:
 
 def _find_near_duplicate(session: Session, entry) -> SimilarOut | None:  # noqa: ANN001
     """Warn about a saved note that says almost the same thing.
-    Purely informational — the save has already happened."""
+    Purely informational: the save has already happened."""
     try:
         results = search_manager.semantic_search(
             session, entry.content, deps.get_embeddings(), limit=3
@@ -194,7 +206,7 @@ def _existing_entry(session: Session, entry_id: int):  # noqa: ANN202
 
 def _process_committed_media(session: Session, plaintext_content: str) -> None:
     """Trigger OCR/captioning/vision-OCR for every `/media/…` upload this
-    (plaintext, pre-encryption) note content references — see
+    (plaintext, pre-encryption) note content references, see
     core/media_process.py's own docstring for why this fires here rather
     than on upload. Best-effort: an image reference to an upload that's
     already gone, or one already processed, is a fast no-op either way."""
@@ -232,15 +244,15 @@ def _file_entry_in_background(entry_id: int, workspace_id: str) -> None:
 
     **The workspace has to be re-established by hand.** A fresh session from
     `deps.get_db()` carries no `workspace_id` in `session.info`, so the
-    scoping hooks in `core/database.py` sit out entirely — which means the
+    scoping hooks in `core/database.py` sit out entirely: which means the
     janitor would otherwise weigh *every space's* categories when deciding
     where a note from one space belongs, and could file it into a category
     that space cannot even see. `impersonate_workspace` puts the session
     back in the note's own space for the duration.
 
-    **The note is never left saying "pending" forever.** Every exit path —
+    **The note is never left saying "pending" forever.** Every exit path, 
     success, a janitor that raised, an entry deleted while the thread was
-    still running — settles `filing_state`, because the composer's status
+    still running: settles `filing_state`, because the composer's status
     chip and the poller in `app.js` both read it as "still working" and a
     stuck value would show a note filing itself for eternity.
 
@@ -252,7 +264,7 @@ def _file_entry_in_background(entry_id: int, workspace_id: str) -> None:
     typing again. They move here too. The duplicate warning comes back
     through `GET /entries/{id}/filing` instead of the create response, so a
     note that triggers one still gets its "you already wrote something like
-    this" — a moment later, in the same notification that says where it was
+    this", a moment later, in the same notification that says where it was
     filed.
     """
     from memorymap.core.deps import impersonate_workspace
@@ -262,8 +274,8 @@ def _file_entry_in_background(entry_id: int, workspace_id: str) -> None:
             with impersonate_workspace(session, workspace_id):
                 entry = session.get(Entry, entry_id)
                 if entry is None:
-                    return  # deleted before filing finished — nothing to settle
-                category, confidence, _filed_by = _file_entry_now(
+                    return  # deleted before filing finished, nothing to settle
+                category, confidence, filed_by = _file_entry_now(
                     session, manager.readable_content(entry)
                 )
                 entry.category_id = manager.get_or_create_category(
@@ -272,13 +284,20 @@ def _file_entry_in_background(entry_id: int, workspace_id: str) -> None:
                 entry.ai_confidence = confidence
                 # Ordered deliberately: the vector has to exist before the
                 # near-duplicate search has anything to compare against, and
-                # both have to land before `filing_state` reads "done" — that
+                # both have to land before `filing_state` reads "done", that
                 # flag is what the composer's poller stops on.
                 deps.store_quietly(session, entry)
                 duplicate = _find_near_duplicate(session, entry)
                 if duplicate is not None:
                     entry.filing_similar_id = duplicate.id
-                entry.filing_state = "done"
+                # `auto` rather than `done` when the AI is the one that
+                # chose (Brief 13): it is the flag that makes a later move by
+                # hand legible as a correction, and it is terminal for every
+                # reader, the composer's poller stops on anything but
+                # `pending`.
+                entry.filing_state = (
+                    manager.AUTO_FILED if janitor.is_ai_method(filed_by) else "done"
+                )
                 session.commit()
     except Exception:
         logger.warning("background filing failed for entry %s", entry_id, exc_info=True)
@@ -304,15 +323,15 @@ def create_entry(body: EntryCreate, session: Session = Depends(get_session)) -> 
     defer = body.defer_filing and not body.category and parent is None
 
     if body.category:
-        # Guided mode: the user chose — the AI stays out of it entirely.
+        # Guided mode: the user chose: the AI stays out of it entirely.
         category, confidence, filed_by = body.category, 100, "user"
     elif parent is not None:
         # Continuing a thread: a train of thought stays in its
-        # parent's category — predictable beats clever here.
+        # parent's category: predictable beats clever here.
         category = manager.category_name_for(session, parent)
         confidence, filed_by = 75, "thread"
     elif defer:
-        # Saved to disk now, filed a moment later — see
+        # Saved to disk now, filed a moment later, see
         # `_file_entry_in_background`. Uncategorised is a real, visible
         # holding place rather than a null, so a note whose filing thread
         # dies with the process is still exactly where a user can find it.
@@ -338,10 +357,12 @@ def create_entry(body: EntryCreate, session: Session = Depends(get_session)) -> 
         entry.source_title = body.source_title
     if defer:
         entry.filing_state = "pending"
+    elif janitor.is_ai_method(filed_by):
+        entry.filing_state = manager.AUTO_FILED
     session.commit()
 
     # Best effort: a failed embedding only means this entry is invisible
-    # to semantic search until re-indexed — never a failed save. It is logged
+    # to semantic search until re-indexed, never a failed save. It is logged
     # rather than swallowed, so a backend that has stopped working shows up in
     # Settings → Logs instead of quietly shrinking search.
     #
@@ -369,7 +390,7 @@ def create_entry(body: EntryCreate, session: Session = Depends(get_session)) -> 
     # A note is one of the three "committed" moments core/media_process.py
     # waits for (asked for directly: OCR/captioning/vision-OCR must not run
     # on a staged upload that never made it into a saved note). `body.content`
-    # here — never `entry.content` — is deliberate: a private note's stored
+    # here, never `entry.content`, is deliberate: a private note's stored
     # content may already be encrypted at rest, and this is the plaintext
     # that was actually just submitted, before that happens.
     _process_committed_media(session, body.content)
@@ -397,7 +418,7 @@ def create_entry(body: EntryCreate, session: Session = Depends(get_session)) -> 
 
 @router.get("/{entry_id}/filing")
 def filing_status(entry_id: int, session: Session = Depends(get_session)) -> dict:
-    """Where a deferred note ended up — the one thing the composer polls.
+    """Where a deferred note ended up, the one thing the composer polls.
 
     Deliberately not `GET /entries/{id}`: that serialises links, documents,
     dates and attachments through four more queries, and a poller running
@@ -431,14 +452,14 @@ class SuggestTagsBody(BaseModel):
 
 @router.post("/suggest-tags")
 def suggest_tags_for_draft(body: SuggestTagsBody) -> dict:
-    """Tag suggestions for a note that doesn't exist yet — the other half of
+    """Tag suggestions for a note that doesn't exist yet: the other half of
     a report that `/{entry_id}/reevaluate` only ever covered post-save:
     "the ai and application doesnt suggest tags either before creating a
     new note or after." "After" already had a path (buried in a kebab
     menu action, easy to never find); "before" had none at all. Reuses
-    `librarian.suggest_tags` directly on the draft's own text — it only
+    `librarian.suggest_tags` directly on the draft's own text: it only
     ever needed a string and the tags already on it, never a saved
-    `Entry` — so the Capture form can offer suggestions while the user is
+    `Entry`, so the Capture form can offer suggestions while the user is
     still typing, before Save exists to be clicked.
     """
     content = body.content.strip()
@@ -459,19 +480,19 @@ def add_context(
 ) -> EntryOut:
     """Append context to an existing note and let the janitor rethink the
     category with the fuller picture. If the user filed this
-    entry themselves, the category is left alone — their call stands."""
+    entry themselves, the category is left alone, their call stands."""
     entry = _existing_entry(session, entry_id)
     entry.content = f"{entry.content}\n\n--- added context ---\n{body.text.strip()}"
     manager.log_action(session, "edited", "entry", entry.id, "context added")
     session.commit()
 
-    # The old vector describes the old text — refresh it, best effort.
+    # The old vector describes the old text, refresh it, best effort.
     try:
         session.execute(
             sa_delete(EmbeddingRecord).where(EmbeddingRecord.entry_id == entry.id)
         )
         session.commit()
-    except Exception:  # noqa: BLE001 — never fail the edit over the index
+    except Exception:  # noqa: BLE001  # never fail the edit over the index
         logging.getLogger("memorymap.embeddings").warning(
             "couldn't clear the stale vector for entry %s", entry.id, exc_info=True
         )
@@ -500,18 +521,18 @@ def add_context(
                 entry.ai_confidence = confidence
                 session.commit()
         except Exception:
-            filed_by = None  # AI down — the note keeps its old category
+            filed_by = None  # AI down, the note keeps its old category
 
     return _to_out(session, entry, filed_by=filed_by)
 
 
 def _linked_entry_ids(session: Session, entry) -> set[int]:  # noqa: ANN001
-    """Ids this note is already connected to — explicit links plus its
-    thread parent/children — so re-evaluate never re-suggests them."""
+    """Ids this note is already connected to, explicit links plus its
+    thread parent/children: so re-evaluate never re-suggests them."""
     linked = {other.id for _link, other in manager.links_for_entry(session, entry)}
     if entry.parent_id is not None:
         linked.add(entry.parent_id)
-    # Was `for child in manager.list_entries(session)` — loading and
+    # Was `for child in manager.list_entries(session)`, loading and
     # ORM-hydrating every non-deleted note in the notebook (decrypting private
     # ones) just to find the handful whose parent_id matches. This entry has
     # at most a few children; the notebook can have thousands of notes.
@@ -525,7 +546,7 @@ def _linked_entry_ids(session: Session, entry) -> set[int]:  # noqa: ANN001
 @router.post("/{entry_id}/reevaluate")
 def reevaluate_entry(entry_id: int, session: Session = Depends(get_session)) -> dict:
     """Re-run the AI on one note (Wave: re-evaluate). Refreshes its
-    confidence — and its category, unless the user filed it themselves —
+    confidence, and its category, unless the user filed it themselves , 
     and suggests tags and links for the user to apply. Tags and links are
     suggestion-only: nothing is tagged or linked without the user's click."""
     entry = _existing_entry(session, entry_id)
@@ -554,9 +575,9 @@ def reevaluate_entry(entry_id: int, session: Session = Depends(get_session)) -> 
                 entry.category_id = category_row.id
             session.commit()
     except Exception:
-        filed_by = None  # AI down — keep the note exactly as it was
+        filed_by = None  # AI down, keep the note exactly as it was
 
-    # 2. Suggest tags (best effort — never blocks the re-evaluation).
+    # 2. Suggest tags (best effort: never blocks the re-evaluation).
     suggested_tags: list[str] = []
     try:
         suggested_tags = librarian.suggest_tags(
@@ -597,7 +618,7 @@ def reevaluate_entry(entry_id: int, session: Session = Depends(get_session)) -> 
 class ImproveBody(BaseModel):
     text: str
     mode: str = "proofread"  # proofread | rewrite | concise | custom
-    # Only read when mode == "custom" — the user's own instruction, in their
+    # Only read when mode == "custom", the user's own instruction, in their
     # own words, instead of picking from the three presets. Length-capped to
     # match the input's own maxlength; this is one line of steering, not a
     # second prompt.
@@ -606,7 +627,7 @@ class ImproveBody(BaseModel):
 
 @router.post("/improve")
 def improve_writing(body: ImproveBody) -> dict:
-    """Return an AI-polished version of some note text without saving it —
+    """Return an AI-polished version of some note text without saving it, 
     the UI shows a before/after and the user decides. Never
     touches the note itself; the AI is a servant, not a gatekeeper."""
     text = body.text.strip()
@@ -650,12 +671,12 @@ SEMANTIC_LIST_LIMIT = 25
 
 @router.get("/link-suggestions")
 def link_suggestions(session: Session = Depends(get_session)) -> list[dict]:
-    """Pairs of notes that mean similar things but aren't linked yet —
+    """Pairs of notes that mean similar things but aren't linked yet: 
     the auto-linker. Suggestion-only: it never links anything on
     its own, it hands the pairs to the UI to approve. Empty when the
     embedding backend is unavailable (semantic search off).
 
-    Used to call `semantic_search` once *per entry* — a full embedding scan,
+    Used to call `semantic_search` once *per entry*: a full embedding scan,
     for every entry, so O(entries) database round-trips each doing O(entries)
     work, and each one **re-embedding that entry's own content from scratch**
     on top of the scan. At any real notebook size that's the O(n^2) trap this
@@ -663,30 +684,37 @@ def link_suggestions(session: Session = Depends(get_session)) -> list[dict]:
     the same kind of sweep, not by profiling this one specifically, since a
     75k-note notebook running this by hand was not something worth actually
     waiting out. Rewritten to match `routes_graph._similarity_edges`'s
-    already-correct shape — fetch every stored vector once, compare all
-    pairs in memory — which turns O(n) queries plus O(n) re-embeddings into
+    already-correct shape: fetch every stored vector once, compare all
+    pairs in memory: which turns O(n) queries plus O(n) re-embeddings into
     one query and zero re-embedding calls."""
-    from memorymap.ai.embeddings import bytes_to_vector, similar_pairs
+    from memorymap.ai.embeddings import similar_pairs
 
     entries = manager.list_entries(session)
     entries_by_id = {e.id: e for e in entries if not e.is_private}
     already_linked: set[frozenset[int]] = set()
     for link in session.scalars(select(EntryLink)):
         already_linked.add(frozenset((link.source_entry_id, link.target_entry_id)))
-    # Threads are already a connection — don't re-suggest parent/child.
+    # Threads are already a connection, don't re-suggest parent/child.
     for entry in entries:
         if entry.parent_id is not None:
             already_linked.add(frozenset((entry.parent_id, entry.id)))
+    # A pair the person has already said no to (WORLD_CLASS_PLAN I7). The same
+    # set as the two above, because "you dismissed this" and "these are
+    # already linked" are the same answer to this endpoint's only question:
+    # is there anything left to suggest about these two. A suggestion that
+    # comes back after being dismissed is the single most annoying thing a
+    # suggester can do, and it is what this feature did until now: the
+    # dismissal lived in the browser and died with the tab.
+    for pair in learning.boosts(session, kind="links"):
+        already_linked.add(frozenset(pair))
 
     embeddings = deps.get_embeddings()
     if not embeddings.is_ready():
         return []
-    records = session.execute(
-        select(EmbeddingRecord.entry_id, EmbeddingRecord.embedding).where(
-            EmbeddingRecord.model_version == embeddings.backend_id()
-        )
-    ).all()
-    vectors = {eid: bytes_to_vector(blob) for eid, blob in records if eid in entries_by_id}
+    # From the engine's matrix (Brief 11), not a fresh `SELECT` of every
+    # vector plus a `bytes_to_vector` per row: this process already holds the
+    # array, and the pairs pass below wants exactly it.
+    vectors = search_engine.vectors_by_id(session, only=set(entries_by_id))
 
     # `similar_pairs` hands these back best-first and blocks the matrix
     # multiply, so a big notebook costs one block of memory rather than an
@@ -695,7 +723,7 @@ def link_suggestions(session: Session = Depends(get_session)) -> list[dict]:
     # **Two filters stand between "best-first" and "useful", and both were
     # added after measuring what this actually returned.** On a real 116-note
     # notebook every single one of the twelve suggestions was a pair of notes
-    # with *identical* text, scoring 1.00 — six of them the same stub note
+    # with *identical* text, scoring 1.00, six of them the same stub note
     # paired with six copies of itself. The feature was working exactly as
     # written and surfacing nothing worth acting on, which is the measured
     # reason a notebook can sit at 16 linked notes out of 116 with the
@@ -704,7 +732,7 @@ def link_suggestions(session: Session = Depends(get_session)) -> list[dict]:
     #  1. A near-identical pair is a *duplicate*, not a connection. Linking
     #     two copies of one note records that a note resembles itself. This
     #     app already has a feature whose whole job is that case, so the pair
-    #     belongs to it — `entry/duplicates.py`, same threshold, reusing its
+    #     belongs to it: `entry/duplicates.py`, same threshold, reusing its
     #     arithmetic word-overlap score rather than inventing a second notion
     #     of "the same". Cheap enough to run on the survivors of the vector
     #     pass, which is a handful of pairs, not the notebook.
@@ -741,7 +769,7 @@ def link_suggestions(session: Session = Depends(get_session)) -> list[dict]:
             # the graph edge and in Trace). `LINK_SUGGESTION_THRESHOLD`
             # equals `manager.AUTO_REASON_THRESHOLD` exactly, so every
             # suggestion here would clear the bar `create_link` uses to
-            # deduce this same text — showing it before the link exists is
+            # deduce this same text, showing it before the link exists is
             # a preview of that outcome, not a separate guess.
             "reason": manager.AUTO_REASON_TEXT,
         })
@@ -757,7 +785,7 @@ def link_suggestions(session: Session = Depends(get_session)) -> list[dict]:
 TENSION_DISMISSED_KEY = "tensions_dismissed"
 
 #: Tensions look at pairs the notebook already believes are about the same
-#: thing (see `ai/tensions.py` — contradiction is only possible between notes
+#: thing (see `ai/tensions.py`, contradiction is only possible between notes
 #: sharing a subject). A lower bar than `LINK_SUGGESTION_THRESHOLD` on
 #: purpose: two notes that *disagree* often share less vocabulary than two
 #: that agree, because the disagreement is exactly where their words differ.
@@ -783,18 +811,18 @@ def find_tensions(
     """Places the notebook appears to disagree with itself.
 
     The feature `core/database.py`'s `LINK_TYPES` comment says the typed-link
-    vocabulary was built for and that nothing ever produced — see
+    vocabulary was built for and that nothing ever produced, see
     `ai/tensions.py` for the full reasoning. Read-only and suggestion-only:
     finding a tension writes nothing, and `POST /entries/tensions/accept` is
     the only thing that creates the `contradicts` link.
 
     Returns `{"tensions": [...], "status": "..."}` rather than a bare list so
-    an empty result can say *why* it is empty — "no model running" and "your
+    an empty result can say *why* it is empty, "no model running" and "your
     notebook does not contradict itself" are completely different answers and
     a bare `[]` renders them identically, which is how a feature that never
     ran gets reported as a feature that found nothing.
     """
-    from memorymap.ai.embeddings import bytes_to_vector, similar_pairs
+    from memorymap.ai.embeddings import similar_pairs
     from memorymap.ai import tensions as tensions_module
 
     ollama = deps.get_ollama()
@@ -810,12 +838,7 @@ def find_tensions(
     if len(by_id) < 2:
         return {"tensions": [], "status": "too_few_notes"}
 
-    records = session.execute(
-        select(EmbeddingRecord.entry_id, EmbeddingRecord.embedding).where(
-            EmbeddingRecord.model_version == embeddings.backend_id()
-        )
-    ).all()
-    vectors = {eid: bytes_to_vector(blob) for eid, blob in records if eid in by_id}
+    vectors = search_engine.vectors_by_id(session, only=set(by_id))
 
     # A pair already marked as contradicting is a finding the person has
     # already accepted, not one to re-propose. Every other link type is left
@@ -835,7 +858,7 @@ def find_tensions(
             continue
         ordered = tensions_module.order_by_time(by_id[a_id], by_id[b_id])
         if ordered is None:
-            continue  # same few days, or undated — see MIN_GAP_DAYS
+            continue  # same few days, or undated, see MIN_GAP_DAYS
         checked += 1
         tension = tensions_module.compare_pair(ordered[0], ordered[1], models, ollama)
         if tension is None:
@@ -914,11 +937,11 @@ class LinkSuggestionReasonsBody(BaseModel):
 def link_suggestion_reasons(
     body: LinkSuggestionReasonsBody, session: Session = Depends(get_session)
 ) -> dict:
-    """Reasons for *pending* suggestions, not yet real links — the gap
+    """Reasons for *pending* suggestions, not yet real links, the gap
     `/links/backfill-reasons` (below) deliberately doesn't cover, since that
     one only ever touches links that already exist. Asked for directly: the
     suggestions panel's own "Why?" boxes had no way to get an AI guess
-    without linking first, editing, and re-linking. Best-effort per pair —
+    without linking first, editing, and re-linking. Best-effort per pair: 
     one bad or private pair doesn't sink the rest, and the whole call
     degrades to an empty list rather than an error the moment the model is
     down, so the caller can tell "nothing generated" from "everything
@@ -951,7 +974,7 @@ def link_suggestion_reasons(
 
 
 class BackfillReasonsBody(BaseModel):
-    """`ai=False` runs only the cheap embedding pass — useful when the model
+    """`ai=False` runs only the cheap embedding pass, useful when the model
     is known to be down and you just want the links marked."""
 
     ai: bool = True
@@ -962,24 +985,24 @@ class BackfillReasonsBody(BaseModel):
 def backfill_link_reasons(
     body: BackfillReasonsBody | None = None, session: Session = Depends(get_session)
 ) -> dict:
-    """"None of my notes have a linked reason yet — is there an easy way to
+    """"None of my notes have a linked reason yet, is there an easy way to
     give them all a reason?" There wasn't: `_deduce_reason` only ever ran at
     the moment a link was *made*, so every link from before that shipped, or
     made while the embedding backend was off, stays mute forever with
     nothing to revisit it. One pass over every reason-less link, same rule
-    as a fresh one — a link that still can't be deduced is left alone rather
+    as a fresh one, a link that still can't be deduced is left alone rather
     than given a manufactured answer.
 
     **Two passes, not one, and the second is the one the user actually
     wanted.** The first (embeddings) can only ever write the literal string
-    "similar in meaning" — it compares two vectors and has no words for what
+    "similar in meaning", it compares two vectors and has no words for what
     it found. So a notebook that ran this ended up with every link reading
     *"similar in meaning"*, which is what was reported: the button appeared to
     work and the reasons it produced said nothing.
 
     The second pass hands those to the model and asks it to name the actual
     connection. It is best-effort: if the model is down, the embedding pass
-    has still marked the links and the audit can be re-run later — which is
+    has still marked the links and the audit can be re-run later, which is
     why a failure here is reported in the result rather than raised.
     """
     options = body or BackfillReasonsBody()
@@ -1000,22 +1023,40 @@ def backfill_link_reasons(
     return result
 
 
+#: How alike two notes have to be before one is offered as "see also".
+#: Unchanged from the number this route already used inline; named now that
+#: the scoring moved into the engine, so the threshold and the engine's own
+#: `MIN_SIMILARITY` are visibly two different decisions rather than one
+#: number copied twice.
+RELATED_MIN_SIMILARITY = 0.3
+
+
 @router.get("/{entry_id}/related", response_model=list[EntryOut])
 def related_entries(entry_id: int, session: Session = Depends(get_session)) -> list[EntryOut]:
     """Semantic neighbours of one entry ("see also")."""
     entry = _existing_entry(session, entry_id)
+    # The engine's matrix rather than a scan of every stored vector per note
+    # opened (Brief 11). `warm_vectors` is idempotent: it builds once per
+    # process and per notebook, and returns immediately after that, so this
+    # is not per-request work. `related()` itself never builds, which is what
+    # the spec pins.
     try:
-        results = search_manager.semantic_search(
-            session, entry.content, deps.get_embeddings(), limit=4
+        search_engine.warm_vectors(session)
+        neighbours = search_engine.related(session, entry.id, k=8)
+    except Exception:  # noqa: BLE001  # a "see also" panel never fails a note
+        neighbours = []
+    wanted = [other_id for other_id, score in neighbours if score >= RELATED_MIN_SIMILARITY]
+    if not wanted:
+        return []
+    found = {
+        other.id: other
+        for other in session.scalars(
+            select(Entry).where(Entry.id.in_(wanted), Entry.is_deleted == False)  # noqa: E712
         )
-    except Exception:
-        results = None
-    related = [
-        other
-        for other, score in (results or [])
-        if other.id != entry.id and score >= 0.3
-    ]
-    return [_to_out(session, e) for e in related[:3]]
+        if not other.is_private
+    }
+    ordered = [found[other_id] for other_id in wanted if other_id in found]
+    return [_to_out(session, e) for e in ordered[:3]]
 
 
 class AttachBookmarkBody(BaseModel):
@@ -1024,7 +1065,7 @@ class AttachBookmarkBody(BaseModel):
 
 @router.get("/{entry_id}/bookmarks")
 def entry_bookmarks(entry_id: int, session: Session = Depends(get_session)) -> list[dict]:
-    """Bookmarks attached to this note — its References, alongside the
+    """Bookmarks attached to this note, its References, alongside the
     [[wiki links]] `links` already carries. Its own endpoint rather than a
     field on EntryOut, matching `/related` right above: only the editor
     needs this, and `_to_out_bulk`'s per-list-page bulk fetch shouldn't grow
@@ -1072,7 +1113,7 @@ def detach_bookmark(
     return {"detached": True}
 
 
-#: A page of the plain list, not a hard ceiling on notebook size — the
+#: A page of the plain list, not a hard ceiling on notebook size, the
 #: frontend fetches pages in a loop until X-Total-Count says it has
 #: everything (loadEntries in app.js). Bounds each individual request so a
 #: notebook that has grown for years can't make one response unbounded; the
@@ -1090,12 +1131,27 @@ def list_entries(
     q: str = "",
     limit: int = Query(default=ENTRIES_PAGE_SIZE, ge=1, le=ENTRIES_PAGE_SIZE_MAX),
     offset: int = Query(default=0, ge=0),
+    # **This list is the notes list, so boards are not in it by default.**
+    #
+    # Reported: "I made a mindmap naming it test and I think it came up as a
+    # new note??", it did, on every surface built on this response. A board
+    # (and a mind map, which is a board with `type: "map"`) is an `Entry`, so
+    # it came back here with everything else; measured on a notebook with
+    # nine maps, ten of the Notes list's twelve rows were maps.
+    #
+    # The default is the fix, rather than a filter in each of the four
+    # surfaces that draw notes, because "the same object drawn five ways" is
+    # this app's recurring failure and four client-side filters is that shape
+    # exactly. `boards=only` is how the two callers that genuinely want boards
+    # (the `[[wiki]]` resolver and the editor's `@` picker) ask for them, and
+    # `boards=include` restores the old response for anything wanting both.
+    boards: str = Query(default=manager.BOARDS_EXCLUDE),
     session: Session = Depends(get_session),
 ) -> list[EntryOut]:
     """Normal list, the recycle bin when ?deleted=true, the archive when
     ?archived=true, or a concept search. `deleted` and `archived` are
     mutually exclusive views (each its own held-back set), not filters
-    that combine — same as `deleted` already worked before `archived`
+    that combine: same as `deleted` already worked before `archived`
     existed.
 
     `?semantic=true&q=…` is the one case the browser cannot do for itself: the
@@ -1104,10 +1160,15 @@ def list_entries(
 
     `limit`/`offset` page the plain list; `X-Total-Count` on the response
     says the real size regardless of the page, so a caller knows when it has
-    everything. Was genuinely unbounded before — every note, every load, no
-    matter the notebook's size — which is real risk for a "just works" local
+    everything. Was genuinely unbounded before, every note, every load, no
+    matter the notebook's size: which is real risk for a "just works" local
     app that's supposed to degrade gracefully rather than time out or OOM.
     """
+    if boards not in manager.BOARD_MODES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"boards must be one of {', '.join(manager.BOARD_MODES)}",
+        )
     if semantic and q:
         from memorymap.core import deps
 
@@ -1115,25 +1176,27 @@ def list_entries(
         # decides which semantic hits are even in scope for this view (bin,
         # archive, or live), and paginating this fetch would silently drop
         # legitimate matches that happen to live past the first page. Ids
-        # only, no row bodies — cheap even at real notebook scale, and the
+        # only, no row bodies, cheap even at real notebook scale, and the
         # thing the original unbounded-response risk was actually about was
         # sending full rows over HTTP, not counting ids in-process.
-        scope_ids = manager.entry_id_scope(session, deleted=deleted, archived=archived)
+        scope_ids = manager.entry_id_scope(
+            session, deleted=deleted, archived=archived, boards=boards
+        )
 
         # Ranked, and returned ranked. The first version rebuilt the result as
         # `[e for e in entries if e.id in found_ids]`, which is the *notebook's*
-        # order — so the best match could land anywhere in the list and the
+        # order: so the best match could land anywhere in the list and the
         # feature looked like it was picking notes at random.
         results = search_manager.semantic_search(
             session, q, deps.get_embeddings(), limit=SEMANTIC_LIST_LIMIT
         )
         if results is None:
             # No embedding backend ready. Saying so beats silently handing back
-            # the entire notebook as though it were the search result — the
+            # the entire notebook as though it were the search result, the
             # caller can fall back to its own keyword filter.
             raise HTTPException(
                 status_code=503,
-                detail="Semantic search isn't ready yet — the embedding model is still loading.",
+                detail="Semantic search isn't ready yet: the embedding model is still loading.",
             )
         # `semantic_search` already drops anything under MIN_SIMILARITY; a
         # second threshold here was a different number for the same job.
@@ -1148,8 +1211,8 @@ def list_entries(
         entries = manager.list_archived_entries(session, limit=limit, offset=offset)
         total = manager.count_archived_entries(session)
     else:
-        entries = manager.list_entries(session, limit=limit, offset=offset)
-        total = manager.count_entries(session)
+        entries = manager.list_entries(session, limit=limit, offset=offset, boards=boards)
+        total = manager.count_entries(session, boards=boards)
     response.headers["X-Total-Count"] = str(total)
     return _to_out_bulk(session, entries)
 
@@ -1158,12 +1221,12 @@ def list_entries(
 @router.get("/most-accessed", response_model=list[EntryOut])
 def most_accessed(session: Session = Depends(get_session)) -> list[EntryOut]:
     """Top entries by how often they've been opened or matched a
-    question — the quick-access dashboard."""
+    question: the quick-access dashboard."""
     entries = manager.most_accessed_entries(session, limit=5)
     return _to_out_bulk(session, entries)
 
 
-# Onboarding's own "is this notebook empty" check — deliberately just a
+# Onboarding's own "is this notebook empty" check: deliberately just a
 # number (never the full /entries payload) so the first-run tour can decide
 # whether to offer example notes without pulling a real notebook's worth of
 # content over the wire just to find out it isn't empty.
@@ -1175,7 +1238,7 @@ def count_entries(session: Session = Depends(get_session)) -> dict:
 @router.post("/seed-examples")
 def seed_example_entries(session: Session = Depends(get_session)) -> dict:
     """The onboarding tour's "add example notes" offer (ROADMAP.md's
-    onboarding item). Refuses on any notebook that already has a note —
+    onboarding item). Refuses on any notebook that already has a note, 
     see `manager.seed_example_notes`'s own guard."""
     created = manager.seed_example_notes(session)
     return {"created": created}
@@ -1191,7 +1254,7 @@ def get_entry(
     text, so "read a binned note before deciding whether to restore it" came
     free. The Library shows a preview instead, which is right for a grid of
     mixed things and wrong as the *only* way to see a note you are about to
-    delete for good — so the reader needs a way to fetch one binned note.
+    delete for good: so the reader needs a way to fetch one binned note.
 
     Two things stay different from a live read, and both are deliberate:
     a deleted note is only reachable when the caller says so (a stale link to
@@ -1205,7 +1268,13 @@ def get_entry(
         raise HTTPException(status_code=404, detail="Entry not found")
     if not entry.is_deleted:
         entry.access_count += 1  # opening an entry counts as using it
-        # A private note has no audit trail at all otherwise — encrypted at
+        # And *when*, which is the half the dashboard's Continue pill needs:
+        # a count cannot answer "the note I was last in", and `updated_at`
+        # only moves when the text changes, so reading an old note left the
+        # pill pointing at whatever was newest. Same guard as the count: a
+        # note read on its way out of the bin has not been come back to.
+        entry.last_opened_at = utcnow()
+        # A private note has no audit trail at all otherwise, encrypted at
         # rest and invisible to the AI is the whole promise, but nothing
         # recorded *when* one was actually opened and decrypted for
         # reading, which is the one thing that would tell you if that
@@ -1213,8 +1282,8 @@ def get_entry(
         # other note already has plenty of activity logged elsewhere (see
         # the Library's own "activity is 93%+ of a real notebook" note) and
         # doesn't need a second entry for the same open.
-        # Only when the vault is actually open — readable_content() returns
-        # a placeholder ("Private note — unlock to read it.") rather than
+        # Only when the vault is actually open, readable_content() returns
+        # a placeholder ("Private note: unlock to read it.") rather than
         # the real text when it's locked, and logging "decrypted" for a
         # request that decrypted nothing is worse than not logging at all:
         # a trail meant to build confidence that lies about what happened
@@ -1229,7 +1298,7 @@ def _safe_filename(title: str, extension: str) -> str:
     """A title is user text; it must not steer where the file lands.
 
     Same rule `routes_documents.py`'s own `_safe_filename` already enforces
-    for a document — not shared, because the two files don't otherwise
+    for a document: not shared, because the two files don't otherwise
     import from each other and a title-to-filename sanitiser is small
     enough that a shared module for it would be the premature abstraction.
     """
@@ -1240,12 +1309,12 @@ def _safe_filename(title: str, extension: str) -> str:
 
 @router.get("/{entry_id}/export.md")
 def export_entry(entry_id: int, session: Session = Depends(get_session)) -> Response:
-    """One note's own text, as a download — BACKLOG.md §95 item D.14: "Full
+    """One note's own text, as a download, BACKLOG.md §95 item D.14: "Full
     export exists. There is no way to hand one note to someone."
 
     Mirrors `routes_documents.py`'s `export_markdown` (same route shape,
     same `Content-Disposition` filename sanitising) rather than reusing it
-    directly — a note has no `file_type` the way a document does, so there
+    directly: a note has no `file_type` the way a document does, so there
     is no second branch to share, and the two routes would only be coupled
     by the part that's already this short.
 
@@ -1274,7 +1343,7 @@ def update_entry(
     entry_id: int, body: EntryUpdate, session: Session = Depends(get_session)
 ) -> EntryOut:
     """Manual override: the user can correct anything the AI decided
-    (plan §4 — the AI is a servant, not a gatekeeper)."""
+    (plan §4: the AI is a servant, not a gatekeeper)."""
     entry = _existing_entry(session, entry_id)
     content_changed = body.content is not None and body.content != entry.content
     tags_changed = body.tags is not None and body.tags != manager.entry_tags(entry)
@@ -1299,13 +1368,13 @@ def update_entry(
         entry.is_draft = body.is_draft
         session.commit()
     if content_changed:
-        # The old vector describes the old text — refresh it, best effort.
+        # The old vector describes the old text, refresh it, best effort.
         try:
             session.execute(
                 sa_delete(EmbeddingRecord).where(EmbeddingRecord.entry_id == entry.id)
             )
             session.commit()
-        except Exception:  # noqa: BLE001 — never fail the edit over the index
+        except Exception:  # noqa: BLE001  # never fail the edit over the index
             logging.getLogger("memorymap.embeddings").warning(
                 "couldn't clear the stale vector for entry %s", entry.id, exc_info=True
             )
@@ -1319,7 +1388,7 @@ def update_entry(
         except Exception:
             session.rollback()
             logger.warning("couldn't sync wiki links for entry %s", entry.id, exc_info=True)
-        # Same "committed" trigger point as create_entry — an edit can be
+        # Same "committed" trigger point as create_entry, an edit can be
         # the first time an image the note already referenced actually
         # gets saved (a staged upload attached, then the note edited to
         # include it, rather than created with it already there).
@@ -1346,7 +1415,7 @@ def restore_entry(entry_id: int, session: Session = Depends(get_session)) -> Ent
 
 @router.post("/{entry_id}/archive", response_model=EntryOut)
 def archive_entry(entry_id: int, session: Session = Depends(get_session)) -> EntryOut:
-    """Kept, but out of the way (BACKLOG §30b) — distinct from the recycle
+    """Kept, but out of the way (BACKLOG §30b): distinct from the recycle
     bin: never auto-cleared, never purgeable, no confirmation needed since
     nothing is at risk of being lost."""
     entry = _existing_entry(session, entry_id)
@@ -1368,7 +1437,7 @@ def purge_entry(entry_id: int, session: Session = Depends(get_session)) -> dict:
     """Permanently delete ONE note from the recycle bin. Asked for directly.
 
     Emptying the whole bin was all-or-nothing, so getting rid of a single note
-    for good meant destroying everything else in there too — which is why
+    for good meant destroying everything else in there too, which is why
     people leave the bin full instead, and then the bin is not a bin.
 
     **Only a binned note can be purged.** A note still in the notebook has to
@@ -1391,17 +1460,17 @@ def purge_entry(entry_id: int, session: Session = Depends(get_session)) -> dict:
 
 class LinkBody(BaseModel):
     target_id: int
-    # Optional — "why are these connected?" A shared tag or a reply thread
+    # Optional: "why are these connected?" A shared tag or a reply thread
     # says why on its own; a manual link often doesn't.
     reason: str | None = Field(default=None, max_length=200)
     # What kind of connection, from core.database.LINK_TYPES. Optional, and an
-    # unrecognised value is stored as null rather than rejected — see
+    # unrecognised value is stored as null rather than rejected, see
     # manager.create_link on why a typo should not cost you the link.
     link_type: str | None = Field(default=None, max_length=24)
 
 
 class LinkReasonBody(BaseModel):
-    # None (or omitted/blank) clears the reason — this is also how a link
+    # None (or omitted/blank) clears the reason, this is also how a link
     # that got an auto-deduced reason it disagrees with is corrected back
     # to nothing, same as it would have started with.
     reason: str | None = Field(default=None, max_length=200)
@@ -1411,21 +1480,162 @@ class PrivacyBody(BaseModel):
     private: bool
 
 
+#: How many events one request of a note's history returns. A note edited
+#: every day for a year has a history worth paging through rather than
+#: sending whole to a sheet that shows a dozen rows at a time.
+HISTORY_PAGE = 50
+
+
+def _readable(content: str) -> str:
+    """Decrypt stored content for display, the same way a note itself is.
+
+    `manager.readable_content` reads one attribute, so an event's stored
+    content can borrow it without a row to hang it on.
+    """
+    return manager.readable_content(SimpleNamespace(content=content or ""))
+
+
 @router.get("/{entry_id}/history")
-def entry_history(entry_id: int, session: Session = Depends(get_session)) -> list[dict]:
-    """Past versions of this note, newest first."""
+def entry_history(
+    entry_id: int,
+    before: int | None = Query(default=None, ge=1),
+    session: Session = Depends(get_session),
+) -> dict:
+    """This note's history, as events and as past versions.
+
+    Two lists because they answer two questions and Brief 7 deliberately
+    kept both. `items` is the event log (Brief 7, WORLD_CLASS_PLAN B1):
+    everything that ever happened to this note, who did it, and the state
+    it left the note in, which is what the History sheet renders and what
+    `POST /entries/{id}/restore/{event_id}` replays. `revisions` is the
+    older per-edit snapshot list (`EntryRevision`, capped at
+    `manager.MAX_REVISIONS`), still written, still restorable through its
+    own route, and still the only thing that holds a version of a note
+    whose events predate the log.
+
+    `before` pages backwards through the events by id, newest first.
+    """
     entry = _existing_entry(session, entry_id)
-    return [
-        {
-            "id": revision.id,
-            # Decrypted for display exactly like the note itself, so a private
-            # note's history is readable while unlocked and not otherwise.
-            "content": manager.readable_content(revision),
-            "tags": json.loads(revision.tags or "[]"),
-            "created_at": revision.created_at.isoformat(),
-        }
-        for revision in manager.revisions_for(session, entry)
-    ]
+
+    rows = events.events_for(
+        session,
+        "entry",
+        entry.id,
+        newest_first=True,
+        limit=HISTORY_PAGE + 1,
+        before_id=before,
+        # The bookkeeping events (a version snapshotted, the dates
+        # re-resolved) always accompany the edit that caused them and say the
+        # same thing twice in a list a person reads. They are still in the
+        # log, still in /audit, and still replayed: hidden here, not dropped.
+        skip_actions=events.QUIET_ACTIONS,
+    )
+    more = len(rows) > HISTORY_PAGE
+    rows = rows[:HISTORY_PAGE]
+    # What the note said after each row on *this page*, folded in one
+    # ascending pass (`events.states_at`). It was every event of the note
+    # hydrated into an ORM object with a whole copy of the note's text kept
+    # for each, whichever page was asked for. Measured on this sandbox, on a
+    # note with 4,000 events: the newest page 109 ms before against 36 ms
+    # after, the oldest page 104 ms against 2.9 ms.
+    rebuilt = events.states_at(session, "entry", entry.id, [row.id for row in rows])
+    items = []
+    for row in rows:
+        at_the_time = rebuilt.get(row.id, {})
+        items.append(
+            {
+                "id": row.id,
+                "action": row.action,
+                "actor": row.actor or events.ACTOR_USER,
+                "detail": row.detail,
+                "created_at": row.created_at.isoformat(),
+                # Decrypted for display exactly like the note itself, so a
+                # private note's history is readable while unlocked and not
+                # otherwise.
+                "content": _readable(at_the_time.get("content") or ""),
+                "tags": at_the_time.get("tags") or [],
+                # Whether this event's values were dropped by the compactor
+                # (`events.compact`), so the sheet can say "the text from this
+                # change is no longer kept" rather than render a row with no
+                # text and no reason for it.
+                "compacted": events.is_compacted(row),
+            }
+        )
+
+    return {
+        "items": items,
+        "next_cursor": rows[-1].id if (more and rows) else None,
+        "revisions": [
+            {
+                "id": revision.id,
+                "content": manager.readable_content(revision),
+                "tags": json.loads(revision.tags or "[]"),
+                "created_at": revision.created_at.isoformat(),
+            }
+            for revision in manager.revisions_for(session, entry)
+        ],
+    }
+
+
+@router.post("/{entry_id}/restore/{event_id}", response_model=EntryOut)
+def restore_event(
+    entry_id: int, event_id: int, session: Session = Depends(get_session)
+) -> EntryOut:
+    """Put this note back the way one of its events left it.
+
+    Replay rather than a stored copy: the state after an event is every
+    `after` payload up to and including it, applied in order, which is the
+    same definition the History sheet shows and the same one a note rebuilt
+    from scratch would get. Restoring is itself an edit, so the current text
+    is snapshotted first and the restore records its own event: undoing an
+    undo has to work, or this is a trap rather than a safety net.
+    """
+    entry = _existing_entry(session, entry_id)
+    row = session.get(AuditLog, event_id)
+    if row is None or row.entity_type != "entry" or row.entity_id != entry.id:
+        raise HTTPException(status_code=404, detail="That version no longer exists")
+
+    if events.is_compacted(row):
+        # Not "did not change the note" and not "does not exist": this event
+        # happened, and its text was deliberately dropped to stop the log
+        # growing by a copy of the note on every edit (`events.compact`).
+        # Gone rather than a bad request, which is what 410 is for.
+        raise HTTPException(
+            status_code=410,
+            detail=(
+                "That version is no longer kept: changes older than the "
+                "history window keep the record of what happened, not the text"
+            ),
+        )
+
+    state = events.replay(session, "entry", entry.id, upto_event_id=event_id)
+    if "content" not in state and "tags" not in state:
+        raise HTTPException(
+            status_code=400, detail="That event did not change the note's text"
+        )
+
+    manager.record_revision(session, entry)
+    if "content" in state:
+        entry.content = state["content"]
+    if "tags" in state:
+        entry.tags = json.dumps(state["tags"])
+    manager.log_action(
+        session,
+        "restored",
+        "entry",
+        entry.id,
+        f"back to event {event_id}",
+        payload={
+            "from_event": event_id,
+            "after": {
+                "content": entry.content,
+                "tags": manager.tags_from_json(entry.tags),
+            },
+        },
+    )
+    session.commit()
+    session.refresh(entry)
+    return _to_out(session, entry)
 
 
 @router.post("/{entry_id}/history/{revision_id}/restore", response_model=EntryOut)
@@ -1434,7 +1644,7 @@ def restore_revision(
 ) -> EntryOut:
     """Put a past version back.
 
-    Restoring is itself an edit, so the current text is saved first — undoing
+    Restoring is itself an edit, so the current text is saved first, undoing
     an undo has to work, or this is a trap rather than a safety net.
     """
     entry = _existing_entry(session, entry_id)
@@ -1457,14 +1667,14 @@ def set_entry_privacy(
 ) -> EntryOut:
     """Encrypt this note at rest, or decrypt it again.
 
-    Needs the vault open, which means the app must be unlocked — the data key
+    Needs the vault open, which means the app must be unlocked, the data key
     only exists in memory while it is.
     """
     entry = _existing_entry(session, entry_id)
     if not manager.set_private(session, entry, body.private):
         raise HTTPException(
             status_code=409,
-            detail="Unlock the app first — the encryption key isn't loaded.",
+            detail="Unlock the app first, the encryption key isn't loaded.",
         )
     session.commit()
     session.refresh(entry)
@@ -1485,13 +1695,13 @@ def generate_entry_title(
     entry = _existing_entry(session, entry_id)
     # `readable_content` decrypts a private note for reading; writing that
     # decrypted text straight back to `entry.content` (below) would silently
-    # replace the ciphertext with plaintext — the note would stop being
+    # replace the ciphertext with plaintext, the note would stop being
     # private as a side effect of titling it. Refused outright rather than
     # risked: unlike a plain edit, there's no form here the user reviewed
     # before it reached the server.
     if entry.is_private:
         raise HTTPException(
-            status_code=400, detail="Make this note readable first — private notes can't be re-titled here."
+            status_code=400, detail="Make this note readable first, private notes can't be re-titled here."
         )
     content = manager.readable_content(entry)
     if not content.strip():
@@ -1518,7 +1728,7 @@ def generate_entry_title(
 
 @router.post("/{entry_id}/remove-title", response_model=EntryOut)
 def remove_entry_title(entry_id: int, session: Session = Depends(get_session)) -> EntryOut:
-    """Take a note's title back out — asked for directly. Just the leading
+    """Take a note's title back out, asked for directly. Just the leading
     heading line; a note with no title is returned unchanged rather than
     treated as an error, since the client only offers this action when
     `entry.title` is already set and a stale menu shouldn't 400."""
@@ -1527,7 +1737,7 @@ def remove_entry_title(entry_id: int, session: Session = Depends(get_session)) -
     # `entry.content` would un-encrypt the note as a side effect.
     if entry.is_private:
         raise HTTPException(
-            status_code=400, detail="Make this note readable first — private notes can't be edited here."
+            status_code=400, detail="Make this note readable first, private notes can't be edited here."
         )
     content = manager.readable_content(entry)
     stripped = manager.remove_title(content)
@@ -1547,8 +1757,8 @@ def entry_connections(entry_id: int, session: Session = Depends(get_session)) ->
     Asked for by way of Kortex's Connections block: *"I should be able to
     seamlessly utilise, flick, link, manage, create and search between
     multiple features"*. Every one of these joins already existed in the
-    database — `EntryLink` both ways, `DocumentLink`, `WhiteboardNode`,
-    `/media/<name>` references in the body — but each was surfaced (if at
+    database: `EntryLink` both ways, `DocumentLink`, `WhiteboardNode`,
+    `/media/<name>` references in the body, but each was surfaced (if at
     all) somewhere different: links as chips on the card, documents as a
     separate list, boards nowhere at all. A note could be on three boards
     and referenced by two documents and show none of it.
@@ -1590,7 +1800,7 @@ def entry_connections(entry_id: int, session: Session = Depends(get_session)) ->
 
     # A board is itself a note (`WhiteboardNode.board_id` points at an
     # entry), and `board_id IS NULL` is the unnamed scratch board every
-    # notebook starts with — so the title has to be resolved per row rather
+    # notebook starts with: so the title has to be resolved per row rather
     # than joined, and NULL is a real board, not a missing one.
     boards: list[dict] = []
     seen_boards: set[int | None] = set()
@@ -1624,7 +1834,7 @@ def _connection_label(entry) -> str:  # noqa: ANN001
     """What one note is called on another note's Connections list.
 
     A note's own leading `# Heading` is what it calls itself, so that is the
-    label when it wrote one — `_preview` alone hands back "# Connections probe
+    label when it wrote one, `_preview` alone hands back "# Connections probe
     B\noven temperatures", which renders on a single-line row as the hash, the
     title and the first line of the body run together.
     """
@@ -1637,7 +1847,7 @@ def _connected_files(session: Session, text: str) -> list[dict]:
 
     `referenced_names` is the same parse the media garbage collector uses to
     decide what is *not* an orphan, so a file listed here and a file the GC
-    spares are guaranteed to be the same set — there is no second regex to
+    spares are guaranteed to be the same set, there is no second regex to
     drift out of step with it.
     """
     from memorymap.core.media_gc import referenced_names
@@ -1668,7 +1878,7 @@ def create_link(
     )
     if link is None:
         # Three refusals share one return value, so the message names the one
-        # that actually applies — "already linked" on a draft/note pair would
+        # that actually applies: "already linked" on a draft/note pair would
         # send someone hunting for a link that was never allowed to exist.
         if bool(source.is_draft) != bool(target.is_draft):
             raise HTTPException(
@@ -1697,7 +1907,7 @@ def delete_link(
 def update_link_reason(
     entry_id: int, link_id: int, body: LinkReasonBody, session: Session = Depends(get_session)
 ) -> EntryOut:
-    """Add, edit, or clear a link's reason by hand — whether it started
+    """Add, edit, or clear a link's reason by hand, whether it started
     with none, one somebody typed, or one `create_link` deduced on its own.
     """
     entry = _existing_entry(session, entry_id)
@@ -1734,7 +1944,7 @@ def generate_link_reason_endpoint(
     # excludes is_private notes for the same reason.
     if source.is_private or target.is_private:
         raise HTTPException(
-            status_code=400, detail="Make both notes readable first — private notes can't be sent to the AI."
+            status_code=400, detail="Make both notes readable first, private notes can't be sent to the AI."
         )
 
     try:
@@ -1751,8 +1961,8 @@ def generate_link_reason_endpoint(
 
 
 # --- extract notes (BACKLOG.md §62) ------------------------------------------
-# Select a block of writing — the Writing Room's draft, a Document's body, or
-# several notes' content selected on the whiteboard — and turn it into one or
+# Select a block of writing, the Writing Room's draft, a Document's body, or
+# several notes' content selected on the whiteboard, and turn it into one or
 # several AI-drafted notes, auto-linked with real reasons. Preview first,
 # matching `generate_diagram`'s own preview-before-commit convention (see
 # `ai.extractor`'s module docstring): nothing is written here until
@@ -1763,7 +1973,7 @@ class ExtractPreviewBody(BaseModel):
     text: str = Field(min_length=1, max_length=extractor.EXTRACT_MAX_CHARS)
     # A Graph/whiteboard selection's notes-in-context: existing notes this
     # extraction should try to link every new note back to, regardless of
-    # how similar the wording is — the user already said they're connected
+    # how similar the wording is, the user already said they're connected
     # by selecting them together.
     source_entry_ids: list[int] = Field(default_factory=list)
 
@@ -1771,7 +1981,7 @@ class ExtractPreviewBody(BaseModel):
 @router.post("/extract/preview")
 def extract_preview(body: ExtractPreviewBody, session: Session = Depends(get_session)) -> dict:
     """Propose one or more notes from `body.text`, with the links they'd get
-    and why — nothing saved yet. See `ai.extractor.build_extraction`."""
+    and why: nothing saved yet. See `ai.extractor.build_extraction`."""
     try:
         return extractor.build_extraction(
             session,
@@ -1786,7 +1996,7 @@ def extract_preview(body: ExtractPreviewBody, session: Session = Depends(get_ses
 
 
 class ExtractNoteIn(BaseModel):
-    """One note from a preview, as the user reviewed it — possibly edited,
+    """One note from a preview, as the user reviewed it, possibly edited,
     possibly dropped (the caller just omits it) before commit."""
 
     ref: str = Field(min_length=1, max_length=40)
@@ -1810,14 +2020,14 @@ class ExtractCommitBody(BaseModel):
     notes: list[ExtractNoteIn] = Field(min_length=1, max_length=extractor.MAX_EXTRACT_NOTES)
     links: list[ExtractLinkIn] = Field(default_factory=list)
     # When extracting from a Document's body, attach every note created here
-    # to it — the same connection `POST /documents/{id}/notes` makes by hand.
+    # to it: the same connection `POST /documents/{id}/notes` makes by hand.
     source_document_id: int | None = None
 
 
 @router.post("/extract/commit", status_code=201)
 def extract_commit(body: ExtractCommitBody, session: Session = Depends(get_session)) -> dict:
     """Write exactly what a preview showed (possibly edited, possibly
-    trimmed) to the notebook: the notes, then the links between them —
+    trimmed) to the notebook: the notes, then the links between them, 
     `manager.create_link`'s own `reason=` bypasses the generic
     `AUTO_REASON_TEXT` guess entirely, so every link gets the specific
     reason the preview generated for it.
@@ -1833,7 +2043,7 @@ def extract_commit(body: ExtractCommitBody, session: Session = Depends(get_sessi
             category_name=note.category or manager.UNCATEGORISED,
             tags=note.tags,
             # Reviewed (and possibly edited) by the person before it was
-            # ever asked to save — the same confidence level a user-filed
+            # ever asked to save, the same confidence level a user-filed
             # category gets in `create_entry` above, not the AI's own guess
             # from the preview (which was about the SPLIT, not the filing).
             ai_confidence=100,
@@ -1845,7 +2055,7 @@ def extract_commit(body: ExtractCommitBody, session: Session = Depends(get_sessi
     if body.source_document_id is not None:
         document = session.get(Document, body.source_document_id)
         # A document deleted between preview and commit is skipped rather
-        # than refused — the notes are the thing being saved, same reasoning
+        # than refused: the notes are the thing being saved, same reasoning
         # `create_entry`'s own `document_ids` handling already uses.
         if document is not None:
             for entry in created:
@@ -1855,7 +2065,7 @@ def extract_commit(body: ExtractCommitBody, session: Session = Depends(get_sessi
     for link in body.links:
         source = by_ref.get(link.source_ref)
         if source is None:
-            continue  # a ref that isn't among the notes just created — ignore rather than fail the whole save
+            continue  # a ref that isn't among the notes just created, ignore rather than fail the whole save
         if link.target_ref.startswith("existing:"):
             try:
                 target_id = int(link.target_ref.removeprefix("existing:"))

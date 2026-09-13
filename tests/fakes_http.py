@@ -3,7 +3,7 @@
 Split from `conftest.py` on a real distinction: **fixtures are discovered,
 helpers are imported.** `capture_post` and `openai_client` are fixtures and
 live in conftest, where pytest finds them by name with no import. `FakeResponse`
-and `sse` are ordinary callables, so a test module has to import them — and
+and `sse` are ordinary callables, so a test module has to import them, and
 importing them from another *test* module (which is what this file replaces)
 re-binds every name that import brings along, which is how `client` from
 `test_providers` came to shadow conftest's own `client` fixture and silently
@@ -26,7 +26,7 @@ class FakeResponse:
 
     @property
     def ok(self):
-        """`requests.Response.ok` — real responses have it, so this must too.
+        """`requests.Response.ok`, real responses have it, so this must too.
 
         Added when a provider path started using it and this double did not
         model it, which surfaced as an AttributeError in a test rather than as

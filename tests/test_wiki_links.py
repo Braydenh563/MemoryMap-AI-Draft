@@ -1,4 +1,4 @@
-"""[[wiki links]] — build a web of notes without AI, a dialog, or the mouse."""
+"""[[wiki links]]: build a web of notes without AI, a dialog, or the mouse."""
 
 from __future__ import annotations
 
@@ -93,7 +93,7 @@ def test_nested_brackets_resolve_to_the_inner_name():
 
     A name can't contain brackets, so "[[outer [[inner]] text]]" matches the
     inner one. That's why the autocomplete strips brackets out of a note's text
-    before inserting it as a link name — otherwise picking a note that itself
+    before inserting it as a link name, otherwise picking a note that itself
     contains a link would silently point somewhere else entirely.
     """
     assert manager.wiki_link_targets("[[outer [[inner]] text]]") == ["inner"]

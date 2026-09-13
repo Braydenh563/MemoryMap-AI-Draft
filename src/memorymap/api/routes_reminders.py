@@ -1,6 +1,6 @@
 """Reminders: create, list, tick off, delete.
 
-Local-only — the browser fires the notification while the app is open;
+Local-only: the browser fires the notification while the app is open;
 nothing runs in the cloud.
 """
 
@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from typing import Literal
 
@@ -36,7 +36,7 @@ class ReminderCreate(BaseModel):
 class MagicAddBody(BaseModel):
     text: str = Field(min_length=1, max_length=300)
     # Minutes east of UTC, as the browser reports it. "Tomorrow evening" has to
-    # be resolved against the user's clock, not the server's — without this the
+    # be resolved against the user's clock, not the server's: without this the
     # model was told the time in UTC and every relative time landed hours out.
     tz_offset_minutes: int | None = Field(default=None, ge=-840, le=840)
 
@@ -50,7 +50,7 @@ class ReminderUpdate(BaseModel):
 
 
 def _reject_if_in_the_past(due_at: datetime) -> None:
-    """A reminder due before now will never usefully fire — it's either an
+    """A reminder due before now will never usefully fire, it's either an
     accidental past date (a slipped year, an AM/PM mix-up in the picker) or
     a "reminder" that isn't reminding of anything upcoming. A minute of
     slack covers submit latency and clock skew, not a real mistake.
@@ -60,7 +60,7 @@ def _reject_if_in_the_past(due_at: datetime) -> None:
     if compare_at < now - timedelta(minutes=1):
         raise HTTPException(
             status_code=422,
-            detail="That reminder's due time is in the past — pick a time that hasn't happened yet.",
+            detail="That reminder's due time is in the past, pick a time that hasn't happened yet.",
         )
 
 
@@ -72,7 +72,7 @@ def _to_out(session: Session, reminder: Reminder) -> dict:
             # `readable_content`, not the raw column: a private note's
             # `content` is ciphertext at rest, and this preview showed that
             # ciphertext blob (or, once unlocked, otherwise skipped the
-            # locked-vault placeholder every other preview surface uses) —
+            # locked-vault placeholder every other preview surface uses), 
             # the same class of bug as the digest's, just local to this UI
             # rather than sent to a model.
             content = readable_content(entry)
@@ -93,10 +93,37 @@ def _existing(session: Session, reminder_id: int) -> Reminder:
     return deps.get_or_404(session, Reminder, reminder_id, "Reminder not found")
 
 
+#: A page of the reminder list, not a ceiling on how many reminders may
+#: exist: `X-Total-Count` says the real size and `offset` reaches the rest,
+#: the same shape `GET /entries` uses. 200 because the Reminders tab groups
+#: what it gets by due date and a person with more than two hundred live
+#: reminders is not reading past the first screen of them; at the measured
+#: row cost (about 180 bytes) a page is about 35 KB rather than a response
+#: that grows with the table forever (300 rows measured at 52.5 KB).
+REMINDERS_PAGE_SIZE = 200
+REMINDERS_PAGE_SIZE_MAX = 1000
+
+
 @router.get("")
-def list_reminders(session: Session = Depends(get_session)) -> list[dict]:
-    """All reminders, soonest first; the frontend groups them."""
-    rows = session.scalars(select(Reminder).order_by(Reminder.due_at))
+def list_reminders(
+    response: Response,
+    limit: int = Query(default=REMINDERS_PAGE_SIZE, ge=1, le=REMINDERS_PAGE_SIZE_MAX),
+    offset: int = Query(default=0, ge=0),
+    session: Session = Depends(get_session),
+) -> list[dict]:
+    """A page of reminders, soonest first; the frontend groups them.
+
+    `limit`/`offset` page the list and `X-Total-Count` gives the real size
+    regardless of the page, so a caller knows when it has everything. The id
+    is the tiebreaker on `due_at` so two reminders due at the same minute
+    cannot swap places between one page and the next, which is how a paged
+    list silently drops a row.
+    """
+    total = session.scalar(select(func.count(Reminder.id))) or 0
+    rows = session.scalars(
+        select(Reminder).order_by(Reminder.due_at, Reminder.id).limit(limit).offset(offset)
+    )
+    response.headers["X-Total-Count"] = str(total)
     return [_to_out(session, r) for r in rows]
 
 
@@ -133,11 +160,11 @@ def magic_add_reminder(body: MagicAddBody, session: Session = Depends(get_sessio
     #
     # This line is the bug behind "play league of legends in half an hour" being
     # scheduled for 10am the next day. It used to be `utcnow() + offset`, which
-    # produces an aware datetime TAGGED UTC that really holds local wall-clock —
+    # produces an aware datetime TAGGED UTC that really holds local wall-clock, 
     # so the model was told "now is 2026-08-01T23:30:00+00:00" when the +00:00
     # was a fiction. A model that then answered with an offset of its own (the
     # natural thing to do, having been given one) landed in the `else` branch
-    # below, was trusted, and skipped the correction — putting the reminder out
+    # below, was trusted, and skipped the correction, putting the reminder out
     # by exactly the user's UTC offset. For the reporter, ten hours: half an
     # hour away became 10am tomorrow.
     #
@@ -147,7 +174,7 @@ def magic_add_reminder(body: MagicAddBody, session: Session = Depends(get_sessio
     local_now = utcnow().astimezone(user_zone)
 
     ollama = deps.get_ollama()
-    # A phrase the rules can read needs no model at all — and refusing to add
+    # A phrase the rules can read needs no model at all, and refusing to add
     # "remind me in 20 minutes" because Ollama is off would break design
     # principle 2 for a request that needs nothing but arithmetic.
     parsed = reminder_parser.parse_relative(body.text, local_now)

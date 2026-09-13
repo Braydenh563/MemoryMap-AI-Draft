@@ -8,13 +8,13 @@ own comment in `core/database.py` says so:
     similarity score can ever produce, however well tuned.
 
 That was true and it stayed unbuilt. `link_type` is writable only through
-`POST /entries/{id}/links` — a person, by hand, choosing "Contradicts" from a
+`POST /entries/{id}/links`, a person, by hand, choosing "Contradicts" from a
 dropdown. So the notebook could *record* a disagreement it was told about, and
 could never *find* one.
 
 Everything else this app knows about connection answers "these are about the
 same thing": embedding similarity, shared words, `[[wiki links]]`, threads.
-None of them can tell agreement from disagreement — two notes that flatly
+None of them can tell agreement from disagreement, two notes that flatly
 contradict each other are, to a vector, maximally similar. That gap is the
 whole point of this module.
 
@@ -37,7 +37,7 @@ prompt does:
 
 1. **Candidates come from pairs that are already about the same thing.**
    Contradiction is only possible between notes that share a subject, so this
-   never scans all pairs — it takes the ones the existing similarity pass
+   never scans all pairs, it takes the ones the existing similarity pass
    already produced. That bounds the work and removes the obvious false
    positives before a model is asked anything.
 2. **Time is part of the finding, not decoration.** The interesting case is
@@ -51,7 +51,7 @@ Same policy as the auto-linker (`routes_entries.link_suggestions`) and for a
 stronger reason: telling someone they contradicted themselves when they did
 not is worse than telling them nothing. This module only ever *proposes*.
 Accepting a tension is what creates the `EntryLink` with
-`link_type="contradicts"` — an existing column, so there is no migration
+`link_type="contradicts"`, an existing column, so there is no migration
 here and the graph, the traversal weighting and Trace all understand the
 result the moment it exists.
 """
@@ -76,7 +76,7 @@ logger = logging.getLogger("memorymap.ai.tensions")
 MIN_GAP_DAYS = 7
 
 #: How much of each note the model is shown. Long enough to carry the claim,
-#: short enough that a pair costs one small prompt — this runs over many
+#: short enough that a pair costs one small prompt, this runs over many
 #: pairs, and the budget discipline in `ai/agent.py` applies here too.
 EXCERPT_CHARS = 700
 
@@ -86,7 +86,7 @@ EXCERPT_CHARS = 700
 MAX_PAIRS_PER_PASS = 40
 
 #: The model must open with this token for a genuine disagreement. Asking for
-#: a single leading word rather than JSON is deliberate — the small local
+#: a single leading word rather than JSON is deliberate, the small local
 #: models this app targets are markedly better at "say YES or NO first" than
 #: at emitting well-formed JSON, and `ai/extractor.py` already carries a
 #: `_extract_json_object` helper written because they get that wrong.
@@ -94,13 +94,13 @@ _YES = "yes"
 _NO = "no"
 
 #: An "explanation" that only restates the verdict. Shown beside the two notes
-#: it is accusing, one of these tells the reader nothing they could check — so
+#: it is accusing, one of these tells the reader nothing they could check, so
 #: it is treated as no finding rather than displayed.
 #:
 #: A pattern rather than a phrase list, because the phrase list this started
 #: as missed "basically they just conflict": the subject and the verb are the
 #: fixed part and anything can sit between them. The same guard `ai/links.py`
-#: needs for link reasons, for the same reason — a small model told to justify
+#: needs for link reasons, for the same reason, a small model told to justify
 #: itself will sometimes assert the conclusion instead.
 VAGUE_EXPLANATION = re.compile(
     r"\b(?:they|these|the(?:\s+two)?\s+notes)\b[^.]{0,24}?"
@@ -116,7 +116,7 @@ class Tension:
     earlier_id: int
     later_id: int
     #: One line, in the model's words, naming what the two notes disagree
-    #: about. Shown to the person deciding — so it has to say something
+    #: about. Shown to the person deciding, so it has to say something
     #: specific, and `_clean_explanation` rejects it when it does not.
     explanation: str
     earlier_excerpt: str
@@ -144,7 +144,7 @@ _SYSTEM = (
     "say why they cannot both hold. Most pairs are NOT contradictions; NO is "
     "the right answer far more often than YES.\n\n"
     "Reply on ONE line, starting with YES or NO. If YES, follow it with a "
-    "dash and one short sentence naming what they disagree about — for "
+    "dash and one short sentence naming what they disagree about, for "
     "example: 'YES - the first says the launch is in May, the second says "
     "it slipped to August'. If NO, reply with only the word NO."
 )
@@ -163,7 +163,7 @@ def _clean_explanation(reply: str) -> str | None:
 
     Strict on purpose. A model that answers "YES" with nothing after it has
     not made a case, and a tension with no stated reason is exactly the
-    unfalsifiable accusation this feature must never produce — so an empty or
+    unfalsifiable accusation this feature must never produce, so an empty or
     too-short explanation is treated as a NO rather than shown with a blank
     line where the reasoning should be.
     """
@@ -175,10 +175,10 @@ def _clean_explanation(reply: str) -> str | None:
         return None
     if not head.startswith(_YES):
         # Neither word. The instruction was explicit, so a reply that ignores
-        # it is not evidence of anything — treated as no finding.
+        # it is not evidence of anything, treated as no finding.
         return None
     rest = text[len(_YES) :].lstrip()
-    rest = rest.lstrip("-–—:,. ").strip()
+    rest = rest.lstrip("-–, :,. ").strip()
     rest = rest.strip("\"'").strip()
     # "YES" alone, or a stub like "they disagree", says nothing a person can
     # check against the two notes shown beside it. Both shapes are rejected:
@@ -186,7 +186,7 @@ def _clean_explanation(reply: str) -> str | None:
     # answer that restates the question instead of answering it.
     #
     # The same guard `ai/links.py` needs for link reasons, for the same
-    # reason — a small model told to justify itself will sometimes assert the
+    # reason: a small model told to justify itself will sometimes assert the
     # conclusion instead. Its `VAGUE_PHRASES` covers "related"; these cover
     # the disagreement wording it does not.
     if len(rest) < 12:
@@ -211,7 +211,7 @@ def compare_pair(
     """Ask the model whether these two notes contradict each other.
 
     Returns None for "no contradiction", for an unusable reply, and for any
-    model failure — a pass over many pairs must not be taken down by one bad
+    model failure: a pass over many pairs must not be taken down by one bad
     round trip, and "we could not tell" and "they agree" lead to the same
     place here: nothing is shown.
     """
@@ -233,7 +233,7 @@ def compare_pair(
                 {"role": "user", "content": prompt},
             ],
         )
-    except Exception:  # noqa: BLE001 — one pair failing must not end the pass
+    except Exception:  # noqa: BLE001  # one pair failing must not end the pass
         logger.debug("tension check failed for %s/%s", earlier.id, later.id, exc_info=True)
         return None
 

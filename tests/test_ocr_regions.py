@@ -1,7 +1,7 @@
 """Page regions for the OCR workspace.
 
 Asked for with three screenshots of Baidu's Unlimited-OCR: *"for the document
-ocr I want smth like this"* — the page beside its regions, each region
+ocr I want smth like this"*, the page beside its regions, each region
 separately readable, rather than one wall of text under the picture with no
 way to tell which part of the page a line came from.
 
@@ -9,7 +9,7 @@ Tesseract is not installed in CI or in the sandbox this was written in, so
 every test here drives `extract_regions` against a **fake** `pytesseract`
 (the same fake-transport discipline the provider tests use). What that
 proves is the grouping, the line breaks, the confidence filter and the
-normalisation — not that Tesseract returns what this expects it to.
+normalisation: not that Tesseract returns what this expects it to.
 """
 
 from __future__ import annotations
@@ -94,7 +94,7 @@ def test_separate_blocks_stay_separate(monkeypatch):
 
 
 def test_the_box_is_a_fraction_of_the_image(monkeypatch):
-    """Pixels would make every overlay wrong at every size but one — the
+    """Pixels would make every overlay wrong at every size but one, the
     image is drawn scaled to whatever width the panel happens to be."""
     _install_fake(monkeypatch, _rows([("Word", 90, 1, 1, 1, 20, 25, 40, 25)]))
     box = ocr.extract_regions(Path("x.png"))["regions"][0]["box"]
@@ -160,7 +160,7 @@ def test_the_route_refuses_a_file_with_no_pages_and_no_pixels(client):
     """A .txt has neither an image Tesseract can read nor a page that can be
     rasterised, so 415 stands for it.
 
-    A **PDF no longer refuses** — see `test_ocr_pdf_regions.py`. That 415 was
+    A **PDF no longer refuses**, see `test_ocr_pdf_regions.py`. That 415 was
     the whole of "is the document ocr even working??": the rasterisation step
     this test's older docstring said the feature "does not pull in" had in fact
     existed since `core/pdfpages.py` was written for the file viewer, and only
@@ -190,11 +190,11 @@ def test_without_tesseract_the_sections_come_from_the_reading(client, monkeypatc
     wheel), and this app's primary reader is a vision model anyway.
 
     This used to answer with one region covering the whole page, badged
-    "stored-text" — honest, and useless: it threw away the structure the
+    "stored-text", honest, and useless: it threw away the structure the
     reading already had because it could not draw a rectangle around it.
     Reported as "the regions dont work without tesseract but surely there's a
     better way". Now the reading is split into its own blocks, typed by shape,
-    and `box` is **None** rather than a full-page rectangle — a box that
+    and `box` is **None** rather than a full-page rectangle, a box that
     claims to be the whole page is a wrong answer, not a missing one.
     """
     monkeypatch.setattr(ocr, "extract_regions", lambda path: None)
@@ -211,5 +211,5 @@ def test_without_tesseract_the_sections_come_from_the_reading(client, monkeypatc
     assert body["regions"][0]["text"] == "Invoice"
     # Nothing measured where these are, so nothing claims to have.
     assert all(r["box"] is None for r in body["regions"])
-    # The offer to install Tesseract stays — it adds the boxes this cannot.
+    # The offer to install Tesseract stays, it adds the boxes this cannot.
     assert "Tesseract" in body["message"]

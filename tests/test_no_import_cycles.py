@@ -3,26 +3,26 @@
 This is a lint, not a behaviour test, and it exists because a cycle costs
 nothing until it costs everything: CodeQL alert #364 ("Cyclic import",
 `ai/embeddings.py:24`) sat open on `main` because nothing in the suite could
-see it, and the cycle it named —
+see it, and the cycle it named, 
 
     ai.embeddings -> ai.ollama_client -> ai.provider -> core.deps
                   -> ai.embeddings
 
-— was only reachable at import time in one ordering, so every test passed.
+- was only reachable at import time in one ordering, so every test passed.
 Two more cycles of the same shape were sitting next to it, unreported:
 `ai.embeddings -> core.extras -> core.ocr -> core.deps -> ai.embeddings`
 and `__main__ -> api.app -> api.routes_settings -> __main__`.
 
-All three had the same wrong-direction edge — a module the dependency
-container *builds* naming the container back — and all three were broken the
+All three had the same wrong-direction edge, a module the dependency
+container *builds* naming the container back, and all three were broken the
 same way, with `importlib.import_module` at the call site. That detail is the
 reason this file counts every `import` statement anywhere in a file, not just
 the module-level ones: CodeQL counts the *statement*, so moving an import
 into a function body hides the cycle from a naive checker while leaving the
 alert open. `entry/manager.py` records the same finding in a comment.
 
-If this fails, the fix is to find the edge that points the wrong way — from a
-leaf back into `core.deps`, `api.app` or `__main__` — and drop that `import`
+If this fails, the fix is to find the edge that points the wrong way, from a
+leaf back into `core.deps`, `api.app` or `__main__`, and drop that `import`
 statement in favour of `importlib.import_module`, with a comment saying which
 cycle it breaks. Do not add the new cycle to an allowlist; there isn't one.
 """

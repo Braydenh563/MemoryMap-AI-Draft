@@ -28,8 +28,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from memorymap import __version__
+from memorymap.ai import budget as run_budget
 from memorymap.ai import presets, skills
-from memorymap.core import deps, embedmodels, extras, logbuffer
+from memorymap.core import deps, embedmodels, events, extras, logbuffer
 from memorymap.core.database import AuditLog, Category, Entry, EntryLink, utcnow
 from memorymap.core.deps import get_session
 from memorymap.entry import importer, manager
@@ -39,23 +40,23 @@ router = APIRouter(tags=["settings"])
 
 #: Routes in this module that must work **before** the notebook is unlocked.
 #: Included in `app.py` without the `locked` dependency, deliberately and
-#: only for the client-error sink below — see its docstring.
+#: only for the client-error sink below, see its docstring.
 open_router = APIRouter(tags=["settings"])
 
-# Preferences the user may change from the UI — a deliberate allowlist
+# Preferences the user may change from the UI, a deliberate allowlist
 # so a stray request can't scribble on model settings (those have their
 # own validated endpoints in routes_models).
 class TemplateItem(BaseModel):
     name: str = Field(min_length=1, max_length=40)
     content: str = Field(max_length=2000)
     # Optional one-liner shown in the Settings list and as the entry-template
-    # option's tooltip — same shape as SkillItem.description below.
+    # option's tooltip: same shape as SkillItem.description below.
     description: str = Field(default="", max_length=200)
 
 
 # Kept in sync by hand with BUILTIN_TEMPLATES in app.js. The templates
-# themselves (their markdown bodies) only ever lived in the frontend — Wave
-# B never gave the server a reason to know their content — but the NAMES
+# themselves (their markdown bodies) only ever lived in the frontend, Wave
+# B never gave the server a reason to know their content, but the NAMES
 # have to be known here too, or a custom template called "Journal" would
 # save fine and only collide with the shipped one client-side, in whichever
 # session happens to render the <select> next.
@@ -72,7 +73,7 @@ class CustomThemeItem(BaseModel):
 
     `values` is deliberately a free-form string map rather than a model with a
     field per setting. The appearance controls live entirely in the frontend
-    and are the only thing that knows what a key means — pinning the list here
+    and are the only thing that knows what a key means, pinning the list here
     would mean a saved theme could not carry a setting added later without a
     matching server change, for a value the server never reads.
 
@@ -108,7 +109,7 @@ class SkillInput(BaseModel):
 class SkillItem(BaseModel):
     """A named, repeatable job over the notebook (§21).
 
-    `prompt` alone is the whole of a pre-rebuild skill, and still valid — the
+    `prompt` alone is the whole of a pre-rebuild skill, and still valid, the
     steps, tools and inputs are what make it a job rather than a saved
     sentence. The real rules live in `ai/skills.normalise`, which the route
     applies as well, so the tool path and the settings path can't drift.
@@ -124,18 +125,18 @@ class SkillItem(BaseModel):
     tools: list[str] = Field(default_factory=list, max_length=skills.MAX_TOOLS)
     inputs: list[SkillInput] = Field(default_factory=list, max_length=skills.MAX_INPUTS)
     # Pre-rebuild flag the UI still reads; derived on save from steps/tools.
-    useTools: bool = False  # noqa: N815 — the stored key, kept for old skills
+    useTools: bool = False  # noqa: N815  # the stored key, kept for old skills
 
 
 class PreferencesBody(BaseModel):
     recycle_bin_days: int | None = Field(default=None, ge=1, le=365)
-    # 0 means "keep everything", which is the default — see
+    # 0 means "keep everything", which is the default, see
     # `autonomous.purge_old_conversations` for why this is opt-in rather than
     # on with a sensible number. `ge=0`, not `ge=1`, so switching it back off
     # is expressible.
     conversation_retention_days: int | None = Field(default=None, ge=0, le=3650)
     # Empty string resets to the default (data_dir/exports). Validated in
-    # update_preferences (_validated_export_dir) — must be an absolute,
+    # update_preferences (_validated_export_dir): must be an absolute,
     # existing, writable directory, checked at save time rather than at
     # export time when a bad path means a lost file.
     export_save_dir: str | None = Field(default=None, max_length=500)
@@ -156,7 +157,7 @@ class PreferencesBody(BaseModel):
     #: on every keystroke without a request.
     writing_dictionary: list[str] | None = Field(default=None, max_length=2000)
     #: `off` means "do not have an opinion about which side of the Atlantic
-    #: this document is on" — the honest default for a notebook that does not
+    #: this document is on", the honest default for a notebook that does not
     #: know who is writing in it.
     spelling_variant: Literal["off", "uk", "us"] | None = None
     # Display name for the dashboard greeting (empty string clears it).
@@ -171,13 +172,13 @@ class PreferencesBody(BaseModel):
     # Personas: custom system prompts + which one is active.
     personas: list[PersonaItem] | None = Field(default=None, max_length=20)
     active_persona: str | None = Field(default=None, max_length=40)
-    # Independent override for just the dashboard greeting — empty clears it
+    # Independent override for just the dashboard greeting, empty clears it
     # back to "same as active_persona", the same clear-with-empty-string
     # convention display_name above already uses.
     dashboard_persona: str | None = Field(default=None, max_length=40)
     # Saved appearance looks. Server-side rather than in the browser because a
     # theme someone built by hand is a thing they would be upset to lose to a
-    # cleared cache — and here it rides along in the daily backup too.
+    # cleared cache: and here it rides along in the daily backup too.
     custom_themes: list[CustomThemeItem] | None = Field(default=None, max_length=20)
     # Dashboard layout: widget order + hidden widgets.
     dashboard_layout: "DashboardLayout | None" = None
@@ -187,26 +188,42 @@ class PreferencesBody(BaseModel):
     # The local-AI lock (§33). On by default; see core.config.
     local_only_ai: bool | None = None
     # Which tools each turn is offered: "auto" reads the question and sends
-    # what it plausibly needs (§11a — the schemas are most of the per-round
+    # what it plausibly needs (§11a: the schemas are most of the per-round
     # cost); "all" sends the whole registry, as it always did.
     tool_focus: Literal["auto", "all"] | None = None
-    # The ONE feature that goes online — off unless the user opts in.
+    #: Small-model mode for skill runs: each step is offered only the tools its
+    #: own contract names, plus a worked example of the call. "auto" decides
+    #: from the chat model's name (see `model_manager.parameter_count`, which
+    #: answers "no idea" for a name with no size in it, and no idea means
+    #: off). Declared here for the reason the comments above give: a field
+    #: Pydantic does not know about is silently dropped, so a setting that is
+    #: never declared is a switch that never saves.
+    small_model_mode: Literal["auto", "on", "off"] | None = None
+    #: **What one skill run may spend** (Brief 13). A run is many turns and
+    #: every one of them starts its own fresh round allowance, so the only
+    #: bound on a run that goes wrong used to be how long the person was
+    #: willing to watch it. Zero in either field means "no limit on this one",
+    #: which is a real answer for a ten-step audit over four thousand notes on
+    #: hardware somebody is happy to give an hour to.
+    run_budget_tokens: int | None = Field(default=None, ge=0)
+    run_budget_seconds: int | None = Field(default=None, ge=0)
+    # The ONE feature that goes online, off unless the user opts in.
     web_search_enabled: bool | None = None
-    # The other opt-in network call (Settings -> About) — see core.config.
+    # The other opt-in network call (Settings -> About): see core.config.
     update_check_enabled: bool | None = None
     # Separate switch: "notify me" vs. "download and run the installer
-    # without asking each time" — see core.config's own comment.
+    # without asking each time", see core.config's own comment.
     auto_update_enabled: bool | None = None
     update_channel: Literal["stable", "main"] | None = None
     searxng_autostart: bool | None = None
     session_idle_ttl_minutes: int | None = Field(default=None, ge=1)
-    # The desktop launcher's console window — see core.config's own comment.
+    # The desktop launcher's console window: see core.config's own comment.
     show_console_on_startup: bool | None = None
     # Whether the first-run Dev-view/User-view prompt has already been
     # shown. Missing from this model entirely was its own bug: a PUT for a
     # field Pydantic doesn't know about is silently dropped rather than
     # rejected, so the prompt would have recorded nothing and reappeared on
-    # every single launch — caught live, before this ever shipped, by the
+    # every single launch: caught live, before this ever shipped, by the
     # same round of testing that found show_console_on_startup missing from
     # GET /preferences.
     console_view_intro_seen: bool | None = None
@@ -216,7 +233,7 @@ class PreferencesBody(BaseModel):
     #: never declared is a switch that never saves.
     close_to_tray: bool | None = None
     #: Which status-bar slots the user has switched off. **The list of what is
-    #: hidden, not what is shown** — see `STATUS_SLOTS` in app.js: a slot added
+    #: hidden, not what is shown**, see `STATUS_SLOTS` in app.js: a slot added
     #: in a later version then appears by default for everyone, instead of
     #: being invisible to every user who ever opened that settings screen.
     status_bar_hidden: list[str] | None = None
@@ -237,14 +254,14 @@ class PreferencesBody(BaseModel):
     # sitting in preferences quietly meaning "auto" forever.
     search_provider: str | None = None
     # "Remember what I chose" for the Quick/Normal/Detailed response-mode
-    # picker (setResponseMode in app.js) — was never declared here at all,
+    # picker (setResponseMode in app.js): was never declared here at all,
     # so the PUT it fires on every change returned 200 while silently
     # dropping the value; the dropdown looked like it saved (it updates its
     # own <select> client-side regardless) but reverted to presets.DEFAULT_MODE
     # on the very next reload.
     response_mode: str | None = None
-    # Autonomous Tasks settings. These were declared twice — once here with
-    # bare types and once above with the validated ones — and Pydantic silently
+    # Autonomous Tasks settings. These were declared twice, once here with
+    # bare types and once above with the validated ones, and Pydantic silently
     # keeps the last definition, so the bounds below were the only ones that
     # ever applied. One copy, the validated one.
     autonomous_tasks_enabled: bool | None = None
@@ -255,13 +272,13 @@ class PreferencesBody(BaseModel):
     # the same shape of bug Tier 1 item 4a already found and fixed for eight
     # other preferences: the Settings checkbox (#pref-auto-stale-review)
     # calls setPreference exactly like its tag/link/dedupe siblings, but
-    # Pydantic silently drops any key this model doesn't declare — so every
+    # Pydantic silently drops any key this model doesn't declare: so every
     # PUT that turned the toggle on was a no-op the whole time, and the
     # autonomous pass could never actually pick up any candidates no matter
     # what the checkbox showed.
     auto_stale_review_enabled: bool | None = None
     #: ANALYSIS.md §60 item 2. Declared here as well as in the response and
-    #: `_AUTONOMOUS_PREFS` below — the comment above this block records what
+    #: `_AUTONOMOUS_PREFS` below: the comment above this block records what
     #: happens when it is not: Pydantic drops the key, every PUT that turns it
     #: on is a silent no-op, and the checkbox shows a state the backend never
     #: had.
@@ -281,7 +298,7 @@ class PreferencesBody(BaseModel):
     #: Asked for directly: *"make an option for agent activity notifications to
     #: be hidden and not show up as toast notifications but somewhere else."*
     #: Distinct from `notifications_muted_except_reminders`, which is a
-    #: blanket mute that also stops the row being recorded — this is about
+    #: blanket mute that also stops the row being recorded, this is about
     #: *where* an activity notice lands, not whether it happens.
     agent_activity_notices: str | None = Field(default=None, pattern="^(toasts|centre)$")
     # Agent tools the user has switched off (by tool name).
@@ -294,14 +311,14 @@ class PreferencesBody(BaseModel):
     # The user's IANA timezone, reported by the browser at startup. Anything
     # the AI reasons about in time ("in 10 minutes", "tomorrow at 9") is
     # resolved against this, because the server may be running in UTC while
-    # the person is not. Validated on the way in — an unknown zone name would
+    # the person is not. Validated on the way in, an unknown zone name would
     # otherwise sit in preferences and silently fall back forever.
     timezone: str | None = Field(default=None, max_length=64)
-    # The interface's own local state — theme, palette, corner rounding,
+    # The interface's own local state, theme, palette, corner rounding,
     # whether onboarding has been seen (§35E). A flat map of short strings,
     # deliberately: this is the browser's `localStorage` mirrored so that a
     # shell which does not persist it still remembers. Validated for *shape*
-    # rather than for meaning — the keys are the frontend's business and it
+    # rather than for meaning, the keys are the frontend's business and it
     # would be worse to have the server reject a setting the UI has just added
     # than to store a key nobody reads.
     ui_state: dict[str, str] | None = None
@@ -341,7 +358,7 @@ class PreferencesBody(BaseModel):
             return value
         if value not in websearch.PROVIDERS:
             raise ValueError(
-                f"Unknown search provider {value!r} — expected one of "
+                f"Unknown search provider {value!r}: expected one of "
                 + ", ".join(sorted(websearch.PROVIDERS))
             )
         return value
@@ -351,14 +368,14 @@ class PreferencesBody(BaseModel):
     def _known_response_mode(cls, value: str | None) -> str | None:
         """Same reasoning as `_known_provider` above: `_resolve_mode` would
         happily fall back to the default for a bad value at read time, which
-        is right for a value already sitting in storage — but rejecting a
+        is right for a value already sitting in storage, but rejecting a
         bad one at the door means the picker finds out immediately rather
         than saving a typo that silently never takes effect."""
         if value is None:
             return value
         if value not in presets.MODES:
             raise ValueError(
-                f"Unknown response mode {value!r} — expected one of "
+                f"Unknown response mode {value!r}: expected one of "
                 + ", ".join(sorted(presets.MODES))
             )
         return value
@@ -378,7 +395,7 @@ class SavedSearch(BaseModel):
 #:
 #: Found by measuring, not by reading: reordering a widget on the dashboard
 #: produced `PUT /preferences 422` and nothing moved. `order` carries *every*
-#: widget — visible and hidden — and the dashboard has grown past twenty of
+#: widget, visible and hidden, and the dashboard has grown past twenty of
 #: them, so every save of a full layout was rejected outright. Nothing in the
 #: UI said so (`saveDashLayout` swallows the failure to keep a dead preference
 #: from breaking the page), which is why "a better way to manage and rearrange
@@ -387,7 +404,7 @@ class SavedSearch(BaseModel):
 #:
 #: 64 rather than "the current number of widgets": a bound exists here to stop
 #: a malformed request storing an unbounded list, not to enforce the
-#: catalogue's size — and a limit that has to be raised every time a widget is
+#: catalogue's size: and a limit that has to be raised every time a widget is
 #: added is a limit that will be forgotten again. `tests/test_dashboard_layout_cap.py`
 #: fails the build if the catalogue ever approaches it.
 DASHBOARD_LAYOUT_MAX = 64
@@ -418,7 +435,7 @@ def get_preferences() -> dict:
         "spelling_variant": config.get_preference("spelling_variant", "off"),
         "display_name": config.get_preference("display_name", ""),
         # Saved correctly and honoured correctly (routes_auth.py's three
-        # idle-timeout checks all read it) but never once echoed back here —
+        # idle-timeout checks all read it) but never once echoed back here, 
         # the same shape of bug Tier 1 item 4a already fixed for eight other
         # preferences. Settings → Account's timeout field showed its HTML
         # default on every reload no matter what had actually been saved and
@@ -438,6 +455,13 @@ def get_preferences() -> dict:
         "tools_enabled": config.get_preference("tools_enabled", True),
         "local_only_ai": config.get_preference("local_only_ai", True),
         "tool_focus": config.get_preference("tool_focus", "auto"),
+        "small_model_mode": config.get_preference("small_model_mode", "auto"),
+        "run_budget_tokens": config.get_preference(
+            "run_budget_tokens", run_budget.DEFAULT_TOKENS
+        ),
+        "run_budget_seconds": config.get_preference(
+            "run_budget_seconds", run_budget.DEFAULT_SECONDS
+        ),
         "web_search_enabled": config.get_preference("web_search_enabled", False),
         "update_check_enabled": config.get_preference("update_check_enabled", False),
         "auto_update_enabled": config.get_preference("auto_update_enabled", False),
@@ -455,13 +479,13 @@ def get_preferences() -> dict:
         # detected is already the stored one, and skip a pointless write on
         # every startup.
         "timezone": config.get_preference("timezone", ""),
-        # Everything the interface keeps in localStorage — the theme, the
+        # Everything the interface keeps in localStorage, the theme, the
         # palette, corner rounding, whether onboarding has been seen (§35E).
         #
         # **Reported as two bugs and it is one:** *"the theme resets to default
         # on every start"* and *"onboarding shows every time"*. Both were kept
         # in localStorage and nowhere else, and the desktop shell does not
-        # reliably persist it — pywebview is a different browser with its own
+        # reliably persist it: pywebview is a different browser with its own
         # profile, and if that profile is not stable across launches then every
         # setting stored there is a setting the app forgets.
         #
@@ -471,8 +495,8 @@ def get_preferences() -> dict:
         # survives, seeded back on first load when the local one is empty.
         "ui_state": config.get_preference("ui_state", {}),
         # Reported (indirectly, this session): a preference that saves
-        # correctly and is honoured correctly — `autonomous.py` and
-        # `model_manager.py` both read these straight from storage — but
+        # correctly and is honoured correctly, `autonomous.py` and
+        # `model_manager.py` both read these straight from storage, but
         # this response never echoed any of them back, so every Settings
         # checkbox bound to one of these showed unchecked again the moment
         # the page reloaded or the panel reopened, regardless of what was
@@ -500,14 +524,14 @@ def get_preferences() -> dict:
         # Same shape of bug as the autonomous-prefs block above, on the same
         # checkbox this session already restyled: PUT /preferences has always
         # accepted show_console_on_startup (PreferencesBody's own field), but
-        # this response never echoed it back — so prefsCache.show_console_
+        # this response never echoed it back, so prefsCache.show_console_
         # on_startup was always undefined, the Settings checkbox always
         # rendered unchecked regardless of what was actually saved, and the
         # first-run Dev-view/User-view intro (console_view_intro_seen, gated
         # on this same response) would have shown on every single launch.
         "show_console_on_startup": config.get_preference("show_console_on_startup", True),
         "console_view_intro_seen": config.get_preference("console_view_intro_seen", False),
-        # Default True, matching `_on_closing` in __main__.py — the two must
+        # Default True, matching `_on_closing` in __main__.py: the two must
         # agree or the checkbox shows the opposite of what the window does.
         "close_to_tray": config.get_preference("close_to_tray", True),
         "status_bar_hidden": config.get_preference("status_bar_hidden", []),
@@ -517,7 +541,7 @@ def get_preferences() -> dict:
 
 #: Preferences the autonomous loop reads at the top of each pass. Changing
 #: any of these should take effect on the loop's next tick, not its next
-#: *scheduled* tick — which could be hours away — so writing one of these
+#: *scheduled* tick, which could be hours away, so writing one of these
 #: wakes the loop early instead of leaving it asleep on a stale value.
 _AUTONOMOUS_PREFS = frozenset(
     {
@@ -535,16 +559,16 @@ _AUTONOMOUS_PREFS = frozenset(
 
 #: Preference keys that never reach the audit log (Library → Activity).
 #: Reported directly: "idk what the go is with all the 'Edited your
-#: settings' stuff" — a click that toggles a status-bar icon or drags a
+#: settings' stuff", a click that toggles a status-bar icon or drags a
 #: corner-rounding slider produced the exact same "Edited your settings"
 #: row as changing the model backend or the auto-lock timeout, so the one
 #: feed meant to answer "what did I actually do" was mostly cosmetic noise
 #: with the real changes buried in it. `ui_state` alone is most of that
-#: noise — it is the interface's *entire* look (theme, palette, corners,
-#: zoom, shadow, glass, motion — see its own docstring above) behind one
+#: noise: it is the interface's *entire* look (theme, palette, corners,
+#: zoom, shadow, glass, motion, see its own docstring above) behind one
 #: key, so every appearance tweak wrote a row. The rest here are one-shot
 #: internal bookkeeping (`*_intro_seen`, `tray_hide_explained`) or the two
-#: status-bar toggles (§ this session) — never a change a person would
+#: status-bar toggles (§ this session): never a change a person would
 #: describe as "something I did", only as "how it looks/behaves".
 #: `set_preference` still runs for all of them; only the audit row is
 #: skipped, so nothing about what is saved or restored changes.
@@ -580,7 +604,7 @@ def update_preferences(
         changed_keys.add(key)
         if key in _QUIET_PREFERENCE_KEYS:
             continue
-        # Don't copy profile text into the audit log — it's personal.
+        # Don't copy profile text into the audit log, it's personal.
         detail = f"{key}=…" if key == "user_profile" else f"{key}={value}"
         manager.log_action(session, "edited", "preferences", detail=detail)
     session.commit()
@@ -593,7 +617,7 @@ def update_preferences(
         #: quit them, and then I turn battery saver mode on to try and stop
         #: them". Both are true of the code as it was: `wake()` only shortens
         #: the *sleep* between passes, and the enabled/battery checks run at the
-        #: top of a pass — so a pass already walking the notebook read neither
+        #: top of a pass, so a pass already walking the notebook read neither
         #: until it finished, which for a large notebook is many minutes of an
         #: agent the user has just told to stop.
         #:
@@ -618,14 +642,14 @@ def update_preferences(
 def set_console_mode(
     body: dict, background_tasks: BackgroundTasks, session: Session = Depends(get_session)
 ) -> dict:
-    """Switch Dev view / User view *live*, not just for the next launch —
+    """Switch Dev view / User view *live*, not just for the next launch, 
     asked for directly: togglable from Settings as well as the tray. Saves
     the preference the same way PUT /preferences would, then (desktop app,
     Windows only) restarts the whole process into the new console mode via
     __main__.restart_in_console_mode.
 
     The restart itself runs as a FastAPI background task, which the ASGI
-    server only invokes *after* this response has actually gone out — doing
+    server only invokes *after* this response has actually gone out, doing
     it inline would mean `os._exit(0)` races the response itself off the
     wire, and the frontend's toast would never show ("did it even work?").
     A relaunch this can't reach (not the desktop app, not Windows, no
@@ -633,7 +657,7 @@ def set_console_mode(
     caller just won't see it take effect until the next launch, same as any
     other preference.
 
-    Only restarts when the value actually changes — the first-run intro
+    Only restarts when the value actually changes, the first-run intro
     prompt calls this unconditionally with whatever was picked, and picking
     the option that already matches the current mode (the default, most of
     the time) must not restart the app the user just opened.
@@ -655,7 +679,7 @@ def set_console_mode(
     ):
         # `importlib`, not an `import` statement: `memorymap.__main__` imports
         # `api.app`, which imports this module, so a statement here closes a
-        # CodeQL py/cyclic-import loop — and deferring it into the function
+        # CodeQL py/cyclic-import loop: and deferring it into the function
         # body does not clear that, only dropping the statement does. The
         # desktop entry point is the caller here, not a dependency.
         restart_in_console_mode = importlib.import_module(
@@ -670,14 +694,14 @@ def set_console_mode(
 @router.post("/system/restart")
 def restart_app(background_tasks: BackgroundTasks) -> dict:
     """A plain restart, on request rather than tied to any one preference
-    changing — ROADMAP item C, asked for directly. Several extras only take
+    changing: ROADMAP item C, asked for directly. Several extras only take
     effect after a restart and the app said so without ever offering one;
     `restart_in_console_mode` already IS a generic "spawn a replacement
     process and exit this one," console-mode switching is just its first
     caller. This is the second: same mechanism, current console visibility
     preserved rather than flipped.
 
-    Same platform gate as /system/console-mode, for the same reason — this
+    Same platform gate as /system/console-mode, for the same reason, this
     can only ever work in the packaged desktop app on Windows (the one
     platform `_spawn_desktop` knows how to relaunch). Everywhere else,
     "restart" means the user's own means of doing that (Ctrl+C and rerun,
@@ -695,7 +719,7 @@ def restart_app(background_tasks: BackgroundTasks) -> dict:
 
 
 def _validated_skills(raw: list[dict]) -> list[dict]:
-    """Every skill, normalised — or a 422 naming the one that's wrong."""
+    """Every skill, normalised: or a 422 naming the one that's wrong."""
     from memorymap.ai import tools
 
     known = set(tools.TOOLS)
@@ -711,20 +735,20 @@ def _validated_skills(raw: list[dict]) -> list[dict]:
         if skill["name"] in shipped:
             raise HTTPException(
                 status_code=422,
-                detail=f"“{skill['name']}” is a built-in skill — pick another name",
+                detail=f"“{skill['name']}” is a built-in skill, pick another name",
             )
         out.append(skill)
     return out
 
 
 def _validated_templates(raw: list[dict]) -> list[dict]:
-    """Every custom template, name-checked — or a 422 naming the collision.
+    """Every custom template, name-checked, or a 422 naming the collision.
 
     Mirrors `_validated_skills` immediately above: a name that shadows a
     built-in is refused rather than silently allowed to win wherever the
     merged list is drawn next, and two customs can't collide with each other
     either. Rejecting (rather than de-duping, the way `addSkill` on the
-    frontend quietly does for skills) was the deliberate choice here —
+    frontend quietly does for skills) was the deliberate choice here, 
     silently dropping a *different* saved template because its name was
     reused would be a surprise deletion of someone's own text, which a
     skill's shorter prompt doesn't risk in the same way.
@@ -736,7 +760,7 @@ def _validated_templates(raw: list[dict]) -> list[dict]:
         if name in BUILTIN_TEMPLATE_NAMES:
             raise HTTPException(
                 status_code=422,
-                detail=f"“{name}” is a built-in template — pick another name",
+                detail=f"“{name}” is a built-in template, pick another name",
             )
         if name in seen:
             raise HTTPException(
@@ -749,7 +773,7 @@ def _validated_templates(raw: list[dict]) -> list[dict]:
 
 
 def _validated_export_dir(raw: str) -> str:
-    """An absolute, existing, writable directory — or a 422 saying which
+    """An absolute, existing, writable directory, or a 422 saying which
     check failed. Empty string always passes (resets to the default,
     `data_dir/exports`). Checked here, at save time, rather than at export
     time: a bad path caught now is a rejected preference; caught later it's
@@ -831,12 +855,12 @@ class ProposalAnswer(BaseModel):
     accept: bool
 
 
-def _preference_out(row) -> dict:  # noqa: ANN001 — a UserPreference
+def _preference_out(row) -> dict:  # noqa: ANN001  # a UserPreference
     return {
         "id": row.id,
         "content": row.content,
         "active": bool(row.active),
-        # Waiting for an answer — the model wrote it, the user has not said
+        # Waiting for an answer, the model wrote it, the user has not said
         # yes. A third state, not "off": it is out of the prompt *and* the UI
         # shows it as a question rather than as a switch someone flipped.
         "proposed": bool(getattr(row, "proposed", False)),
@@ -856,7 +880,7 @@ def list_memory(session: Session = Depends(get_session)) -> dict:
     return {
         "preferences": [_preference_out(r) for r in rows],
         # The UI says which of these actually reach the model. Only the active
-        # ones do, and only until the character budget runs out — newest first,
+        # ones do, and only until the character budget runs out, newest first,
         # so a long-standing list quietly stops including its oldest entries.
         # Showing the budget beats letting someone wonder why rule 41 is ignored.
         "budget_chars": memory.MEMORY_STREAM_BUDGET_CHARS,
@@ -873,7 +897,7 @@ def add_memory(body: PreferenceBody, session: Session = Depends(get_session)) ->
     reach for first: "I want it to always do X" is a thing you know before you
     have had the conversation that would teach it.
 
-    Same limits as the tool, deliberately — the cap exists because every active
+    Same limits as the tool, deliberately, the cap exists because every active
     preference is replayed into the system prompt on every round, and that is
     true whoever typed it.
     """
@@ -915,7 +939,7 @@ def answer_memory_proposal(
 
     Asked for directly: "can the ai pick up things and suggest the user adds it
     as a preference in that section with an accept or deny or similar popup??"
-    — and the shape of the old behaviour is why that is the right question.
+    - and the shape of the old behaviour is why that is the right question.
     `save_user_preference` used to write a standing instruction into every
     future system prompt with no confirmation at all, so a model that misread
     one sentence gave itself a permanent rule its user never agreed to.
@@ -924,7 +948,7 @@ def answer_memory_proposal(
     duplicate check in `_save_user_preference` looks at *every* preference, so
     a kept row is what stops the model proposing the same thing again an hour
     later. It reads as an ordinary switched-off preference afterwards, which
-    it is — and can be switched on if the user changes their mind.
+    it is: and can be switched on if the user changes their mind.
 
     Answering something that is not a proposal is a no-op rather than an
     error: two windows, two clicks, one of them second.
@@ -981,13 +1005,13 @@ def audit_log(
 
     `entity_type` filters *before* the limit, and that ordering is the whole
     reason it exists. The Library's AI Skills tab asked for 20 rows and then
-    filtered them in the browser for skill runs — so on any notebook where the
+    filtered them in the browser for skill runs, so on any notebook where the
     last twenty things that happened were note edits, a real history of skill
     runs rendered as "No skill execution logs found". Reported as the skill
     logs not working. Filtering in SQL means the limit counts the rows you
     asked for rather than the rows you are about to throw away.
 
-    `id` is the Library Activity card's own "view the whole thing" — its own
+    `id` is the Library Activity card's own "view the whole thing", its own
     list comes from `_activity()` (routes_library.py), which clips `detail`
     to `ACTIVITY_DETAIL_CHARS` so a long one doesn't blow out the card grid.
     This route never clips (`detail` below is the raw column), so re-fetching
@@ -1005,6 +1029,7 @@ def audit_log(
             "action": row.action,
             "entity_type": row.entity_type,
             "entity_id": row.entity_id,
+            "actor": row.actor or events.ACTOR_USER,
             "detail": row.detail,
             "created_at": row.created_at.isoformat(),
         }
@@ -1012,15 +1037,79 @@ def audit_log(
     ]
 
 
+def _feed_item(row: AuditLog) -> dict:
+    """One event as the feed reports it: what happened, not what it stored."""
+    span = events.snapshot_span(row)
+    return {
+        "id": row.id,
+        "action": row.action,
+        "entity_type": row.entity_type,
+        "entity_id": row.entity_id,
+        "actor": row.actor or events.ACTOR_USER,
+        "detail": row.detail,
+        # A snapshot's `after` is the whole state, not the fields this event
+        # set, so naming them would be a lie about what changed.
+        "changed": [] if span else sorted((row.payload or {}).get("after", {}) or {}),
+        #: How many events this row stands for, absent on an ordinary one.
+        "snapshot": span,
+        #: Its values were dropped by the compactor; the row is still a fact.
+        "compacted": events.is_compacted(row),
+        "created_at": row.created_at.isoformat(),
+    }
+
+
+@router.get("/events")
+def event_feed(
+    since: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=500),
+    entity_type: str = Query(default="", max_length=40),
+    include_quiet: bool = Query(default=False),
+    session: Session = Depends(get_session),
+) -> dict:
+    """The event log forwards, for anything that follows what happens here.
+
+    `/audit` reads backwards from now, which is what a viewer wants and what
+    a feed cannot use: a poller has to ask "what has happened since the last
+    thing I saw" and get it in the order it happened. So this is ascending
+    from `since` (exclusive), with `cursor` to pass back next time, and it
+    is what a Dashboard or Timeline activity strip should read instead of
+    scanning the notes table for recency (WORLD_CLASS_PLAN B1).
+
+    Payloads are not returned: they carry whole field values, which for a
+    note is its entire text, and a feed that ships every version of every
+    note is a different thing from a feed. `changed` names the fields each
+    event set, which is what a strip renders, and `/entries/{id}/history`
+    has the values when something actually needs them.
+
+    **A compacted event says what it is instead of naming fields.** The
+    compactor (`events.compact`) folds a run of old events into one
+    snapshot whose `after` holds the entity's whole state at that point, so
+    reading `after` off it named every field of the note and reported one
+    change as having set all of them at once, which never happened. Such a
+    row reports `changed: []` and a `snapshot` count of the events it
+    stands for; the rows behind it, whose values were dropped, report
+    `compacted: true`. Both are the honest answer to "what happened here",
+    and both are what a strip needs to render a run of folded history as
+    one line rather than as a burst of edits.
+    """
+    query = select(AuditLog).where(AuditLog.id > since)
+    if entity_type:
+        query = query.where(AuditLog.entity_type == entity_type)
+    if not include_quiet:
+        query = query.where(AuditLog.action.notin_(sorted(events.QUIET_ACTIONS)))
+    rows = list(session.scalars(query.order_by(AuditLog.id.asc()).limit(limit)))
+    return {"items": [_feed_item(row) for row in rows], "cursor": rows[-1].id if rows else since}
+
+
 @router.delete("/audit")
 def clear_audit_log(
     entity_type: str = Query(..., max_length=40),
     session: Session = Depends(get_session),
 ) -> dict:
-    """Asked for directly — a "Clear" button for the AI Skills sidebar's own
+    """Asked for directly: a "Clear" button for the AI Skills sidebar's own
     log list. `entity_type` is required, not optional: this deliberately
     cannot clear the whole audit trail (note edits, deletes, private-note
-    decryption events — real accountability history, not a scrollback
+    decryption events: real accountability history, not a scrollback
     buffer someone would want to blank), only one filtered slice of it at a
     time, the same scope `GET /audit?entity_type=` already reads."""
     deleted = session.query(AuditLog).filter(AuditLog.entity_type == entity_type).delete()
@@ -1063,7 +1152,7 @@ def install_extra(extra_id: str, reinstall: bool = False) -> dict:
 
     The path names an entry in `core/extras.py`; the package spec handed to pip
     is never anything the client sent. That is the whole security property here
-    — `pip install <a name from a request body>` is arbitrary code execution by
+    - `pip install <a name from a request body>` is arbitrary code execution by
     design, and validating the string afterwards does not fix it.
     """
     started, message = extras.start(extra_id, reinstall=reinstall)
@@ -1111,7 +1200,7 @@ def download_embedding_model(model_id: str, reinstall: bool = False) -> dict:
     gets fetched and written to disk.
 
     A reinstall removes first, because that is the state the button exists for
-    — a half-finished download leaves a directory that looks installed and
+    - a half-finished download leaves a directory that looks installed and
     loads as a corrupt model, and fetching over the top of it resumes the same
     broken snapshot.
     """
@@ -1140,9 +1229,9 @@ class ClientError(BaseModel):
     message: str = Field(max_length=2000)
     #: Where it happened, when the browser knows: "app.js:6088:12". Free text
     #: because a stack frame's shape differs per engine and none of it is
-    #: parsed — it is read by a person.
+    #: parsed: it is read by a person.
     source: str = Field(default="", max_length=500)
-    #: "error" | "unhandledrejection" | "csp" — what kind of failure this was,
+    #: "error" | "unhandledrejection" | "csp", what kind of failure this was,
     #: since the three need different first questions asked about them.
     kind: str = Field(default="error", max_length=40)
 
@@ -1158,7 +1247,7 @@ def record_client_error(body: ClientError, response: Response) -> None:
     The gap was real and had just cost a session. A JavaScript error aborts
     the rest of the file it is in, so the app can hang on its loading screen
     with **nothing** in the terminal, nothing in Settings → Logs, and the only
-    record sitting in a browser console nobody opens — least of all in the
+    record sitting in a browser console nobody opens, least of all in the
     desktop shell, which has no obvious way to open one. The crash that
     prompted this (`Cannot access 'captureStagedFiles' before initialization`)
     was invisible to every log this app keeps.
@@ -1184,7 +1273,7 @@ def record_client_error(body: ClientError, response: Response) -> None:
     machine.
     """
     # **Through `safe_value`, not raw.** Everything in this payload is
-    # attacker-shaped by construction — it is text the browser was handed by
+    # attacker-shaped by construction: it is text the browser was handed by
     # whatever failed, and a message containing a newline would draw a forged
     # second row in the Settings → Logs viewer while control characters can
     # rewrite what a terminal shows. `logbuffer.sanitise` runs at the ring
@@ -1219,7 +1308,7 @@ def clear_server_logs() -> dict:
 
 # How long a single stream lives before it hands over to the browser's own
 # reconnect, and how often it looks for new records. The cap is not a
-# limitation to work around — EventSource reconnects on its own and resends
+# limitation to work around, EventSource reconnects on its own and resends
 # Last-Event-ID, so the handover is seamless, and a stream that lives forever
 # is a resource nothing ever reclaims when a tab is left open for a week.
 LOG_STREAM_SECONDS = 10 * 60
@@ -1236,7 +1325,7 @@ async def stream_server_logs(request: Request, after: int = 0) -> StreamingRespo
 
     **NDJSON over fetch rather than the EventSource the roadmap suggested.**
     EventSource cannot set request headers, and this app authenticates with
-    `X-Auth-Token` — so an EventSource here would simply 401. The usual way
+    `X-Auth-Token`, so an EventSource here would simply 401. The usual way
     round that is to put the token in the query string, which is a bad trade
     anywhere and a farcical one on the endpoint that serves the log: the token
     would be written into the very records it is protecting. `fetch` carries
@@ -1246,7 +1335,7 @@ async def stream_server_logs(request: Request, after: int = 0) -> StreamingRespo
     Polling the ring buffer rather than registering a subscriber on it. That
     sounds like the lazier choice and is the more robust one: a subscriber
     registry means the logging handler pushes into per-connection queues, so a
-    slow or dead reader can block or grow unboundedly *inside logging itself* —
+    slow or dead reader can block or grow unboundedly *inside logging itself*, 
     and a logging path that can stall is a far worse failure than a console
     running 700ms behind. One reader, one process, one deque.
     """
@@ -1257,7 +1346,7 @@ async def stream_server_logs(request: Request, after: int = 0) -> StreamingRespo
         started = loop.time()
         last_sent = started
         # An immediate first line, so the reader knows the stream is live
-        # before anything has been logged — and learns where it is starting
+        # before anything has been logged, and learns where it is starting
         # from, which is what makes "dropped" meaningful on the client.
         yield json.dumps(
             {"type": "open", "cursor": cursor, "latest": logbuffer.latest_seq()}
@@ -1304,7 +1393,7 @@ async def stream_server_logs(request: Request, after: int = 0) -> StreamingRespo
 # An allowlist, not a denylist, and that choice is the whole design. A denylist
 # has to predict every sensitive key anyone will ever add; this one only has to
 # name the ones that help diagnose a bug. Anything not here is reported by
-# name, type and size — "persona_prompt: string, 412 chars" — which is enough
+# name, type and size, "persona_prompt: string, 412 chars", which is enough
 # to tell whether a setting is involved without disclosing what it says.
 DIAGNOSTIC_PREFERENCES = frozenset(
     {
@@ -1324,7 +1413,7 @@ DIAGNOSTIC_PREFERENCES = frozenset(
         "guided_mode",
         "auto_categorise",
         # Which backend answered is the first question any "the AI is broken"
-        # report needs. `llm_api_key` is deliberately NOT here — it stays
+        # report needs. `llm_api_key` is deliberately NOT here, it stays
         # described-not-disclosed like every other secret.
         "llm_provider",
         "llm_base_url",
@@ -1354,7 +1443,7 @@ def _redacted_preferences(preferences: dict) -> dict:
     return {"included": kept, "withheld": withheld}
 
 
-BUNDLE_README = """MemoryMap AI — support bundle
+BUNDLE_README = """MemoryMap AI: support bundle
 =============================
 
 What this is
@@ -1372,7 +1461,7 @@ What is in it
   preferences.json  your settings, with free-text ones withheld (see below)
   status.json       app version, platform, and the state of Ollama, the
                     embedding model and SearXNG
-  counts.json       how many notes, categories and documents exist — numbers
+  counts.json       how many notes, categories and documents exist, numbers
                     only, never their contents
 
 What is NOT in it
@@ -1385,7 +1474,7 @@ What is NOT in it
 
 Worth a glance before you send it
 ---------------------------------
-Log messages can quote things you typed — a chat question, or the title of a
+Log messages can quote things you typed, a chat question, or the title of a
 page you opened. Open logs.json and skim it if that matters to you.
 """
 
@@ -1411,7 +1500,7 @@ def support_bundle(session: Session = Depends(get_session)) -> Response:
         """
         try:
             return collect()
-        except Exception as exc:  # noqa: BLE001 — the reason IS the diagnostic
+        except Exception as exc:  # noqa: BLE001  # the reason IS the diagnostic
             return {"error": f"{type(exc).__name__}: {exc}", **fallback}
 
     status_payload = {
@@ -1481,7 +1570,7 @@ def _models_status_snapshot() -> dict:
 
 
 def _export_rows(session: Session) -> tuple[list[Category], list[Entry], list[EntryLink]]:
-    """Everything the user owns, including binned entries — an export
+    """Everything the user owns, including binned entries, an export
     should never silently drop data."""
     categories = list(session.scalars(select(Category).order_by(Category.id)))
     entries = list(session.scalars(select(Entry).order_by(Entry.id)))
@@ -1504,7 +1593,7 @@ def export_backup(background_tasks: BackgroundTasks):
         try:
             os.remove(tmp_path)
         except OSError:
-            pass  # already gone, or never got written — nothing left to clean up
+            pass  # already gone, or never got written, nothing left to clean up
             
     background_tasks.add_task(cleanup)
     
@@ -1579,11 +1668,20 @@ def _slug(text: str, length: int = 30) -> str:
     return re.sub(r"[\s]+", "-", cleaned) or "note"
 
 
-@router.get("/export/markdown")
-def export_markdown(session: Session = Depends(get_session)) -> Response:
-    """A zip of Obsidian-friendly .md files: one file per note, one
-    folder per category, YAML frontmatter carrying the metadata. Binned
-    notes go under _recycle-bin/ — exports never silently drop data."""
+def build_markdown_export(session: Session) -> bytes:
+    """The zip itself, as bytes, with nothing HTTP about it.
+
+    Lifted out of the route below so `python -m memorymap --export PATH`
+    writes exactly the same archive the Settings button downloads, rather
+    than a second implementation that drifts. uninstall.sh and
+    uninstall.bat call that entry point for `--export`, which is the whole
+    point: someone removing the app should be able to take their notes out
+    first, from a terminal, with no browser and no running server.
+
+    The audit line is written here rather than in the route so a CLI export
+    is recorded too: "where did this zip come from" is the same question
+    either way.
+    """
     _categories, entries, _links = _export_rows(session)
     category_names = manager.bulk_category_names(session, entries)
     
@@ -1612,8 +1710,16 @@ def export_markdown(session: Session = Depends(get_session)) -> Response:
             archive.writestr(f"{folder}/{entry.id}-{_slug(readable)}.md", body)
     manager.log_action(session, "exported", "data", detail="markdown")
     session.commit()
+    return buffer.getvalue()
+
+
+@router.get("/export/markdown")
+def export_markdown(session: Session = Depends(get_session)) -> Response:
+    """A zip of Obsidian-friendly .md files: one file per note, one
+    folder per category, YAML frontmatter carrying the metadata. Binned
+    notes go under _recycle-bin/, exports never silently drop data."""
     return Response(
-        content=buffer.getvalue(),
+        content=build_markdown_export(session),
         media_type="application/zip",
         headers={"Content-Disposition": "attachment; filename=memorymap-markdown.zip"},
     )
@@ -1621,7 +1727,7 @@ def export_markdown(session: Session = Depends(get_session)) -> Response:
 
 MAX_IMPORT_BYTES = 1024 * 1024  # a single markdown note, not a novel
 #: `import_markdown` below had a per-file size cap but no cap on how many
-#: files one request could carry — each one does its own `create_entry` +
+#: files one request could carry, each one does its own `create_entry` +
 #: `session.commit()`, so a request with an unbounded file count ran
 #: unbounded work. Same instinct as `MAX_DOCUMENT_IMPORT_NOTES` just below:
 #: a real "import my Obsidian vault" drag-and-drop is at most a few hundred
@@ -1632,7 +1738,7 @@ MAX_IMPORT_FILES = 500
 def _parse_frontmatter(text: str) -> tuple[dict, str]:
     """(metadata, body). Understands the small subset this app writes:
     `category: X` and `tags: [a, b]`. Anything else is left in the body
-    untouched — imports must never eat someone's text."""
+    untouched: imports must never eat someone's text."""
     if not text.startswith("---\n"):
         return {}, text
     end = text.find("\n---\n", 4)
@@ -1657,12 +1763,12 @@ class ImportDirectoryRequest(BaseModel):
 
 def _validated_import_directory(path_value: str) -> Path:
     """The one place `import_directory`'s request path is turned into a
-    real, checked filesystem path — both the route and the background job
+    real, checked filesystem path, both the route and the background job
     it schedules use this, and both pass its *return value* on, never the
     original string.
 
     CodeQL flags the raw `req.path` reaching file I/O as "uncontrolled
-    data used in a path expression" — correct about the data flow, but
+    data used in a path expression", correct about the data flow, but
     this route's whole job is letting the already-authenticated owner of
     this single-user, local-only notebook pick any folder on their own
     machine to import from (the Obsidian-vault-import feature). There is
@@ -1670,7 +1776,7 @@ def _validated_import_directory(path_value: str) -> Path:
     What this *can* do, and didn't before: reject a null byte outright
     (the one thing no legitimate path contains), confirm the path
     genuinely resolves to an existing directory before anything reads
-    from it, and — the part a first pass at this missed — make sure the
+    from it, and, the part a first pass at this missed, make sure the
     resolved, checked `Path` is what actually gets used downstream rather
     than the original unchecked string living on past this function.
     """
@@ -1701,7 +1807,7 @@ def _run_directory_import(directory_path: str):
                     continue
                 #: **The file's own text, unchanged.** An earlier attempt at
                 #: this prepended `# <filename>` so the note would carry its
-                #: vault name — and three existing tests caught it, rightly:
+                #: vault name: and three existing tests caught it, rightly:
                 #: an importer that edits what it imports is a data-loss bug
                 #: waiting to be reported, and this app's own rule is that a
                 #: note has no separate title, its opening words *are* its
@@ -1715,7 +1821,7 @@ def _run_directory_import(directory_path: str):
                     tags=meta.get("tags") or [],
                     ai_confidence=100 if meta.get("category") else 0,
                 )
-                #: Relative to the vault root, never absolute — see
+                #: Relative to the vault root, never absolute, see
                 #: `Entry.source_path`. `as_posix` so a vault imported on
                 #: Windows and one imported on Linux group identically.
                 try:
@@ -1734,7 +1840,7 @@ def _run_directory_import(directory_path: str):
             manager.log_action(session, "imported", "data", detail=f"markdown dir x{imported}")
             session.commit()
             #: A whole vault arriving at once is exactly the "large change"
-            #: the rebuild suggestion exists for — see `mark_index_stale`.
+            #: the rebuild suggestion exists for, see `mark_index_stale`.
             deps.mark_index_stale(imported)
 
 @router.post("/import/directory", status_code=202)
@@ -1743,7 +1849,7 @@ def import_directory(req: ImportDirectoryRequest, background_tasks: BackgroundTa
         p = _validated_import_directory(req.path)
     except ValueError:
         raise HTTPException(400, "Invalid directory path") from None
-    # The validated, resolved path — not req.path — is what the background
+    # The validated, resolved path, not req.path, is what the background
     # job and the response both carry from here on.
     canonical_path = str(p)
     background_tasks.add_task(_run_directory_import, canonical_path)
@@ -1760,7 +1866,7 @@ def import_markdown(
         raise HTTPException(
             status_code=422,
             detail=f"{len(files)} files at once is more than one import handles "
-            f"({MAX_IMPORT_FILES} max) — split it into smaller batches.",
+            f"({MAX_IMPORT_FILES} max): split it into smaller batches.",
         )
     imported = 0
     skipped: list[str] = []
@@ -1779,7 +1885,7 @@ def import_markdown(
         if not body.strip():
             skipped.append(f"{name}: empty")
             continue
-        #: The path, not the text — see the directory importer above for why
+        #: The path, not the text, see the directory importer above for why
         #: nothing here rewrites the file's own content. A browser sends the
         #: relative path as the filename when the picker was a directory
         #: picker, and the bare name otherwise; both are relative, which is
@@ -1803,12 +1909,12 @@ def import_markdown(
     return {"imported": imported, "skipped": skipped}
 
 
-#: A PDF or slide deck, not a video — well past what a document-conversion
+#: A PDF or slide deck, not a video, well past what a document-conversion
 #: library is for.
 MAX_DOCUMENT_IMPORT_BYTES = 20 * 1024 * 1024
 #: A very long deck splits into one note per slide; a sane ceiling on how
 #: many notes one upload can create, the same instinct as `tools.py`'s
-#: MAX_PLAN_STEPS — a huge number here is usually a converter emitting one
+#: MAX_PLAN_STEPS: a huge number here is usually a converter emitting one
 #: heading per page rather than someone wanting 200 new notes at once.
 MAX_DOCUMENT_IMPORT_NOTES = 25
 
@@ -1816,12 +1922,12 @@ MAX_DOCUMENT_IMPORT_NOTES = 25
 @router.post("/import/document", status_code=201)
 def import_document(file: UploadFile, session: Session = Depends(get_session)) -> dict:
     """Turn an uploaded PDF/Word/slide file into one or more notes, via
-    markitdown (§37G) — the button `core/extras.py`'s `documents` extra
+    markitdown (§37G): the button `core/extras.py`'s `documents` extra
     installed for and had nothing behind, until this.
 
     One note per top-level heading when the converted markdown has more than
     one (a deck, a document with real chapters); the whole file as one note
-    otherwise — `import_markdown`'s "each file becomes a note" for the common
+    otherwise: `import_markdown`'s "each file becomes a note" for the common
     case, once markitdown has turned it into something with that shape.
     """
     if not importer.markitdown_available():

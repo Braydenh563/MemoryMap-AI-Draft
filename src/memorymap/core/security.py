@@ -6,11 +6,11 @@ local-only app. Binding 127.0.0.1 stops the *network* reaching MemoryMap. It
 does nothing about the browser already running on this machine: any page in
 any other tab can ask that browser to send a request to http://localhost:8000,
 and the browser will, because it is the target's job to say no, not the
-attacker's. This is not hypothetical — it is how local dev servers and Ollama
+attacker's. This is not hypothetical, it is how local dev servers and Ollama
 itself have actually been attacked.
 
-  ORIGIN CHECK — refuse a request that a page on another site caused.
-  CSP         — bound what our own page may load, so injected markup in a
+  ORIGIN CHECK: refuse a request that a page on another site caused.
+  CSP: bound what our own page may load, so injected markup in a
                 note cannot fetch or execute anything.
 
 The two cover different halves and neither substitutes for the other.
@@ -81,14 +81,14 @@ class OriginCheckMiddleware(BaseHTTPMiddleware):
     The rule is narrow on purpose: a request is refused only when it carries
     an Origin (or, failing that, a Referer) that disagrees with the Host it was
     sent to. A request with neither header is allowed through, which is not the
-    hole it looks like — browsers attach Origin to exactly the cross-site
+    hole it looks like, browsers attach Origin to exactly the cross-site
     requests this is meant to stop, and the requests without one are the local
     tools that legitimately have no origin: curl, the pywebview desktop shell,
     the test client, a shortcut on the desktop.
 
     Note this matters *most* before a password is ever set. Until then
     `require_unlock` waves everything through, because there is nothing to
-    protect yet — but that window is also when a drive-by POST to /auth/setup
+    protect yet: but that window is also when a drive-by POST to /auth/setup
     could claim the notebook and lock the real owner out of it.
     """
 
@@ -123,7 +123,7 @@ class OriginCheckMiddleware(BaseHTTPMiddleware):
 # an inline block here, allowed by the hash of its own contents. That worked,
 # and it kept going wrong in the field: a hash is a second copy of the script,
 # and any path that pairs one version of the page with the other version's
-# header refuses it — reported as "[browser/csp] blocked script-src-elem:
+# header refuses it: reported as "[browser/csp] blocked script-src-elem:
 # inline", which lands as the app opening in its default look with the saved
 # theme never applied. The block now lives in `frontend/theme-boot.js`, which
 # `script-src 'self'` covers unconditionally, and
@@ -134,7 +134,7 @@ class OriginCheckMiddleware(BaseHTTPMiddleware):
 # rely on: if an inline block ever comes back, it is hashed and works, instead
 # of being silently refused.
 # Two loosenesses here were flagged by CodeQL (`py/bad-tag-filter`), and the
-# *reported* risk does not apply while the real bug does — worth writing down
+# *reported* risk does not apply while the real bug does, worth writing down
 # so the next person does not re-litigate it.
 #
 # **Not an XSS filter.** This reads `frontend/index.html`, a file shipped with
@@ -145,12 +145,12 @@ class OriginCheckMiddleware(BaseHTTPMiddleware):
 #
 # **But the failure mode is real, and it is a blank page.** If the pattern
 # misses the script, its hash never enters the CSP and the browser refuses to
-# run it — which is the pre-paint theme block, so the app opens unstyled. Both
+# run it: which is the pre-paint theme block, so the app opens unstyled. Both
 # gaps below did that:
 #
-#   - `</script >` — HTML permits whitespace before the closing `>`, and the
+#   - `</script >`, HTML permits whitespace before the closing `>`, and the
 #     old pattern required them adjacent, so the match failed outright.
-#   - `src = "…"` — the old exclusion looked for `src=` with no spaces, so a
+#   - `src = "…"`, the old exclusion looked for `src=` with no spaces, so a
 #     spaced attribute made an *external* script look inline and contributed a
 #     hash of the empty string.
 #
@@ -170,7 +170,7 @@ def inline_script_hashes(html_path: Path) -> list[str]:
         return []
     # **Comments first, and this is not tidiness.** `_INLINE_SCRIPT` is a
     # regex, so a comment that merely *mentions* a script tag opens a match
-    # for it — and because the pattern then runs to the next `</script`, it
+    # for it: and because the pattern then runs to the next `</script`, it
     # swallows the real tags in between. Caught live: a comment added above
     # the head's own `<script src=…>` (explaining why the theme bootstrap is
     # a file rather than an inline block) produced one phantom hash and, in
@@ -187,7 +187,7 @@ def inline_script_hashes(html_path: Path) -> list[str]:
 
 
 def build_csp(script_hashes: list[str]) -> str:
-    """The policy. Every source is 'self' or a hash — no host is named at all.
+    """The policy. Every source is 'self' or a hash: no host is named at all.
 
     That is only affordable because of a rule the project already follows: no
     asset comes from a CDN, and d3 and p5 are vendored into frontend/vendor.
@@ -200,7 +200,7 @@ def build_csp(script_hashes: list[str]) -> str:
         # No 'unsafe-inline' and no 'unsafe-eval': the frontend has neither an
         # eval nor a new Function anywhere in it, so nothing needs them.
         "script-src": " ".join(["'self'", *script_hashes]),
-        # No 'unsafe-inline' either — the eight style attributes that used to
+        # No 'unsafe-inline' either: the eight style attributes that used to
         # be in index.html moved into style.css to make this possible. This is
         # the directive that stops injected markup styling itself into a
         # convincing fake dialog over the top of the real app.
@@ -211,9 +211,17 @@ def build_csp(script_hashes: list[str]) -> str:
         "font-src": "'self'",
         "media-src": "'self' blob:",
         # Same-origin XHR/fetch/EventSource only. The frontend never talks to
-        # Ollama directly — every call goes through this server — so there is
+        # Ollama directly, every call goes through this server, so there is
         # nothing else to allow.
         "connect-src": "'self'",
+        # `frontend/graph-worker.js`, the graph's force simulation, off the
+        # main thread (GRAPH_PLAN.md §4). Checked before that file was written
+        # rather than after: a missing `worker-src` falls back to
+        # `default-src 'self'` here so it would have worked anyway, but a
+        # Worker refused by CSP fails with nothing thrown at the constructor,
+        # which is the "policy silently refusing the work" shape §40 names.
+        # It is stated explicitly so the directive cannot be narrowed later
+        # without the graph's worker being the thing that notices.
         "worker-src": "'self'",
         # <object>/<embed> have no use here and are a classic bypass.
         "object-src": "'none'",
@@ -223,7 +231,7 @@ def build_csp(script_hashes: list[str]) -> str:
         # Nothing may frame MemoryMap: clickjacking a notebook that is already
         # unlocked is the cheapest attack on it.
         "frame-ancestors": "'none'",
-        # **What MemoryMap may frame — the other direction, and it is narrow.**
+        # **What MemoryMap may frame, the other direction, and it is narrow.**
         # `blob:` only, for the HTML preview pane (REDESIGN.md §R7.1 item 4):
         # the viewer builds a Blob from a file's own text and points an iframe
         # at it. Without this the directive falls back to `default-src 'self'`
@@ -233,7 +241,7 @@ def build_csp(script_hashes: list[str]) -> str:
         #
         # It is safe *because of the sandbox on the iframe*, not because of
         # this line: `sandbox=""` with no `allow-` tokens means no scripts, no
-        # forms, no same-origin, no top-level navigation — an .html file the
+        # forms, no same-origin, no top-level navigation, an .html file the
         # user did not write renders as layout and nothing else. The CSP
         # allows the frame to exist; the sandbox decides what it may do.
         "frame-src": "'self' blob:",
@@ -246,7 +254,7 @@ class CspForPage:
 
     **This exists because of a real, repeatedly-reported bug, and the shape of
     it is worth keeping in mind.** The policy names the page's inline script by
-    sha256 hash — there is no `'unsafe-inline'` — so the hash in the header and
+    sha256 hash, there is no `'unsafe-inline'`, so the hash in the header and
     the script in the body have to agree exactly. They were computed at
     *startup* and then frozen for the life of the process, while `index.html`
     itself is read from disk on every request. Any update to the frontend under
@@ -256,7 +264,7 @@ class CspForPage:
         [browser/csp] blocked script-src-elem: inline
 
     That script is the anti-flash theme bootstrap in the page head, so the cost
-    was not abstract — losing it means the app paints its default look and the
+    was not abstract: losing it means the app paints its default look and the
     resolved light/dark mode is never applied. It was reported more than once
     ("this error keeps appearing"), and each time the honest answer was "the
     server is stale, restart it". A correct policy that silently goes wrong
@@ -310,7 +318,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # the older header instead.
         headers.setdefault("X-Frame-Options", "DENY")
         # Stops a note attachment being sniffed into text/html and run as a
-        # page on this origin — same-origin, so it would inherit everything.
+        # page on this origin, same-origin, so it would inherit everything.
         headers.setdefault("X-Content-Type-Options", "nosniff")
         # Never leak a notebook's URLs to a third party.
         headers.setdefault("Referrer-Policy", "no-referrer")
@@ -331,8 +339,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 #
 # The web reader refuses anything that ISN'T public, because it follows
 # untrusted links and must never probe this machine. This is the mirror image:
-# a backend is *supposed* to be on localhost or the LAN — that is the whole
-# product — so private addresses are the normal case and blocking them would
+# a backend is *supposed* to be on localhost or the LAN, that is the whole
+# product: so private addresses are the normal case and blocking them would
 # break it.
 #
 # What is refused is the narrow set nobody ever serves a model from, where
@@ -341,7 +349,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 #   - a scheme that isn't http(s), so `file://` can't be read back by a
 #     library that helpfully supports it;
 #   - link-local (169.254.0.0/16, fe80::/10), which on every major cloud is
-#     the instance-metadata address — the classic credential-theft target,
+#     the instance-metadata address: the classic credential-theft target,
 #     and never a model server;
 #   - multicast, reserved and unspecified addresses, which are not endpoints.
 #
@@ -350,7 +358,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 # entitled to is for it to happen quietly, because the app's headline promise
 # is that notes stay on the machine. `is_local` is what the UI warns from.
 
-import ipaddress  # noqa: E402 — grouped with the code it serves
+import ipaddress  # noqa: E402  # grouped with the code it serves
 import socket  # noqa: E402
 import threading  # noqa: E402
 
@@ -361,7 +369,7 @@ _ALLOWED_BACKEND_SCHEMES = ("http", "https")
 #:
 #: `socket.getaddrinfo` takes **no timeout argument** and ignores
 #: `socket.setdefaulttimeout`, so a slow or unreachable resolver blocks the
-#: calling thread for however long the platform's resolver decides — tens of
+#: calling thread for however long the platform's resolver decides: tens of
 #: seconds is normal. This function runs on a request thread (saving a backend
 #: address) and on startup (building the client), so an unbounded wait there is
 #: the app hanging, not a slow answer.
@@ -382,18 +390,18 @@ def _backend_addresses(host: str) -> list:
     A name that doesn't resolve is not an error here: "set the address, then
     start the server" is the normal order, and a docker-compose service name
     resolves only once its container is up. An empty list means "can't judge",
-    and the caller decides — under the lock that means refuse, without it that
+    and the caller decides, under the lock that means refuse, without it that
     means allow-but-unverified.
 
     **Bounded, because `getaddrinfo` is not.** It takes no timeout and ignores
     `socket.setdefaulttimeout`, so it is run on a worker thread and abandoned
     after `_DNS_TIMEOUT_SECONDS`. A resolver that is slow or absent then reads
-    as "couldn't judge" — which is the same answer as a name that doesn't
-    exist, and the safe one — instead of holding the request open.
+    as "couldn't judge", which is the same answer as a name that doesn't
+    exist, and the safe one, instead of holding the request open.
     """
     if not host:
         return []
-    # A literal address needs no resolver at all — 127.0.0.1, a LAN IP.
+    # A literal address needs no resolver at all, 127.0.0.1, a LAN IP.
     try:
         return [ipaddress.ip_address(host)]
     except ValueError:
@@ -403,14 +411,14 @@ def _backend_addresses(host: str) -> list:
     # judges the backend address on every poll, and the backend is `localhost`
     # for almost everybody. Asking the resolver what `localhost` means, several
     # times a second, to be told what it means on every machine, is a round
-    # trip for nothing — and on a host with a slow or misconfigured resolver it
+    # trip for nothing: and on a host with a slow or misconfigured resolver it
     # is a round trip for nothing that takes seconds.
     if host.lower() in _LOOPBACK_HOSTS:
         return [ipaddress.ip_address("127.0.0.1")]
 
     # A **daemon thread**, not a ThreadPoolExecutor, and the difference is the
     # whole point. `with ThreadPoolExecutor(...)` calls `shutdown(wait=True)` on
-    # the way out, which blocks until the worker finishes — so timing out on
+    # the way out, which blocks until the worker finishes, so timing out on
     # `.result()` and then leaving the block still waits forever for the call
     # being abandoned. That is not theoretical: it hung the whole test suite on
     # a machine whose resolver did not answer, on three Python versions at once,
@@ -449,7 +457,7 @@ def _refuses(address) -> str | None:
     # categories overlap in two places that would each flip an answer:
     #
     #   - 169.254.0.0/16 is link-local AND `is_private`, so an allow-private
-    #     rule running first would wave through the cloud metadata address —
+    #     rule running first would wave through the cloud metadata address, 
     #     the exact thing this function exists to stop.
     #   - `::1` is loopback AND `is_reserved`, so a refuse-reserved rule
     #     running first would reject the most ordinary backend there is.
@@ -479,7 +487,7 @@ def check_backend_url(url: str, local_only: bool = False) -> tuple[bool, str, bo
 
     `local_only` is the lock, and it is **on by default in the app** (the
     `local_only_ai` preference). With it on, a backend that is not on this
-    machine or this network is *refused* rather than warned about — which is
+    machine or this network is *refused* rather than warned about, which is
     the honest reading of "100% offline, on your machine": a promise the app
     keeps, not one it reminds you that you are breaking.
 
@@ -494,7 +502,7 @@ def check_backend_url(url: str, local_only: bool = False) -> tuple[bool, str, bo
         return (
             False,
             f"A model backend has to be an http:// or https:// address"
-            f"{f' — “{parts.scheme}:” is not' if parts.scheme else ''}.",
+            f"{f', “{parts.scheme}:” is not' if parts.scheme else ''}.",
             False,
         )
     host = (parts.hostname or "").strip()
@@ -508,7 +516,7 @@ def check_backend_url(url: str, local_only: bool = False) -> tuple[bool, str, bo
             return False, refusal, False
 
     if not addresses:
-        # Unresolvable for now — "set the address, then start the server" is
+        # Unresolvable for now: "set the address, then start the server" is
         # the normal order. Treated as non-local, which is the safe direction:
         # under the lock an unverifiable name is refused rather than trusted,
         # and without it the honest warning is the one that shows.
@@ -534,7 +542,7 @@ def check_backend_url(url: str, local_only: bool = False) -> tuple[bool, str, bo
 
 _LOCKED_REASON = (
     "“{host}” is not on this machine or your local network, and MemoryMap is "
-    "set to keep the AI local — so your notes are never sent anywhere. If you "
+    "set to keep the AI local, so your notes are never sent anywhere. If you "
     "really do want to use a hosted API, turn off “Keep the AI on this "
     "machine” in Settings → Models first."
 )

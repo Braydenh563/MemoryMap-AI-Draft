@@ -1,4 +1,4 @@
-"""Chat history retention — the one collection in the app that grew forever.
+"""Chat history retention: the one collection in the app that grew forever.
 
 Notes have had a recycle bin with a configurable auto-purge for a long time;
 saved chats had no cap, no warning and nothing that would ever notice. These

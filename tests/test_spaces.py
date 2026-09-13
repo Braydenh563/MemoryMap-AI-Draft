@@ -36,7 +36,7 @@ def test_create_rename_delete_happy_path(client):
 
 
 def test_client_supplied_id_is_ignored(client):
-    """A client-sent id (including a reserved sentinel) never wins — the
+    """A client-sent id (including a reserved sentinel) never wins, the
     server always slugifies `name` itself."""
     resp = client.post("/spaces", json={"id": "all", "name": "My Space"}).json()
     assert resp["id"] == "my-space"
@@ -129,7 +129,7 @@ def test_a_chat_made_in_one_space_is_invisible_from_another(client):
     ]
 
     # Not visible from an unrelated space, or the default one. (No header at
-    # all means unfiltered — same as "all" — so that is not the negative case
+    # all means unfiltered, same as "all", so that is not the negative case
     # here; a *named* space that isn't this one is.)
     assert conversation_id not in [
         c["id"]
@@ -147,7 +147,7 @@ def test_a_chat_made_in_one_space_is_invisible_from_another(client):
 def test_a_hidden_space_leaves_all_spaces_but_still_works_when_selected(client):
     """Asked for directly: "how do I hide a specific space's notes and
     images/documents etc, all the content from the 'all spaces' space if I
-    wish??" There was no way — `Space` carried only id/name/icon, and "all"
+    wish??" There was no way, `Space` carried only id/name/icon, and "all"
     switched the workspace filter off entirely, so it showed everything.
 
     The flag is a *view* filter and this pins both halves of that: the space
@@ -264,7 +264,7 @@ def test_deleting_a_space_with_a_same_named_category_does_not_crash(client, sess
 
 def test_a_foreign_note_pointing_at_a_doomed_category_keeps_the_note(client, session):
     """A note in *another* space that was filed under this space's category
-    is not ours to delete — it loses the pointer, exactly as if the category
+    is not ours to delete, it loses the pointer, exactly as if the category
     had been deleted on its own."""
     created = client.post("/spaces", json={"name": "Doomed Unique"}).json()
     space_id = created["id"]

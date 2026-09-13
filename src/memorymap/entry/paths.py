@@ -1,8 +1,8 @@
-"""How are these two notes related? — the shortest chain between them (§9).
+"""How are these two notes related?, the shortest chain between them (§9).
 
 The graph view could always show you *that* two notes are connected. It could
 never answer the question a graph is uniquely good at: **"what is the route
-from this note to that one?"** — the chain of links, replies and shared tags
+from this note to that one?"**, the chain of links, replies and shared tags
 that joins two things you wrote months apart.
 
 `related_notes` walks outward from one note. This walks *between* two, which is
@@ -14,14 +14,14 @@ arrives, and the interesting result is the sequence rather than the set.
 Three kinds of connection exist in this notebook and they are not equally
 meaningful:
 
-- **a link** — somebody (or the model, with approval) decided these two belong
+- **a link**: somebody (or the model, with approval) decided these two belong
   together. The strongest signal there is, because it was a decision;
-- **a thread** — a reply. Two notes in one train of thought;
-- **a shared tag** — real, but weak. `#idea` on two notes says they are both
+- **a thread**: a reply. Two notes in one train of thought;
+- **a shared tag**: real, but weak. `#idea` on two notes says they are both
   ideas, not that either has anything to do with the other.
 
 An unweighted search returns whichever chain has the fewest hops, so a single
-`#misc` bridge beats a three-step chain of deliberate links every time — and
+`#misc` bridge beats a three-step chain of deliberate links every time, and
 the answer that comes back is *technically* a path and *actually* noise. Tag
 steps therefore cost `TAG_WEIGHT` and the search minimises cost, not hops. A
 tag shortcut is still found when it is the only route; it just loses to
@@ -39,7 +39,7 @@ because "no path" is only honest if the reason is visible.
 ## And a cap on how far it will look
 
 `MAX_PATH_HOPS` stops the search at six steps. This is not a performance guard
-— a personal notebook is small — it is an honesty one. Six intermediaries is
+- a personal notebook is small, it is an honesty one. Six intermediaries is
 not a relationship, and reporting one as though it were is the same failure as
 the hub tag: an answer that is true and useless.
 """
@@ -60,7 +60,7 @@ from memorymap.core.database import Entry, EntryLink, link_strength
 #: adjusts an individual link up or down. Links and replies are decisions
 #: somebody made and cost the same by default; a shared tag is an
 #: observation and costs four times as much, so a four-link chain still
-#: beats one tag hop. The absolute numbers mean nothing — only the ratio
+#: beats one tag hop. The absolute numbers mean nothing, only the ratio
 #: does.
 LINK_WEIGHT = 1
 THREAD_WEIGHT = 1
@@ -82,7 +82,7 @@ class Step:
 
     source: int
     target: int
-    #: `link`, `thread` or `tag` — the three the graph view already draws.
+    #: `link`, `thread` or `tag`, the three the graph view already draws.
     kind: str
     #: A sentence fragment for the UI and for the model: "linked", "a reply to
     #: it", "both tagged #recipes". Written from `source` towards `target`, so
@@ -109,7 +109,7 @@ class Connections:
     """Every connection in the notebook, indexed once.
 
     Built in three queries rather than per-node, because the search visits many
-    nodes and `_graph_neighbours`' tag lookup scans every entry for each one —
+    nodes and `_graph_neighbours`' tag lookup scans every entry for each one, 
     fine for the twelve results that walk returns, quadratic for a path search.
     """
 
@@ -145,10 +145,10 @@ def build(
     `include_private` is False for the AI, which may not read private notes at
     all (`tools._require_note` refuses them). Routing *through* one would leak
     its preview into an answer by the back door, and routing to one would offer
-    the model an id it is not allowed to open — so they are not in the graph it
+    the model an id it is not allowed to open, so they are not in the graph it
     searches rather than filtered out of the result.
 
-    `entries`, when given, skips this function's own query — for a caller
+    `entries`, when given, skips this function's own query: for a caller
     (`routes_graph.graph()`) that already fetched the identically-scoped
     `is_deleted == False` set for its own node serialization; without this,
     every `GET /graph` call queried the full `Entry` table twice. Only used
@@ -167,10 +167,10 @@ def build(
     for link in session.scalars(select(EntryLink)):
         if link.source_entry_id in known and link.target_entry_id in known:
             # A link's own reason, when someone gave one, is a better answer
-            # to "how are these connected?" than the generic "linked to" —
+            # to "how are these connected?" than the generic "linked to", 
             # same phrase either direction, since "why" doesn't have one.
             # `reason_confidence` only exists on a reason nobody actually
-            # said — "deduced" keeps Trace and the story prompt from reading
+            # said: "deduced" keeps Trace and the story prompt from reading
             # a guess as a fact the way a person's or the AI's own words are.
             phrase = "linked to"
             if link.reason:
@@ -179,7 +179,7 @@ def build(
                     phrase += f", {round(link.reason_confidence * 100)}% confidence, deduced"
                 phrase += ")"
             # §87.5's first slice: a typed link, or one whose reason came
-            # from a confident deduction, costs less than a bare one — see
+            # from a confident deduction, costs less than a bare one, see
             # `link_strength`'s own docstring for why this is a divisor.
             index._add(
                 link.source_entry_id,
@@ -229,7 +229,7 @@ def find(index: Connections, source_id: int, target_id: int) -> list[Step] | Non
 
     Dijkstra rather than breadth-first because the steps are weighted; the
     tie-break is hop count, so two routes of equal cost return the shorter one.
-    Nothing here is hot enough to need better — a personal notebook is a few
+    Nothing here is hot enough to need better, a personal notebook is a few
     thousand nodes at the outside, and this runs once per question.
     """
     return _dijkstra(index, source_id, target_id)
@@ -245,8 +245,8 @@ def _dijkstra(
     """`find`, with two exclusion sets that only `find_many` uses.
 
     Split out rather than inlined into `find_many` because Yen's algorithm
-    below needs *this exact search* — same weights, same hop cap, same
-    tie-break — run repeatedly with parts of the graph masked off. A second
+    below needs *this exact search*, same weights, same hop cap, same
+    tie-break: run repeatedly with parts of the graph masked off. A second
     implementation would drift from the one the single-path answer uses, and
     then the "best route" and "route 1 of 3" would disagree about which route
     is best, which is worse than not offering alternatives at all.
@@ -256,7 +256,7 @@ def _dijkstra(
     if target_id not in index.entries:
         return None
 
-    #: (cost, hops, node) — the heap orders on cost then hops, which is the
+    #: (cost, hops, node): the heap orders on cost then hops, which is the
     #: tie-break falling out of the tuple rather than needing its own pass.
     heap: list[tuple[int, int, int]] = [(0, 0, source_id)]
     best: dict[int, tuple[int, int]] = {source_id: (0, 0)}
@@ -316,14 +316,14 @@ def find_many(
     Asked for directly: *"allow for multiple paths to be displayed if they
     exist."* One route answers "how are these two related?"; several answer the
     question people actually have next, which is "is that the only way they
-    connect?" — and in a notebook the difference between one route and three
+    connect?", and in a notebook the difference between one route and three
     is the difference between a fact and a shape.
 
     Yen's algorithm, which is the standard answer and is built entirely out of
     `_dijkstra`: take the best path; for each node along it, re-run the search
     with that node's outgoing step banned and everything before it pinned, and
     keep whatever comes back. Loopless by construction (the pinned prefix's
-    nodes are banned from the suffix), so no route ever revisits a note — which
+    nodes are banned from the suffix), so no route ever revisits a note, which
     matters here beyond correctness, because a path that walked through the
     same note twice would read as nonsense in the readout.
 
@@ -398,7 +398,7 @@ def degree(index: Connections, node_id: int) -> int:
 # --- the shape of the whole notebook -----------------------------------------
 # The same index, asked a different question. A path answers "how do these two
 # relate"; this answers "what does my notebook look like", which is the
-# question behind almost every request to tidy it up — and the one thing the
+# question behind almost every request to tidy it up, and the one thing the
 # model had no way to see. It could count notes and list categories, both of
 # which describe the *filing*; nothing described the **structure**.
 
@@ -409,7 +409,7 @@ MIN_CLUSTER_NOTES = 3
 
 #: Connected to this many or more, and a note is doing structural work: it is
 #: where several trains of thought meet. Matches the graph view's own `.graph-hub`
-#: threshold, deliberately — two definitions of "hub" that disagree is how the
+#: threshold, deliberately: two definitions of "hub" that disagree is how the
 #: picture and the answer start contradicting each other.
 HUB_DEGREE = 3
 
@@ -443,7 +443,7 @@ class Cluster:
     ids: list[int]
     #: The best-connected member, which is the one worth naming the cluster by.
     core_id: int
-    #: Categories present, commonest first — a cheap description of what the
+    #: Categories present, commonest first, a cheap description of what the
     #: cluster is *about* without asking a model anything.
     categories: list[str]
 
@@ -453,14 +453,14 @@ def clusters(index: Connections, category_of=None) -> list[Cluster]:
 
     Deliberately components rather than a community-detection algorithm
     (Louvain, label propagation and friends). Two reasons, and the second is
-    the one that decided it: a component is **exactly true** — every note in it
-    really is reachable from every other — where a community is a judgement
+    the one that decided it: a component is **exactly true**, every note in it
+    really is reachable from every other, where a community is a judgement
     call with a resolution parameter, and an answer the user cannot verify by
     clicking two notes is one they cannot trust. And a personal notebook's
     structure is islands, not a dense web with soft boundaries; the interesting
     fact is usually *how many* islands there are.
 
-    `category_of` is a callable so this module stays free of the entry stack —
+    `category_of` is a callable so this module stays free of the entry stack, 
     the caller already has a session and a category lookup.
     """
     seen: set[int] = set()
@@ -507,7 +507,7 @@ def hubs(index: Connections, limit: int = 5) -> list[tuple[int, int]]:
 
 
 def orphans(index: Connections) -> list[int]:
-    """Notes connected to nothing at all — no link, no reply, no shared tag.
+    """Notes connected to nothing at all, no link, no reply, no shared tag.
 
     The most actionable thing in this module. An orphan is not a problem in
     itself; a *heap* of them means the notebook is a pile rather than a web,

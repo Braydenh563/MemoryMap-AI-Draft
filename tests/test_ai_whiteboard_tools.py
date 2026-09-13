@@ -1,7 +1,7 @@
 """The agent's whiteboard tools (ROADMAP item 11's AI+whiteboard piece):
 read_whiteboard, search_whiteboard, add_whiteboard_card, add_whiteboard_link.
 
-Nothing under `ai/` mentioned the whiteboard at all before these existed —
+Nothing under `ai/` mentioned the whiteboard at all before these existed, 
 this file is the first coverage for that gap.
 """
 
@@ -44,7 +44,7 @@ def test_read_whiteboard_lists_cards_links_and_text_boxes(session):
 
 
 def test_read_whiteboard_default_board_is_not_confused_with_an_absent_one(session):
-    """`board_id IS NULL` is a board, not "no board" — the same trap this
+    """`board_id IS NULL` is a board, not "no board", the same trap this
     project's own `_board_filter` in routes_whiteboard.py already guards
     against; the AI tool has its own copy of the filter and had to get it
     right independently."""
@@ -75,11 +75,11 @@ def test_search_whiteboard_requires_a_query(session):
 
 def test_read_whiteboard_does_not_expose_a_card_whose_note_turned_private(session):
     """`add_whiteboard_card` refuses a private note going in (the test below)
-    — but a note can be marked private *after* it is already a card, and
+    - but a note can be marked private *after* it is already a card, and
     `WhiteboardNode` carries no privacy flag of its own to catch that later.
     `entry.content` is ciphertext at rest for a private note; `read_whiteboard`
     used to hand that straight back as the card's "preview", which becomes
-    part of the agent's own context — the same leak `_require_note` exists to
+    part of the agent's own context: the same leak `_require_note` exists to
     close on every other read."""
     a = _note(session, "Kickoff plan")
     node = WhiteboardNode(entry_id=a.id, x=0, y=0)
@@ -119,7 +119,7 @@ def test_add_whiteboard_card_refuses_a_private_note(session):
 
 
 def test_add_whiteboard_card_is_idempotent_on_the_same_board(session):
-    """Calling it twice for the same note/board must not create two cards —
+    """Calling it twice for the same note/board must not create two cards, 
     the agent retrying (or a user asking twice) shouldn't duplicate a card
     the way it would duplicate a note."""
     a = _note(session)
@@ -166,7 +166,7 @@ def test_add_whiteboard_link_rejects_a_self_link(session):
 
 def test_add_whiteboard_link_rejects_cards_on_different_boards(session):
     """Without this, a link between cards on two different boards saved as a
-    sketch on the source's board only — the target node is never in the
+    sketch on the source's board only: the target node is never in the
     target board's own fetched state, so the link renders with a dangling
     endpoint on both boards it could conceivably show up on."""
     a, b = _note(session, "A"), _note(session, "B")
@@ -184,7 +184,7 @@ def test_add_whiteboard_link_rejects_cards_on_different_boards(session):
 
 def test_whiteboard_write_tools_are_in_the_write_tools_set(session):
     """The agent's "you claimed you saved it but never called a write tool"
-    safety net keys off this set — missing from it means a real card/link
+    safety net keys off this set, missing from it means a real card/link
     creation would read as a hallucinated claim."""
     assert "add_whiteboard_card" in tools.WRITE_TOOLS
     assert "add_whiteboard_link" in tools.WRITE_TOOLS
@@ -194,7 +194,7 @@ def test_whiteboard_write_tools_are_in_the_write_tools_set(session):
 # --- generate_diagram (BACKLOG.md §29d) -------------------------------------
 #
 # add_whiteboard_card/add_whiteboard_link already let the model build a
-# diagram one call at a time, but x/y are numbers it has to invent itself —
+# diagram one call at a time, but x/y are numbers it has to invent itself, 
 # exactly the bookkeeping a small tool-calling model gets wrong across many
 # chained calls. This tool takes only structure (a title or an existing
 # note, and which other node is its parent) and does every placement
@@ -219,7 +219,7 @@ def test_generate_diagram_creates_notes_cards_and_links_for_a_small_tree(session
     assert session.query(WhiteboardSketch).count() == 3
     titles = {c["ref"]: session.get(Entry, c["note_id"]).content for c in result["cards"]}
     assert titles == {"root": "Project X", "a": "Design", "b": "Build", "c": "Test"}
-    # Positions actually differ — every node landing at (0, 0) would mean
+    # Positions actually differ: every node landing at (0, 0) would mean
     # the layout math silently did nothing.
     positions = {c["ref"]: (c["x"], c["y"]) for c in result["cards"]}
     assert len(set(positions.values())) == 4
@@ -238,7 +238,7 @@ def test_generate_diagram_can_reuse_an_existing_note_as_a_node(session):
     )
     root_card = next(c for c in result["cards"] if c["ref"] == "root")
     assert root_card["note_id"] == existing.id
-    # Only one new note was actually created (the child) — the root reused
+    # Only one new note was actually created (the child): the root reused
     # the existing entry rather than duplicating it.
     assert session.query(Entry).count() == 2
 
@@ -313,7 +313,7 @@ def test_generate_diagram_radial_layout_also_places_every_node(session):
 def test_generate_diagram_is_idempotent_with_add_whiteboard_card_on_a_shared_board(session):
     """A card generate_diagram places for an existing note must be found and
     reused by the same one-card-per-note-per-board rule add_whiteboard_card
-    already enforces — not a second, competing card."""
+    already enforces: not a second, competing card."""
     existing = _note(session, "shared")
     first = tools.TOOLS["add_whiteboard_card"].handler(session, {"note_id": existing.id, "x": 1, "y": 1})
     result = tools.TOOLS["generate_diagram"].handler(

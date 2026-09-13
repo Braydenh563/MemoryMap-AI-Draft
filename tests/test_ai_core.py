@@ -2,7 +2,7 @@
 basic decision paths, librarian's message-building, and search retrieval.
 
 (test_janitor_knn.py and test_keyword_search.py cover the same two modules'
-edge cases and thorough behavior in more depth — this file is the basic
+edge cases and thorough behavior in more depth, this file is the basic
 per-module coverage underneath both.)"""
 
 from __future__ import annotations
@@ -198,16 +198,16 @@ def test_semantic_search_relative_floor_rejects_anisotropic_noise(session):
     """A real bug, reported live: an unrelated note scored 57% cosine
     similarity for an unconnected query. The flat MIN_SIMILARITY floor
     (0.25) assumes "0 is unrelated", which does not hold for the current
-    default embedding model (BGE-family, anisotropic — see
+    default embedding model (BGE-family, anisotropic: see
     search_manager.py's own comment on RELATIVE_Z_MARGIN): unrelated notes
     routinely land at 0.4-0.6, well above that floor.
 
     Builds that shape directly with hand-picked vectors rather than
-    FakeEmbeddingService's clean one-hot topics (which cannot produce it —
+    FakeEmbeddingService's clean one-hot topics (which cannot produce it, 
     orthogonal axes give exactly 0.0 for "unrelated", never anisotropic
     noise). A corpus where every note happens to be similarly-but-not-really
     related to the query (~0.5, simulating the anisotropic baseline) plus
-    one note that is genuinely on-topic (~0.9) — the relative floor should
+    one note that is genuinely on-topic (~0.9): the relative floor should
     keep only the real match, not just whatever clears the absolute 0.25."""
     rng = np.random.default_rng(0)
 
@@ -216,7 +216,7 @@ def test_semantic_search_relative_floor_rejects_anisotropic_noise(session):
 
     query_vector = np.array([1.0, 0.0, 0.0, 0.0], dtype="float32")
     # A direction close enough to the query to land around ~0.5 cosine
-    # similarity — "moderately similar", not "unrelated by chance".
+    # similarity: "moderately similar", not "unrelated by chance".
     baseline_direction = np.array([0.5, 0.5, 0.5, 0.5], dtype="float32")
 
     entries = []
@@ -258,7 +258,7 @@ def test_semantic_search_relative_floor_rejects_anisotropic_noise(session):
 
 def test_semantic_search_returns_its_matches_in_rank_order(ai_client, session):
     """`?semantic=true` rebuilt its result as "every note that matched, in
-    notebook order", throwing away the ranking that is the whole point — so
+    notebook order", throwing away the ranking that is the whole point, so
     the best match landed wherever it happened to sit in the list."""
     for text_ in ("kayak repair", "sourdough starter", "kayak paddle"):
         ai_client.post("/entries", json={"content": text_})
@@ -278,7 +278,7 @@ def test_semantic_search_returns_its_matches_in_rank_order(ai_client, session):
 def test_semantic_search_ignores_the_pagination_limit(ai_client, session):
     """GET /entries now pages the plain list (BACKLOG.md §20). The semantic
     branch decides which hits are in scope from the *complete* id set on
-    purpose — it must never be quietly narrowed by a small `limit` meant for
+    purpose: it must never be quietly narrowed by a small `limit` meant for
     the unrelated plain-list page size, or a real match could vanish just
     because the note happened to sort past the requested page."""
     for text_ in ("kayak repair", "sourdough starter", "kayak paddle"):
@@ -319,7 +319,7 @@ def test_retrieve_falls_back_to_keyword(session):
 
 def test_retrieve_recent_fallback_for_broad_question(session):
     # Broad "overview" questions match nothing by keyword or meaning, so
-    # the notebook must not look empty — recent entries come back instead.
+    # the notebook must not look empty, recent entries come back instead.
     manager.create_entry(session, "a note about cheese")
     manager.create_entry(session, "a note about racing")
     entries, mode = search_manager.retrieve(
@@ -334,7 +334,7 @@ def test_a_pinned_note_outranks_an_identical_unpinned_one(session):
     relevance; it does not know that a note pinned last week matters more
     than a relevant one from 2023." Two notes that tie exactly on both
     semantic and keyword relevance (identical content) would, before this,
-    tie-break on id alone (`_fuse`'s own `-note_id`) — the newer one always
+    tie-break on id alone (`_fuse`'s own `-note_id`), the newer one always
     wins regardless of anything else. Pinning the *older* one has to be
     enough to flip that, or the signal isn't doing anything."""
     embeddings = FakeEmbeddingService()
@@ -369,9 +369,9 @@ def test_retrieve_recent_fallback_empty_notebook(session):
 def test_retrieve_finds_a_subject_match_outside_a_misremembered_range(session):
     """Reported directly: a joke tagged joke/jokes/funny (the word "joke"
     never appears in the text itself), asked about as "two weeks ago" when
-    it was actually written three weeks ago — the hard date filter excluded
+    it was actually written three weeks ago, the hard date filter excluded
     it and the answer came back empty. Dropping the date and keeping the
-    subject (not the reverse — see the comment on the fallback this pins)
+    subject (not the reverse: see the comment on the fallback this pins)
     should surface it, labelled `outside_range` rather than as a real
     in-window hit."""
     from datetime import timedelta
@@ -395,7 +395,7 @@ def test_retrieve_finds_a_subject_match_outside_a_misremembered_range(session):
 
 def test_retrieve_dated_subject_question_still_empty_when_truly_nothing_matches(session):
     """The fallback above must not become the rejected one it sits next to
-    — a date question with a subject that matches *nothing at all*, in or
+    - a date question with a subject that matches *nothing at all*, in or
     out of the window, still says so honestly rather than listing unrelated
     notes."""
     manager.create_entry(session, "a note about gardening")

@@ -2,7 +2,7 @@
 pins, tag manager, capture templates, saved appearance looks.
 
 (Duplicate-detection-on-save and the /related endpoint moved to
-test_duplicates.py/test_related_notes.py — same domain as their other
+test_duplicates.py/test_related_notes.py: same domain as their other
 coverage.)"""
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ def test_add_context_recategorises(ai_client):
     # Context makes it clearly a joke → janitor refiles it.
     updated = ai_client.post(
         f"/entries/{entry['id']}/context",
-        json={"text": "it was a scarecrow joke — outstanding in his field"},
+        json={"text": "it was a scarecrow joke, outstanding in his field"},
     ).json()
     assert "--- added context ---" in updated["content"]
     assert updated["category"] == "Dad Jokes"
@@ -44,7 +44,7 @@ def test_add_context_respects_user_filing(ai_client):
         f"/entries/{entry['id']}/context",
         json={"text": "a funny joke actually"},
     ).json()
-    # The user filed it — the janitor keeps its hands off.
+    # The user filed it, the janitor keeps its hands off.
     assert updated["category"] == "Personal"
     assert updated["user_filed"] is True
 
@@ -139,7 +139,7 @@ def test_uploading_recreates_a_missing_uploads_folder(client):
 
 # --- rename a file in the library ---------------------------------------------------
 #
-# `stored_name` (a uuid) and `mime` never change here — only the display
+# `stored_name` (a uuid) and `mime` never change here: only the display
 # `filename` does, so a rename can never touch the bytes on disk or what the
 # download is served as. That is what these tests are checking: the good name
 # lands, the bad ones are refused with a reason, two files on the same note
@@ -166,7 +166,7 @@ def test_rename_file_happy_path(client):
     names = [a["filename"] for a in renamed.json()["attachments"]]
     assert names == ["renamed.txt"]
 
-    # The bytes on disk didn't move — the same stored file still downloads.
+    # The bytes on disk didn't move: the same stored file still downloads.
     download = client.get(f"/files/{attachment['id']}")
     assert download.status_code == 200
     assert download.content == b"hi"
@@ -289,7 +289,7 @@ def test_tag_rename_merge_delete(client):
 
 
 def test_custom_templates_roundtrip(client):
-    # Not "Journal" — that's one of the four built-in names (BUILTIN_TEMPLATE_NAMES
+    # Not "Journal", that's one of the four built-in names (BUILTIN_TEMPLATE_NAMES
     # in routes_settings.py, kept in sync by hand with BUILTIN_TEMPLATES in
     # app.js) and a custom template can no longer claim it; see
     # test_custom_template_cannot_shadow_a_builtin below.
@@ -304,7 +304,7 @@ def test_custom_templates_roundtrip(client):
 
 def test_custom_template_add_edit_delete(client):
     """The happy path: add one, edit it in place (a rename counts), then
-    delete it — exactly the sequence the Settings pane drives."""
+    delete it: exactly the sequence the Settings pane drives."""
     added = client.put(
         "/preferences",
         json={
@@ -333,7 +333,7 @@ def test_custom_template_add_edit_delete(client):
 
 def test_custom_template_cannot_shadow_a_builtin(client):
     """Deleting a built-in isn't a real operation (it never lived in
-    `custom_templates`) — but saving a custom one *named* like a built-in
+    `custom_templates`), but saving a custom one *named* like a built-in
     would let it silently win wherever the merged list is drawn, so the
     server refuses the name outright."""
     response = client.put(
@@ -345,7 +345,7 @@ def test_custom_template_cannot_shadow_a_builtin(client):
 
 
 def test_custom_template_name_collision_is_rejected_not_deduped(client):
-    """Two customs can't share a name either — rejected, not silently
+    """Two customs can't share a name either, rejected, not silently
     de-duplicated, because de-duping would mean deleting whichever one
     lost, without the user ever having asked for that."""
     response = client.put(
@@ -392,7 +392,7 @@ def test_a_look_can_be_saved_and_read_back(ai_client):
 
 def test_a_theme_cannot_become_an_arbitrary_blob(ai_client):
     """`values` is a free-form map because only the frontend knows what a
-    setting key means — so it is bounded rather than trusted."""
+    setting key means: so it is bounded rather than trusted."""
     huge = {"name": "Too much", "values": {f"k{i}": "v" for i in range(60)}}
     assert ai_client.put("/preferences", json={"custom_themes": [huge]}).status_code == 422
 

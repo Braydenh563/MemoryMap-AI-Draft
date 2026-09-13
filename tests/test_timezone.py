@@ -1,8 +1,8 @@
 """The user's clock: stored in UTC everywhere, but reasoned about (and
-displayed) in whichever zone they set — not the server's.
+displayed) in whichever zone they set, not the server's.
 
-(The reminder-list-specific case of this — a naive DateTime column losing its
-offset on the way back from disk — has its own reported-bug writeup in
+(The reminder-list-specific case of this, a naive DateTime column losing its
+offset on the way back from disk, has its own reported-bug writeup in
 test_reminder_times.py/test_reminders_api.py; this file covers the
 preference itself and the other places the same guarantee has to hold:
 entry timestamps and the agent's prompt.)
@@ -25,7 +25,7 @@ def test_entry_timestamps_are_marked_as_utc_too(client):
 def test_timezone_preference_drives_the_users_clock(client):
     """"In ten minutes" has to mean ten minutes on the USER's clock.
 
-    Storage stays UTC — a notebook must survive its owner changing timezone —
+    Storage stays UTC, a notebook must survive its owner changing timezone , 
     but anything the AI reasons about in time is resolved against the zone the
     browser reported, because the server may be running in UTC while the person
     is in Brisbane.
@@ -46,7 +46,7 @@ def test_an_unknown_timezone_is_refused(client):
 
 
 def test_no_timezone_falls_back_to_the_server_clock(client):
-    """The ordinary case — app and browser on one machine — must need no setup."""
+    """The ordinary case, app and browser on one machine, must need no setup."""
     from memorymap.core import deps
     from memorymap.core.config import user_now
 

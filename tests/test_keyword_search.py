@@ -1,4 +1,4 @@
-"""Keyword search — the whole of search when no AI is running.
+"""Keyword search: the whole of search when no AI is running.
 
 It used to be a single `LIKE %query%`, so the words had to appear as a
 contiguous substring in exactly the order typed. Word order is not something
@@ -97,8 +97,8 @@ def test_the_limit_is_respected(notes):
 def test_a_question_made_of_common_words_is_not_a_keyword_search(notes):
     """"what have I saved so far?" has no keywords in it.
 
-    Matching on its words would return the whole notebook — "%a%" appears in
-    nearly every note — so it must come back empty and let the caller fall
+    Matching on its words would return the whole notebook, "%a%" appears in
+    nearly every note: so it must come back empty and let the caller fall
     through to showing recent notes instead.
     """
     assert search_manager.keyword_search(notes, "what have I saved so far?") == []
@@ -157,3 +157,50 @@ def test_a_word_stem_matches_its_longer_forms(notes):
 def test_a_short_word_is_never_corrected(notes):
     """Three letters are one edit from too many words to guess at."""
     assert search_manager.keyword_search(notes, "zzz") == []
+
+
+def test_inflections_match_by_stem(notes):
+    """"prove" finds "proving": the index stems (porter), so a query in a
+    different inflection than the note is not a miss. With no AI running
+    this is the whole of search."""
+    hits = _contents(search_manager.keyword_search(notes, "prove dough"))
+    assert hits == ["proving dough overnight in the fridge"]
+
+
+def test_an_index_built_without_stemming_is_rebuilt_once(tmp_path):
+    """A notebook from before stemming has an FTS table on the default
+    tokenizer. A tokenizer is fixed at CREATE time, so startup drops and
+    rebuilds that index (never the notes) exactly once."""
+    from sqlalchemy import text
+
+    from memorymap.core.database import DatabaseManager
+
+    db_path = tmp_path / "old.db"
+    db = DatabaseManager(db_path)
+    with db.session() as session:
+        session.add(Entry(content="proving dough overnight", tags="[]", ai_confidence=0))
+        session.commit()
+    # Put the old-shape index back, as an older build would have left it.
+    with db.engine.begin() as connection:
+        for trigger in ("entries_fts_ai", "entries_fts_ad", "entries_fts_au"):
+            connection.exec_driver_sql(f"DROP TRIGGER IF EXISTS {trigger}")
+        connection.exec_driver_sql("DROP TABLE IF EXISTS entries_fts_vocab")
+        connection.exec_driver_sql("DROP TABLE IF EXISTS entries_fts")
+        connection.exec_driver_sql(
+            "CREATE VIRTUAL TABLE entries_fts USING fts5("
+            "content, tags, content='entries', content_rowid='id')"
+        )
+        connection.exec_driver_sql(
+            "INSERT INTO entries_fts(rowid, content, tags) SELECT id, content, tags FROM entries"
+        )
+    reopened = DatabaseManager(db_path)
+    with reopened.engine.begin() as connection:
+        ddl = connection.exec_driver_sql(
+            "SELECT sql FROM sqlite_master WHERE name='entries_fts'"
+        ).scalar()
+        assert "porter" in ddl
+        assert connection.execute(text("SELECT count(*) FROM entries_fts")).scalar() == 1
+    with reopened.session() as session:
+        assert _contents(search_manager.keyword_search(session, "prove")) == [
+            "proving dough overnight"
+        ]

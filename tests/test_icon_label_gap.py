@@ -5,18 +5,18 @@ Two lints, both from the same report: *"the widgets button text and icon arent
 aligned either and dont have a gap between them"*, and the same complaint about
 the popup agent's Stop button.
 
-**The gap.** `.ph-lead` is `margin-inline-end: 0.35em` — the whole of the space
+**The gap.** `.ph-lead` is `margin-inline-end: 0.35em`, the whole of the space
 between an icon and the word after it. `#dash-widgets-open` was
 `<i class="ph ph-squares-four">` with no `ph-lead`, so its glyph sat flush
 against "Widgets": measured at 0px, against 5.5px on every button that had the
 class. Eleven buttons in index.html were missing it.
 
-**The stand-in glyphs.** The Stop button was not an icon at all — it was the
+**The stand-in glyphs.** The Stop button was not an icon at all, it was the
 literal character `■` typed in front of the word, and so were `↩ Undo`,
 `⧉ Copy`, `＋ Tag`, `⭳ Export`, `↗ Open` and a dozen more. A text glyph is
 drawn by whichever font the label uses, at the label's own size and baseline,
 and gets no `ph-lead` gap and none of the vertical centring the icon rules
-apply — which is exactly "text and icon arent aligned". Nineteen were replaced
+apply: which is exactly "text and icon arent aligned". Nineteen were replaced
 with real Phosphor icons.
 
 Single-glyph controls with no words are left alone (the map's `＋`/`－`/`⤢`
@@ -79,7 +79,7 @@ def test_no_unicode_glyph_stands_in_for_an_icon() -> None:
     assert not offenders, (
         "These button labels start with a Unicode glyph used as an icon. A text "
         "glyph is drawn by the label's own font at the label's own baseline, so "
-        "it gets neither the `ph-lead` gap nor the icon centring rules — it "
+        "it gets neither the `ph-lead` gap nor the icon centring rules, it "
         "reads as an icon that is not aligned with its text. Use "
         '`<i class="ph ph-NAME ph-lead" aria-hidden="true"></i>` instead:\n'
         + "\n".join(offenders)

@@ -1,7 +1,7 @@
 """The command palette reads fields the API actually sends.
 
 **Why this file exists.** The palette's reminder filter read `r.content`, and
-a reminder has no `content` — its field is `text`. `undefined.toLowerCase()`
+a reminder has no `content`, its field is `text`. `undefined.toLowerCase()`
 threw, and because the throw happened partway through `paletteMatches`, every
 group was lost with it: notes, documents, reminders and conversations alike.
 So Ctrl+K silently degraded to its static command list for anyone with a
@@ -46,7 +46,7 @@ def test_the_palette_reads_reminder_text_not_content():
     reminder_block = source[source.index("paletteReminders") :]
     assert "r.text" in reminder_block, "the palette must read a reminder's `text`"
     assert "r.content" not in reminder_block, (
-        "`r.content` is the bug this file exists for — a reminder has no `content`"
+        "`r.content` is the bug this file exists for, a reminder has no `content`"
     )
 
 
@@ -66,7 +66,7 @@ def test_the_palette_resolves_every_kind_of_thing_the_app_holds():
     """REDESIGN.md R7.3: "one universal picker... resolving notes, documents,
     files and maps alike".
 
-    It searched four of six — notes, documents, reminders, conversations — so
+    It searched four of six, notes, documents, reminders, conversations, so
     a file or a board could only be reached by navigating to its tab first.
     That is the difference between a jump-to-note box and the way you move
     around the app.
@@ -78,7 +78,7 @@ def test_the_palette_resolves_every_kind_of_thing_the_app_holds():
 
 def test_the_palette_returns_every_group_it_builds():
     """A group that is built and then left out of the return is dead code that
-    looks alive — the "never ran once" shape again. Every `*Matches` list the
+    looks alive: the "never ran once" shape again. Every `*Matches` list the
     function builds has to appear in what it returns."""
     source = _palette_matches_source()
     built = set(re.findall(r"const (\w+Matches) =", source))

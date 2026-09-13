@@ -1,5 +1,7 @@
 # Professional audit — what is missing, what is sub-par, what nobody noticed
 
+> **Superseded** by [MODERNISATION_AUDIT.md](MODERNISATION_AUDIT.md) (measured) and [WORLD_CLASS_PLAN.md](WORLD_CLASS_PLAN.md) §10 (flaw classes with commands). Kept for its section pointers. Do not start work from this file.
+
 **Companion to [`PLAN.md`](PLAN.md)** (the ship-ordered plan) and
 [`../ROADMAP.md`](../ROADMAP.md). Asked for directly: *"the full professional
 audit of what is missing, what needs changing, refining, redesigning and how,

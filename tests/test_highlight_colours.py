@@ -7,7 +7,7 @@ Why it exists: the parser's list said six colours while the toolbars offered
 eight. Picking Red from the highlight menu wrote `==red|text==`, the
 optional-colour group in INLINE_MD declined to match "red|", and the note
 rendered the literal text "red|text" inside a yellow highlight. Nothing
-threw, and each of the three files read as correct on its own — the bug only
+threw, and each of the three files read as correct on its own, the bug only
 exists in the disagreement between them.
 """
 
@@ -24,7 +24,7 @@ CSS = (ROOT / "css" / "05-sidebars-themes.css").read_text(encoding="utf-8")
 
 def _toolbar_colours() -> list[str]:
     match = re.search(r"const MD_COLOURS = \[(.*?)\];", DOCUMENTS_JS, re.S)
-    assert match, "MD_COLOURS not found — has the toolbar moved?"
+    assert match, "MD_COLOURS not found: has the toolbar moved?"
     return re.findall(r'"([a-z]+)"', match.group(1))
 
 
@@ -56,9 +56,9 @@ def test_the_toolbar_offers_exactly_the_colours_the_parser_accepts():
 def test_every_offered_colour_has_a_stylesheet_rule():
     for colour in _toolbar_colours():
         assert f"mark.text-highlight-{colour}" in CSS, (
-            f"no highlight rule for {colour!r} — it would fall back to the "
+            f"no highlight rule for {colour!r}: it would fall back to the "
             "default and be indistinguishable from yellow."
         )
         assert f".text-ink-{colour}" in CSS, (
-            f"no text-colour rule for {colour!r} — the class would be inert."
+            f"no text-colour rule for {colour!r}: the class would be inert."
         )

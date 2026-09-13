@@ -2,7 +2,7 @@
 # (Uses whatever `python`/`pip` are on your PATH — activate your venv first.)
 
 .DEFAULT_GOAL := help
-.PHONY: help install install-locked lock run desktop test lint format check
+.PHONY: help install install-locked lock run desktop test eval lint format check
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -30,6 +30,9 @@ desktop: ## Start the app in its own window (needs pywebview)
 
 test: ## Run the test suite (fully offline)
 	python -m pytest
+
+eval: ## Score the golden agent asks against a real local model (PLAN.md A6)
+	PYTHONPATH=src python scripts/eval.py
 
 lint: ## Lint with ruff (matches CI)
 	ruff check .

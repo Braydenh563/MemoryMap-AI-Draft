@@ -15,7 +15,7 @@ reasonable and set in a different session against a different concern:
 
 Against a 4,096-token window that is 2.8x over, and the tool-result cap alone
 exceeded the whole window by half. Overflow is dropped from the FRONT, which is
-the system prompt — so it does not raise, it just quietly stops the model
+the system prompt: so it does not raise, it just quietly stops the model
 knowing it has tools.
 """
 
@@ -48,7 +48,7 @@ def test_the_worst_case_fits_the_window_it_was_planned_for(window):
 @pytest.mark.parametrize("window", WINDOWS)
 def test_there_is_always_room_left_to_answer_in(window):
     """Ollama's num_ctx covers the prompt AND the response, so a prompt that
-    fills the window leaves the model nowhere to reply — it stops mid-sentence,
+    fills the window leaves the model nowhere to reply, it stops mid-sentence,
     which reads as a crash rather than as a budget."""
     plan = context.plan(window, _system_chars())
     assert plan.output_reserve_chars > 0
@@ -144,7 +144,7 @@ def test_no_history_budget_means_no_history_rather_than_a_crash():
 
 def test_the_window_budgeted_for_is_the_window_asked_for():
     """The subtle half of this. Ollama runs a model at `num_ctx`, its OWN
-    default (commonly 4,096), regardless of what the model was trained for —
+    default (commonly 4,096), regardless of what the model was trained for, 
     so reading 32k from /api/show and budgeting against it, without also
     asking for 32k, reproduces the exact overflow the budget prevents."""
     client = OllamaClient(base_url="http://127.0.0.1:1")
@@ -179,7 +179,7 @@ def test_a_bad_ceiling_preference_cannot_break_a_chat(app_state, bad):
 
 def test_the_reply_length_is_capped():
     """Output tokens are generated one at a time, so they cost far more
-    wall-clock each than prompt tokens — an unbounded reply is the commonest
+    wall-clock each than prompt tokens, an unbounded reply is the commonest
     reason an answer "takes ages"."""
     client = OllamaClient(base_url="http://127.0.0.1:1")
     assert client.runtime_options("m")["num_predict"] > 0
@@ -199,8 +199,8 @@ def test_every_generation_path_sends_the_options():
     source = Path(OllamaClient.__module__.replace(".", "/") + ".py")
     text = (Path("src") / source).read_text(encoding="utf-8")
     # Five, not four: `_tools_path_is_broken` is a real generation request too
-    # — a one-token probe that decides whether a 500 on the tools path means
-    # "this model can't do tool calls" or "the backend is down" — and it has to
+    #, a one-token probe that decides whether a 500 on the tools path means
+    # "this model can't do tool calls" or "the backend is down", and it has to
     # carry the same options as the request it is standing in for, or it would
     # be testing a different thing from the one that failed.
     assert text.count("self.runtime_options(model") == 5
@@ -258,7 +258,7 @@ def _note(session, content="a note"):
 
 def test_a_huge_context_window_does_not_buy_a_huge_search_result(session):
     """The result *ceiling* was scaled with the window, not just the default,
-    so a 128k model could pull 768 previews — ~38k tokens — from one call."""
+    so a 128k model could pull 768 previews, ~38k tokens, from one call."""
     for i in range(40):
         _note(session, f"kayak note number {i}")
 

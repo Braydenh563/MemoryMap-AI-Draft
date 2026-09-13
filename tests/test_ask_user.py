@@ -5,7 +5,7 @@ the one about the beans" when there are three, the agent had exactly one move:
 pick something and act. A confident wrong action on someone's notebook is worse
 than a question, and the user only finds out afterwards.
 
-`ask_user` is the smallest possible fix. It ends the turn — that is the feature,
+`ask_user` is the smallest possible fix. It ends the turn, that is the feature,
 not a limitation: the model asked because it does not know what to do next, so
 carrying on would mean carrying on with the guess the question exists to avoid.
 
@@ -43,7 +43,7 @@ def test_a_well_formed_question_passes_through():
 
 def test_a_comma_separated_string_is_recovered():
     """A small model that sent "yes, no" rather than ["yes", "no"]. Recovering
-    is free and the alternative is a dead card the user can only ignore —
+    is free and the alternative is a dead card the user can only ignore, 
     with the model still waiting for an answer that can never come."""
     _, options = tools.validate_ask({"question": "Replace it?", "options": "yes, no"})
     assert options == ["yes", "no"]
@@ -75,7 +75,7 @@ def test_an_empty_question_is_refused():
 
 
 def test_too_many_options_are_trimmed_rather_than_refused():
-    """Past six, a list of buttons stops being quicker to read than typing —
+    """Past six, a list of buttons stops being quicker to read than typing, 
     but a model that offered nine still asked something sensible, so the call
     is trimmed rather than failed."""
     _, options = tools.validate_ask(
@@ -104,7 +104,7 @@ def test_every_turn_ending_tool_has_a_handover():
     now asks `tools.handoff_event` what to hand over instead of knowing.
 
     So the property worth holding is no longer "there is one", it is "every
-    tool that stops a turn has something to stop it *for*" — a spec marked
+    tool that stops a turn has something to stop it *for*", a spec marked
     `ends_turn` with no entry in HANDOFFS would end turns and yield nothing.
     """
     ending = {name for name, spec in tools.TOOLS.items() if spec.ends_turn}
@@ -135,7 +135,7 @@ def test_the_confirm_endpoint_will_not_run_it(ai_client):
 def test_it_is_offered_whatever_the_question_is_about():
     """A cue-based rule has nothing to match on here: a request can be
     ambiguous whatever its subject. So this is one of the few tools offered
-    unconditionally — the alternative is the model guessing."""
+    unconditionally: the alternative is the model guessing."""
     for question in ("tidy up my notes", "what did I write about beans", "hello"):
         focused = tools.focus_for(question)
         assert focused is None or "ask_user" in focused
@@ -175,7 +175,7 @@ def test_the_agent_stops_and_asks(ai_client, fake_ollama):
 def test_the_turn_really_ends_there(ai_client, fake_ollama):
     """The model asked because it does not know what to do next. Letting it
     carry on would mean carrying on with the guess the question exists to
-    avoid — so no answer follows, and no further round runs."""
+    avoid: so no answer follows, and no further round runs."""
     ai_client.post("/entries", json={"content": "a note about beans"})
     fake_ollama.tool_script = [
         [{"name": "ask_user", "arguments": {"question": "Which?", "options": ["a", "b"]}}],
@@ -195,7 +195,7 @@ def test_the_turn_really_ends_there(ai_client, fake_ollama):
 
 def test_a_malformed_question_is_recoverable_not_fatal(ai_client, fake_ollama):
     """A model that offers one option has made a fixable mistake. Ending the
-    turn on it would strand the user with nothing — so the reason goes back to
+    turn on it would strand the user with nothing, so the reason goes back to
     the model and the run continues."""
     ai_client.post("/entries", json={"content": "a note about beans"})
     fake_ollama.tool_script = [
@@ -214,7 +214,7 @@ def test_the_hallucinated_write_warning_does_not_fire_on_a_question(
     ai_client, fake_ollama
 ):
     """The safety net that catches "I saved that!" when nothing was saved must
-    not treat a turn that ended in a question as a broken promise — nothing was
+    not treat a turn that ended in a question as a broken promise, nothing was
     claimed, and the run is deliberately unfinished."""
     ai_client.post("/entries", json={"content": "a note"})
     fake_ollama.tool_script = [

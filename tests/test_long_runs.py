@@ -8,8 +8,8 @@ bit."*
 Both halves were real, and neither was a model problem.
 
 1. **The round cap counted the wrong thing.** `MAX_ROUNDS` was a flat six for a
-   turn and a flat four for a skill step, so "tag these eight notes" — one
-   search, a read and eight writes — ran out with the work half done. A cap
+   turn and a flat four for a skill step, so "tag these eight notes", one
+   search, a read and eight writes, ran out with the work half done. A cap
    that stops a runaway has to distinguish a model doing eight useful things
    from a model doing the same thing eight times, and counting rounds does not.
    Rounds are now *earned*: a round that made a successful call it had not
@@ -17,7 +17,7 @@ Both halves were real, and neither was a model problem.
    exactly where it always did.
 
 2. **A step that ran out was ticked off as done.** The runner could only see
-   that the step's turn produced text, and "I ran out of rounds" is text — so a
+   that the step's turn produced text, and "I ran out of rounds" is text: so a
    step cut off mid-job was marked ✓ and the next step ran on top of
    half-finished work. The `limit` event is what separates the two, and a
    stalled step now stops the run and says where it stopped, so the user can
@@ -101,7 +101,7 @@ def test_a_failing_call_earns_nothing(ai_client, fake_ollama):
 
 
 def test_the_ceiling_still_holds(ai_client, fake_ollama):
-    """Earned rounds are bounded too — a notebook is not a licence to loop for
+    """Earned rounds are bounded too, a notebook is not a licence to loop for
     as long as there are notes in it."""
     ids = [
         _note(ai_client, f"note {n}")
@@ -122,7 +122,7 @@ def test_the_ceiling_still_holds(ai_client, fake_ollama):
 
 def test_running_out_says_so_as_its_own_event(ai_client, fake_ollama):
     """The `limit` event is what lets the UI offer Continue instead of a
-    paragraph asking the user to type "carry on" — and what lets the skill
+    paragraph asking the user to type "carry on", and what lets the skill
     runner tell a stalled step from a finished one. It carries what was
     written, because "it stopped" and "it stopped having changed six notes"
     need different words."""
@@ -164,7 +164,7 @@ def _stalling_skill() -> None:
 
 def test_a_stalled_step_is_not_ticked_off(ai_client, fake_ollama):
     """The bug that made the other one invisible. The step's turn ends with
-    "I couldn't finish step 1" — which is text, which used to be enough to
+    "I couldn't finish step 1", which is text, which used to be enough to
     count as an answer, which marked it done."""
     _stalling_skill()
     note_id = _note(ai_client, "something to tag")

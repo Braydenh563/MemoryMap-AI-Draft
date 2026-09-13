@@ -46,7 +46,7 @@ def test_a_package_name_in_the_url_is_not_a_package_name(client):
     for hostile in ["requests", "evil-package", "requests;rm -rf /", "../voice"]:
         response = client.post(f"/extras/{hostile}/install")
         # Either the route refuses it or there is no such route. Both are
-        # "nothing was installed", which is the property under test — asserting
+        # "nothing was installed", which is the property under test, asserting
         # on the status code alone would make this pass for the wrong reason.
         if response.status_code == 200:
             assert response.json()["started"] is False, hostile
@@ -54,7 +54,7 @@ def test_a_package_name_in_the_url_is_not_a_package_name(client):
 
 
 def test_installed_extras_are_detected_by_import_not_by_pip(client):
-    """What matters is whether *this* interpreter can use it — a different
+    """What matters is whether *this* interpreter can use it, a different
     question from whether pip put it somewhere. `fastapi` is certainly
     importable here, so it stands in for an installed extra."""
     fake = extras.Extra(
@@ -125,8 +125,8 @@ class _NoThread:
 def test_reinstall_is_allowed_where_install_is_not(client, monkeypatch):
     """The escape hatch for the state detection cannot see: `find_spec` answers
     "is it there", not "is it sound". A wheel built for the wrong platform
-    imports and does not work — the Windows torch DLL in the README is exactly
-    this — and without a reinstall the app's answer would be "already
+    imports and does not work, the Windows torch DLL in the README is exactly
+    this: and without a reinstall the app's answer would be "already
     installed" forever."""
     monkeypatch.setattr(extras, "is_installed", lambda extra: True)
     monkeypatch.setattr(extras.threading, "Thread", _NoThread)
@@ -163,7 +163,7 @@ def test_the_pip_constraint_file_has_no_extras(client, monkeypatch):
     """Reported live: every extras install failed with 'pip exited with code
     1', and the real reason (only visible once logging was fixed) was
     `ERROR: Constraints cannot have extras`. `-c` was pointed straight at
-    requirements.txt, which pins `uvicorn[standard]` and `fsspec[http]` —
+    requirements.txt, which pins `uvicorn[standard]` and `fsspec[http]`, 
     pip's constraints parser rejects the whole file over those, not just
     those two lines, so *no* extra could ever install. `_run_install` must
     hand pip a stripped copy, not the real file."""
@@ -199,8 +199,8 @@ def test_the_pip_constraint_file_has_no_extras(client, monkeypatch):
 # the user's disk and their time on a feature that does not exist and then
 # asks for a restart. Asked for directly: grey it out until it is real.
 #
-# markitdown used to be in this bucket too — flagged as "nothing calls it
-# yet" — until §37G built the Import button behind it (routes_import.py).
+# markitdown used to be in this bucket too, flagged as "nothing calls it
+# yet", until §37G built the Import button behind it (routes_import.py).
 # `documents` moved to the "ready" tests below rather than being deleted from
 # here, so a future session can see it used to be unavailable and why.
 
@@ -220,7 +220,7 @@ def test_a_ready_extra_carries_no_such_reason(client):
 def test_an_unavailable_extra_is_refused_by_the_server_not_only_the_button(client):
     """The greyed-out button is a courtesy; this is the rule. `core/extras.py`
     is the allowlist, so whether something may be installed belongs there and
-    not in app.js — a POST straight at the endpoint has to be refused too."""
+    not in app.js: a POST straight at the endpoint has to be refused too."""
     body = client.post("/extras/localllm/install").json()
     assert body["started"] is False
     assert "isn't ready" in body["message"]
@@ -272,11 +272,11 @@ def test_removing_voice_while_its_model_is_loaded_is_refused(monkeypatch):
 
 
 def test_voice_actions_are_unblocked_once_nothing_is_loaded(client, monkeypatch):
-    """The common case — nobody has recorded anything yet, or the process is
-    fresh — must not be caught by the same guard.
+    """The common case: nobody has recorded anything yet, or the process is
+    fresh: must not be caught by the same guard.
 
     `threading.Thread` is mocked like every other test that reaches `remove()`
-    — without it this spawns a *real* background thread that runs real pip
+    - without it this spawns a *real* background thread that runs real pip
     uninstall against the live environment. Found live: it outlived this test,
     and a later, unrelated test in the OCR extra's own install path picked up
     its real "WARNING: Skipping faster-whisper as it is not installed." output
@@ -295,7 +295,7 @@ def test_the_guard_leaves_other_extras_alone(monkeypatch):
     another extra should ever be refused for this reason.
 
     `threading.Thread` is mocked like every other test that reaches `start()`
-    — without it this spawns a *real* background thread that runs real pip
+    - without it this spawns a *real* background thread that runs real pip
     against the real network (reported: it raced a later, unrelated test in
     `test_tasks.py` for control of the shared `taskhistory` singleton and
     intermittently made that one fail depending on how long pip took)."""
@@ -315,7 +315,7 @@ def test_the_guard_leaves_other_extras_alone(monkeypatch):
 
 class _FailingPip:
     """Stands in for a `pip install` that dies with a realistic transcript:
-    boilerplate, the real error, and pip's own parting nag — in that order,
+    boilerplate, the real error, and pip's own parting nag, in that order,
     which is the order real pip output comes in and exactly the shape that
     breaks a naive "take the last line" reading."""
 
@@ -350,7 +350,7 @@ def test_a_failed_install_names_the_real_error_not_pips_update_nag(client, monke
 
 def test_a_failed_install_reason_reaches_the_history_card(client, monkeypatch):
     """`taskhistory` is what the Background tasks "Recently finished" card
-    reads — it must carry the real reason itself, not a pointer to a log the
+    reads: it must carry the real reason itself, not a pointer to a log the
     card never renders."""
     from memorymap.core import taskhistory
 
@@ -367,8 +367,8 @@ def test_a_failed_install_reason_reaches_the_history_card(client, monkeypatch):
 def test_a_failed_install_reaches_settings_logs(client, monkeypatch):
     """The bug in the earlier fix, precisely: `_run_uninstall` routed pip's
     output through `logging` (which backs Settings → Logs, `core/logbuffer`)
-    and `_run_install` did not, so a failed *install* — the case actually
-    reported — still never showed up there no matter what the panel said."""
+    and `_run_install` did not, so a failed *install*, the case actually
+    reported: still never showed up there no matter what the panel said."""
     from memorymap.core import logbuffer
 
     before = logbuffer.latest_seq()
@@ -383,7 +383,7 @@ def test_a_failed_install_reaches_settings_logs(client, monkeypatch):
 
 
 def test_a_successful_install_also_reaches_settings_logs(client, monkeypatch):
-    """The success path needs the same wiring — `_run_uninstall` logged both
+    """The success path needs the same wiring, `_run_uninstall` logged both
     outcomes, `_run_install` logged neither."""
     from memorymap.core import logbuffer
 
@@ -406,7 +406,7 @@ def test_a_successful_install_also_reaches_settings_logs(client, monkeypatch):
 def test_pip_reason_prefers_a_named_error_over_the_literal_last_line(client):
     """Direct unit coverage for the helper itself: pip prints its update nag
     last on almost every run, so the naive "last line" reading would report
-    that instead of the failure — see `search/searxng_manager._reason`,
+    that instead of the failure, see `search/searxng_manager._reason`,
     which this mirrors and which was fixed for the exact same trap."""
     log = [
         "Collecting sentence-transformers",
@@ -420,7 +420,7 @@ def test_pip_reason_prefers_a_named_error_over_the_literal_last_line(client):
 
 
 def test_pip_reason_falls_back_to_the_prefix_when_nothing_is_useful(client):
-    """All boilerplate, nothing to add — say the prefix alone rather than
+    """All boilerplate, nothing to add, say the prefix alone rather than
     quoting pip's own update nag as if it were the reason."""
     log = [
         "[notice] A new release of pip is available: 24.0 -> 26.2.1",
@@ -436,7 +436,7 @@ def test_pip_reason_falls_back_to_the_prefix_when_nothing_is_useful(client):
 # own .exe, so that command re-launches *the app* with pip's own arguments,
 # which its argparse (only --desktop/--reset-password) rejects. This had
 # been reported twice before as an unexplained "pip exited with code 1/2,
-# no error text visible" — there never was any real pip output, because pip
+# no error text visible", there never was any real pip output, because pip
 # was never actually run. -----------------------------------------------
 
 
@@ -447,7 +447,7 @@ def test_find_system_python_is_sys_executable_when_not_frozen(monkeypatch):
 
 def test_find_system_python_frozen_uses_path_lookup(monkeypatch):
     """The general helper `_pip_base_command` and searxng_install.py's own
-    venv-creation call both build on — same real bug, two call sites, one
+    venv-creation call both build on, same real bug, two call sites, one
     fix. `python3` is only tried when `python` isn't found."""
     monkeypatch.setattr(extras.sys, "frozen", True, raising=False)
     monkeypatch.setattr(
@@ -464,7 +464,7 @@ def test_pip_base_command_uses_sys_executable_when_not_frozen(monkeypatch):
 def test_pip_base_command_finds_a_system_python_when_frozen(monkeypatch):
     """INSTALL.md documents Settings -> Packages as the no-terminal,
     no-Python-required way in from the Windows installer, so a frozen build
-    still has to work when a real Python happens to be on PATH — refusing
+    still has to work when a real Python happens to be on PATH, refusing
     outright would break that promise, not just tighten an error message."""
     monkeypatch.setattr(extras.sys, "frozen", True, raising=False)
     monkeypatch.setattr(
@@ -559,7 +559,7 @@ def test_a_failed_tesseract_binary_attempt_does_not_fail_the_whole_ocr_install(
     client, monkeypatch
 ):
     """The pip packages genuinely installed and are genuinely useful on
-    their own (ocr.py degrades cleanly without the binary) — a failed
+    their own (ocr.py degrades cleanly without the binary), a failed
     *binary* attempt must not turn a real, working pip install into a
     reported failure."""
     monkeypatch.setattr(extras.subprocess, "Popen", _SucceedingPip)
@@ -591,7 +591,7 @@ def test_no_extra_can_uninstall_the_apps_own_base_dependencies(session):
     """A "Base Requirements (requirements.txt)" extra was added with
     `packages=("-r", "requirements.txt")` and `module="fastapi"`. Since
     fastapi is always importable (the app runs on it), `is_installed()` was
-    permanently True, so the UI only ever offered Reinstall/Remove — and
+    permanently True, so the UI only ever offered Reinstall/Remove, and
     Remove ran `pip uninstall -y -r requirements.txt`, stripping fastapi,
     uvicorn, SQLAlchemy and every other base dependency from the interpreter
     the app itself is running in. No extra's package list may equal (or

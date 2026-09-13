@@ -14,6 +14,32 @@ inference) — see CLAUDE.md's standing caveat for what that covered. UI claims
 are checkable (Chromium is in the sandbox); model *behaviour* claims mostly
 are not — reproduce or say plainly you couldn't.
 
+## The plan documents, in one list (read this before opening any of them)
+
+Fifteen files grew under `docs/roadmap/` across six sessions. Only six are
+plans to work from; the rest are reference or superseded, and each of those
+now says so in its first line.
+
+| Work from these (in this order) | What it covers |
+| --- | --- |
+| [roadmap/WORLD_CLASS_PLAN.md](roadmap/WORLD_CLASS_PLAN.md) | The week and the quarter, the consistency contract, the flaw classes. **Start here.** How far each plan is: the table at the top of HANDOVER.md. |
+| [roadmap/SESSION_BRIEFS.md](roadmap/SESSION_BRIEFS.md) | One complete brief per session of the week, with the operating protocol for smaller models. **Take one brief and start.** |
+| [roadmap/INBOX.md](roadmap/INBOX.md) and [roadmap/SESSION_BRIEFS.md](roadmap/SESSION_BRIEFS.md) Brief 18 | The owner's open reports with owners and decisions, and the complete open scope in working order (2026-09-09). |
+| [roadmap/UI_MODERNISATION_PLAN.md](roadmap/UI_MODERNISATION_PLAN.md) | Phases 0 to 10 built; Phase 11 (the phone, done properly) open. |
+| [roadmap/DOCUMENTS_PLAN.md](roadmap/DOCUMENTS_PLAN.md) | Phases 0, 1 and 2 built in full; Phases 3 to 8 open. |
+| [roadmap/GRAPH_PLAN.md](roadmap/GRAPH_PLAN.md) | Phases 1 to 6 built; Phase 4 part two, 6b (minimap) and the local pane open. |
+| [roadmap/MINDMAP_PLAN.md](roadmap/MINDMAP_PLAN.md) | Phases 1 to 5 and the previews built; §12 (Coggle-level controls, INBOX 93) open. |
+| [roadmap/TIMELINE_PLAN.md](roadmap/TIMELINE_PLAN.md) | The line and table views rebuilt on one row model, Phases 1 to 4. |
+| [roadmap/WHITEBOARD_PLAN.md](roadmap/WHITEBOARD_PLAN.md) | The tool rail, the context bar, export dialog, handles, keys; Phases 1 to 4. |
+| [roadmap/CHAT_PLAN.md](roadmap/CHAT_PLAN.md) | Checkable answers, one composer, Ask unified, the popup agent, skills that finish; Phases 1 to 4. |
+| [roadmap/AGENT_SKILLS_REFORM.md](roadmap/AGENT_SKILLS_REFORM.md) | Phase D (recovery) and the verifier in WORLD_CLASS_PLAN §4 B5. |
+
+| Reference (look things up, do not start from) | |
+| --- | --- |
+| [roadmap/HANDOVER.md](roadmap/HANDOVER.md) | The current state only (under 600 lines by lint); the session record is HISTORY.md's "HANDOVER archive". |
+| [roadmap/HISTORY.md](roadmap/HISTORY.md), [roadmap/BACKLOG.md](roadmap/BACKLOG.md), [roadmap/ANALYSIS.md](roadmap/ANALYSIS.md), [roadmap/MODERNISATION_AUDIT.md](roadmap/MODERNISATION_AUDIT.md) | What is built, the standing backlog, the judgements and competitor reads, the measured audit. |
+| [roadmap/PLAN.md](roadmap/PLAN.md), [roadmap/AUDIT.md](roadmap/AUDIT.md), [roadmap/REDESIGN.md](roadmap/REDESIGN.md), [roadmap/FABLE_BRIEF.md](roadmap/FABLE_BRIEF.md) | Superseded; kept only because code comments cite their sections. |
+
 ## ► NEXT SESSION (Fable): read this block, then the five plans, in this order
 
 The user's own framing: *"I want it to proceed with the laid out plans in
@@ -35,6 +61,12 @@ priority of the handover and roadmap."*
    already exists (a board is already an `Entry`); its §4 asks for a scope call
    before anything is built.
 7. [DESIGN.md](DESIGN.md) and [ARCHITECTURE.md](ARCHITECTURE.md) as reference.
+8. [roadmap/MODERNISATION_AUDIT.md](roadmap/MODERNISATION_AUDIT.md) — the full
+   application audit with the numbers behind it (boot 864ms, 14 idle requests a
+   minute, 22 button recipes on Chat, 76% chrome on a phone), a 90-day roadmap
+   and eight execution briefs. It **cross-links these plans rather than
+   repeating them**, and its §D6 lists three things they still describe as
+   missing that are already built.
 
 **The order of work.** Each item is a session or less; each ends green and
 pushed.
@@ -50,6 +82,26 @@ pushed.
 | 7 | **UI Phases 5-6** — per-surface passes, designed states and copy | Long tail |
 | 8 | **Mindmaps** — refine [MINDMAP_PLAN.md](roadmap/MINDMAP_PLAN.md), make the §4 scope call, then Phases 1-3 | The user's stated vision; needs 1-2 done first so it is built on a settled design system |
 | 9 | **PLAN.md's remaining tracks** — backend hardening, performance, packaging | Least user-visible, most durable |
+| 10 | **UI Phase 8 — the dock grammar** ([roadmap/UI_MODERNISATION_PLAN.md](roadmap/UI_MODERNISATION_PLAN.md) Phase 8): every tab's and sub-tab's control dock onto one zone order, one height, one primary action, with a lint | By direct instruction after the plans above: "features there and not intentionally designed" |
+| 11 | **UI Phase 9 — responsive by device** (Phase 9): iPad landscape/portrait and iPhone as stated breakpoints, touch targets, bottom docks above the keyboard | Same instruction |
+| 12 | **[roadmap/DOCUMENTS_PLAN.md](roadmap/DOCUMENTS_PLAN.md)** — the documents editor reimagined: Phase 0 (click an underline, see suggestions) first, then chrome, then the editing surface (§4's decision: CodeMirror 6, vendored), blocks, connections, review, export | The largest single gap left; §4's decision has to be made before code |
+| 13 | **[roadmap/GRAPH_PLAN.md](roadmap/GRAPH_PLAN.md)** — the graph redesigned front and back: a canvas renderer with the simulation in a worker, physical drag, degree sizing, zoom-level labels, colour rules and groups, a full-tab space, lasso → actions, a local-graph pane | By direct instruction; the graph is the surface furthest from the second-brain references the user named |
+
+**Status after the Fable session** (each line is measured and pushed on
+PR #144; the numbers are in the commit messages and in
+[roadmap/HANDOVER.md](roadmap/HANDOVER.md)):
+
+| | Status |
+| --- | --- |
+| 1 UI Phase 0 | **Done.** `tests/test_ui_signatures.py`, `scratchpad/ui-sweeps/*`, the screenshot set. |
+| 2 UI Phases 1-2 | **Done.** Row gaps 5 → 3, buttons on the ramp, one popover shell, one radius. |
+| 3 Skills reform A-B | **Done** (fake transport only — the real-model acceptance in AGENT_SKILLS_REFORM.md is still open). |
+| 4 UI Phases 3-4 | **Done.** Glass 28 → 4 layers on the Dashboard, one focus ring, no hover lifts. |
+| 5 Skills reform C | **Done.** The run as a list; tool chips verified on all three chat paths against the stand-in server. |
+| 6 UI Phase 7 | 7.2 (gutters) done; lightbox/captioning/region OCR/Files row in review from a subagent branch. |
+| 7 UI Phases 5-6 | Settings, reminders, whiteboard bar, editor chrome, sub-tabs, phone width (Settings 10/10 sections fit, Notes toolbar 172 → 80px, first note 445 → 345), every empty state has an action. Open: a phone pass on Library/Graph/Whiteboard/Documents, a dark-theme pixel pass, the copy pass. |
+| 8 Mindmaps | Scope call made (option B); Phases 1 and 2 done and swept (35/35); Phase 3 in flight; Phases 4-5 open — see [roadmap/BACKLOG.md §116](roadmap/BACKLOG.md). |
+| 9 PLAN.md tracks | Sprint 1 done (P1, P2 was already there, P5, B3, P6); B9 done; D1/D5 done; W5/W6-part were already built; D2/D3 and A1/A2/A6 in flight. Open: the rest of §1-§4 — listed in [roadmap/BACKLOG.md §116](roadmap/BACKLOG.md). |
 
 **Standing rules for all of it** (from CLAUDE.md, learned expensively):
 measure → change → re-measure, with the number in the commit message; check the
@@ -903,7 +955,7 @@ callouts" entry before rebuilding anything that sounds finished.**
 
 ~~4. **A visual indicator on a chat message's own metadata line for which
    mode answered it.**~~ **Built.** `messageMetaLine()` (app.js) takes a new
-   `usedTools` param and renders an "Ask"/"Request" chip — same
+   `usedTools` param and renders an "Ask"/"Agent" chip — same
    icon/label pair as `#chat-mode-seg` — positioned beside the model name.
    Read off the turn's own `effectiveUseTools` at send time, not the live
    toggle, so a conversation that spans mode switches shows what each past
@@ -914,8 +966,9 @@ callouts" entry before rebuilding anything that sounds finished.**
    (test_conversations_api.py). **Live-verified in Chromium**: two turns
    posted straight through `/conversations` with `used_tools: false`/`true`
    and real `stats`, reopened via `openConversation` — the metadata line
-   reads `850 ms · 5% · Ask · llama3.2` and `4.2s · 11% · Request ·
-   llama3.2 · 1` respectively, chip text and position exactly as designed,
+   read `850 ms · 5% · Ask · llama3.2` and `4.2s · 11% · Request ·
+   llama3.2 · 1` respectively (the second chip says "Agent" since the
+   INBOX 39 rename), chip text and position exactly as designed,
    zero console errors. No live Ollama was needed since the chip renders
    from saved-turn data, not a live stream.
 

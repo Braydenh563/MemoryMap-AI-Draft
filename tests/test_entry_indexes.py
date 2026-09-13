@@ -3,14 +3,14 @@ prove they are actually being used.
 
 Why a query-plan test rather than "the index exists": an index that exists but
 is never chosen is indistinguishable from no index at all, and the way to lose
-one is subtle — reorder a column in `list_entries`' `ORDER BY`, or change a
+one is subtle: reorder a column in `list_entries`' `ORDER BY`, or change a
 direction, and SQLite silently goes back to sorting the whole table. Asserting
 on `EXPLAIN QUERY PLAN` fails *at the point the query drifts*, which asserting
 on `sqlite_master` would not.
 
 Measured on a 20,000-note database when these were added: the live-notes query
 went from "USE TEMP B-TREE FOR ORDER BY" at ~46 ms/call to an index search at
-~15 ms/call, and a single-note save went from 0.470 to 0.491 ms — a read win of
+~15 ms/call, and a single-note save went from 0.470 to 0.491 ms, a read win of
 two thirds for a write cost inside the noise.
 """
 
@@ -51,7 +51,7 @@ def _plan(db: DatabaseManager, sql: str) -> list[str]:
 @pytest.fixture
 def db(tmp_path) -> DatabaseManager:
     """A real database with enough rows that SQLite prefers an index to a
-    scan. A handful of rows is not enough — the planner will correctly decide
+    scan. A handful of rows is not enough, the planner will correctly decide
     a table that fits in one page is cheaper to scan, and the test would pass
     or fail on row count rather than on the index."""
     database = DatabaseManager(tmp_path / "index-test.db")
@@ -90,7 +90,7 @@ def test_each_list_query_is_served_by_its_index(db, sql, index):
 @pytest.mark.parametrize("sql", [LIVE, BIN, ARCHIVE, LIBRARY])
 def test_no_list_query_sorts_the_whole_table(db, sql):
     """The expensive half. A query can use an index for its WHERE clause and
-    still sort every matching row afterwards — that is exactly what these
+    still sort every matching row afterwards, that is exactly what these
     looked like before the indexes were added."""
     plan = " ".join(_plan(db, sql))
     assert "TEMP B-TREE" not in plan, plan
@@ -100,7 +100,7 @@ def test_indexes_are_created_on_a_database_that_already_exists(tmp_path):
     """The trap this guards. `Base.metadata.create_all()` creates missing
     *tables* only, so an index declared on the model would appear on a fresh
     profile and never on anybody's real notebook. `_ensure_indexes` runs on
-    every startup for that reason — this pins it by building a database with
+    every startup for that reason, this pins it by building a database with
     no indexes, then reopening it normally."""
     path = tmp_path / "existing.db"
     # Build the file with index creation disabled, the way a database written
@@ -125,7 +125,7 @@ def test_indexes_are_created_on_a_database_that_already_exists(tmp_path):
 
 def test_entry_id_scope_still_honours_the_active_space(tmp_path):
     """`entry_id_scope` selects a column rather than an entity, and the
-    workspace filter is a `with_loader_criteria` on the mapped class — so
+    workspace filter is a `with_loader_criteria` on the mapped class, so
     "does it still apply?" is a real question, not a rhetorical one. It does,
     and this pins it: a column-only select that quietly stopped being
     space-scoped would leak one space's notes into another's search scope with

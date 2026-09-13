@@ -15,7 +15,7 @@ from memorymap.core.database import Attachment, Conversation, Document, Entry
 # `client` and `session` come from tests/conftest.py: one throwaway data
 # directory per test and singletons rebuilt between them. Declaring a second
 # `client` here silently shared one database across the file, and the two
-# privacy tests below passed alone and failed in a run — which is the worst way
+# privacy tests below passed alone and failed in a run, which is the worst way
 # for a privacy test to behave.
 
 
@@ -49,9 +49,9 @@ def test_every_kind_appears_in_one_list(client, session):
     session.add(
         Attachment(
             entry_id=entry.id,
-            filename="loaf.png",
-            stored_name="abc123.png",
-            mime="image/png",
+            filename="loaf.pdf",
+            stored_name="abc123.pdf",
+            mime="application/pdf",
             size=2048,
         )
     )
@@ -63,7 +63,7 @@ def test_every_kind_appears_in_one_list(client, session):
     body = client.get("/library").json()
     # `note` and `activity` come along without being seeded: the live note the
     # attachment hangs on is one, and every insert above wrote an audit row.
-    # That is the point — the Library is the app's management screen now, so a
+    # That is the point, the Library is the app's management screen now, so a
     # kind missing from here is a thing with nowhere to be managed.
     assert {"document", "chat", "file", "archived", "note"} <= _kinds(body)
     for kind in ("document", "chat", "file", "archived"):
@@ -119,7 +119,7 @@ def test_the_activity_log_reads_in_words_not_in_verbs(client, session):
 
 def test_a_chat_is_previewed_by_its_first_question(client, session):
     """You remember what you asked far more often than what the chat ended up
-    being called — the same reasoning the conversation sidebar already used,
+    being called: the same reasoning the conversation sidebar already used,
     and it has to survive the move here or the move is a downgrade."""
     session.add(
         Conversation(
@@ -140,7 +140,9 @@ def test_a_chat_is_previewed_by_its_first_question(client, session):
 
 
 def test_an_attachment_carries_the_note_it_hangs_on(client, session):
-    """A filename with no context is a filename. The reason you kept it is the
+    """A filename with no context is a filename. (A PDF, not an image: image
+    attachments are never "file" items, they belong to the Images sub-tab.)
+    The reason you kept it is the
     note, so the card shows the note and the click can go there."""
     entry = Entry(content="the loaf that finally worked")
     session.add(entry)
@@ -148,9 +150,9 @@ def test_an_attachment_carries_the_note_it_hangs_on(client, session):
     session.add(
         Attachment(
             entry_id=entry.id,
-            filename="loaf.png",
-            stored_name="x.png",
-            mime="image/png",
+            filename="loaf.pdf",
+            stored_name="x.pdf",
+            mime="application/pdf",
             size=4096,
         )
     )
@@ -159,13 +161,13 @@ def test_an_attachment_carries_the_note_it_hangs_on(client, session):
     item = _of_kind(client.get("/library").json(), "file")[0]
     assert item["entry_id"] == entry.id
     assert item["preview"] == "the loaf that finally worked"
-    assert item["detail"] == "4 KB · PNG"
+    assert item["detail"] == "4 KB · PDF"
 
 
 def test_a_private_note_keeps_its_attachments_out_of_the_library(client, session):
     """The Library is a browsing surface over everything you made, which makes
     it exactly the place a private note's contents would otherwise turn up in
-    plain sight — as a filename and a preview of the note's own text."""
+    plain sight: as a filename and a preview of the note's own text."""
     entry = Entry(content="the private one")
     entry.is_private = True
     session.add(entry)
@@ -213,7 +215,7 @@ def test_a_malformed_conversation_costs_its_preview_not_the_library(client, sess
 
 def test_a_shelved_note_appears_once_not_twice(client, session):
     """A real archive (BACKLOG §30b), distinct from `_archive()`'s bin
-    despite the similar-sounding name — see routes_library.py's own
+    despite the similar-sounding name, see routes_library.py's own
     comment on why the two are named differently at the code level.
     A shelved note must appear under "shelved" and *not* also under
     "note", or it would be double-counted and double-managed."""
@@ -234,7 +236,7 @@ def test_a_shelved_note_appears_once_not_twice(client, session):
 
 def test_a_draft_note_does_not_appear_in_the_library(client, session):
     """Reported directly ("draft notes appear as regular notes in the main
-    library section"). A draft is unfinished by definition — the Notes tab
+    library section"). A draft is unfinished by definition, the Notes tab
     already keeps it out of "All notes" and every category filter; the
     Library's mixed "note" list didn't."""
     kept = Entry(content="finished thought")
@@ -250,9 +252,9 @@ def test_a_draft_note_does_not_appear_in_the_library(client, session):
 
 def test_a_sketch_note_carries_a_thumbnail(client, session):
     """A sketch (saveSketch() in app.js) is a note whose real content is a
-    PNG Attachment, not text — the note card had nothing to show but the
+    PNG Attachment, not text, the note card had nothing to show but the
     caption, which is what made a sketch unrecognisable in the Library."""
-    sketch = Entry(content="Sketch — a doodle", tags="[]")
+    sketch = Entry(content="Sketch: a doodle", tags="[]")
     plain = Entry(content="an ordinary note with no attachment", tags="[]")
     session.add_all([sketch, plain])
     session.flush()
@@ -276,9 +278,9 @@ def test_a_sketch_note_carries_a_thumbnail(client, session):
 def test_a_pasted_image_note_carries_a_thumbnail_too(client, session):
     """The other half of `test_a_sketch_note_carries_a_thumbnail`: a pasted
     or dropped image lives as inline markdown in the note's own content
-    (`![alt](url)`), never as an Attachment — only a sketch's drawing is
+    (`![alt](url)`), never as an Attachment, only a sketch's drawing is
     stored that way. Before this, a sketch card showed its drawing and a
-    pasted-image note's card showed nothing at all — the exact
+    pasted-image note's card showed nothing at all, the exact
     inconsistency reported ("make sketches render the same as images").
     Its title and preview must also read as plain words, not literal
     markdown syntax.
@@ -301,14 +303,14 @@ def test_a_pasted_image_note_carries_a_thumbnail_too(client, session):
     assert "![" not in by_entry[pasted.id]["preview"]
 
     # The note editor itself renders a plain https:// image inline
-    # (isRenderableUrl in app.js) — the Library shouldn't be pickier than
+    # (isRenderableUrl in app.js): the Library shouldn't be pickier than
     # the surface that actually wrote the note.
     assert by_entry[external.id]["thumb_url"] == "https://example.com/diagram.png"
 
 
 def test_a_sketchs_own_drawing_wins_over_its_caption_markdown(client, session):
     """A sketch whose caption happens to *mention* `![...]()` (unlikely, but
-    the caption is free text) must still show its own drawing — the
+    the caption is free text) must still show its own drawing, the
     Attachment thumbnail always wins over the inline-content fallback."""
     sketch = Entry(content="See ![this](/media/other.png) for reference", tags="[]")
     session.add(sketch)
@@ -333,9 +335,9 @@ def test_a_sketchs_own_drawing_wins_over_its_caption_markdown(client, session):
 def test_a_private_note_never_leaks_a_thumbnail(client, session):
     """Hiding a private note's text but showing a thumbnail of what it's a
     photo of would be the same encryption bypass showing the preview text
-    already isn't allowed to be. Covers both thumbnail sources — an
+    already isn't allowed to be. Covers both thumbnail sources, an
     Attachment (a private sketch) and inline content (a private pasted
-    image) — since only checking one would leave the other leaking."""
+    image): since only checking one would leave the other leaking."""
     entry = Entry(
         content="secret photo ![leak](/media/should-never-show.png)",
         tags="[]",
@@ -362,11 +364,11 @@ def test_a_private_note_never_leaks_a_thumbnail(client, session):
 
 def test_tags_are_capped_like_every_other_kind_here(client, session, monkeypatch):
     """`_tags()` was the one kind section in this file with no `PER_KIND_LIMIT`
-    slice — `manager.all_tags` was made cheap to *compute* (a fingerprint
+    slice: `manager.all_tags` was made cheap to *compute* (a fingerprint
     cache, §86) but nothing capped how many of the result this endpoint
     actually sent to the browser. Lowers the module's own limit to 3 rather
     than seeding 200+ notes, which is both slow and not what this test is
-    about — the slicing logic, not the real-world threshold.
+    about: the slicing logic, not the real-world threshold.
     """
     from memorymap.api import routes_library
 
@@ -381,12 +383,12 @@ def test_tags_are_capped_like_every_other_kind_here(client, session, monkeypatch
 
 
 def test_tags_keep_the_most_used_ones_when_capped(client, session, monkeypatch):
-    """The cap has to keep the *right* three, not an arbitrary three —
+    """The cap has to keep the *right* three, not an arbitrary three, 
     `all_tags()` is already most-used-first, so the slice should be too."""
     from memorymap.api import routes_library
 
     monkeypatch.setattr(routes_library, "PER_KIND_LIMIT", 2)
-    # "popular" on 3 notes, "rare-a"/"rare-b" on 1 each — popular must survive
+    # "popular" on 3 notes, "rare-a"/"rare-b" on 1 each: popular must survive
     # the cap, the two rare ones are the ones that should be dropped.
     for i in range(3):
         session.add(Entry(content=f"popular note {i}", tags=json.dumps(["popular"])))
@@ -401,7 +403,7 @@ def test_tags_keep_the_most_used_ones_when_capped(client, session, monkeypatch):
 
 
 def test_the_library_is_behind_the_unlock_gate(client):
-    """It lists documents, chats, files and binned notes — every kind of thing
+    """It lists documents, chats, files and binned notes, every kind of thing
     the lock screen exists to keep behind it.
 
     Asserted by locking the app and knocking, rather than by reading app.py:

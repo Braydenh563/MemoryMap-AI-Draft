@@ -2,22 +2,22 @@
 
 The ask was "support LM Studio". What got built is the OpenAI
 `/v1/chat/completions` dialect, which LM Studio, llama.cpp, Jan, vLLM and
-Ollama's own `/v1` surface all speak — so these tests are about the *dialect*,
+Ollama's own `/v1` surface all speak: so these tests are about the *dialect*,
 not about any one product.
 
 Three things here are not ordinary coverage:
 
 - **The trap §6 named.** `test_context_budget.py` asserts all four Ollama
   generation paths send an options block, because a payload that omits one is
-  a model silently running on the backend's defaults — the bug §11a was spent
+  a model silently running on the backend's defaults: the bug §11a was spent
   fixing. A second provider needs the equivalent assertion or that bug walks
   back in through a different door. It is at the bottom of this file.
 - **Streamed tool calls arrive in fragments keyed by index.** Two concurrent
   calls interleave on the wire, and concatenating in arrival order produces one
   unparseable blob. Small models ask for two things at once constantly.
 - **`loaded_context_length` beats `max_context_length`.** A 128k model loaded
-  at 4k will drop the front of the prompt — the system prompt, the part telling
-  it that it has tools — if the app budgets against what it could have held.
+  at 4k will drop the front of the prompt, the system prompt, the part telling
+  it that it has tools, if the app budgets against what it could have held.
 """
 
 from __future__ import annotations
@@ -53,7 +53,7 @@ from memorymap.ai.provider import (
 
 def test_the_longest_matching_key_wins():
     """`llama3` and `llama3.1` both match `llama3.1:8b` and differ by 16x.
-    First-match order would let dictionary insertion decide which one — a 131k
+    First-match order would let dictionary insertion decide which one, a 131k
     model budgeted at 8k, or worse, an 8k model budgeted at 131k."""
     assert known_context("llama3.1:8b-instruct-q4_0") == 131072
     assert known_context("llama3:8b") == 8192
@@ -74,17 +74,17 @@ def test_an_unknown_model_says_so_rather_than_guessing():
 
 def test_a_differently_punctuated_community_import_still_matches_its_family():
     """Reported directly: a chat model failing when it's a community/fine-tuned
-    import — a hyphenated 'granite-4.1-3b-uncensored' rather than the Ollama
+    import: a hyphenated 'granite-4.1-3b-uncensored' rather than the Ollama
     library's own 'granite4' naming, the exact shape an `ollama create`d GGUF
     or a Hugging Face pull tends to take. A plain substring match never finds
     `granite4` inside that name at all (there's a hyphen in the way), silently
     falling through to the flat 8k default on a model that actually has a
-    131k window — this is the family match, unaffected by how its uploader
+    131k window: this is the family match, unaffected by how its uploader
     happened to punctuate the name."""
     assert known_context("hf.co/someone/granite-4.1-3b-uncensored-GGUF:latest") == 131072
     assert known_context("Granite 4.1 Uncensored") == 131072
     # Unrelated names must not start matching just because punctuation is
-    # ignored — this is squashing separators, not fuzzy matching.
+    # ignored: this is squashing separators, not fuzzy matching.
     assert known_context("some-model-nobody-has-heard-of") is None
 
 
@@ -131,7 +131,7 @@ def test_a_list_of_only_embedding_models_still_returns_something():
         ("http://localhost:11434/api", "ollama"),
         ("http://localhost:1234/v1", "openai"),
         ("http://localhost:8080/v1", "openai"),
-        # Ollama's own OpenAI-compatible surface — the `/v1` wins, because
+        # Ollama's own OpenAI-compatible surface, the `/v1` wins, because
         # asking for it is a deliberate choice.
         ("http://localhost:11434/v1", "openai"),
     ],
@@ -145,8 +145,8 @@ def test_the_dialect_is_guessed_from_the_url(url, expected):
 
 def test_the_window_the_server_loaded_beats_the_window_it_could_hold():
     """The whole point on LM Studio. A model *capable* of 128k that was loaded
-    at 4k drops the front of the prompt — the system prompt, telling it that it
-    has tools — if the app budgets against the bigger number."""
+    at 4k drops the front of the prompt, the system prompt, telling it that it
+    has tools: if the app budgets against the bigger number."""
     c = OpenAICompatClient(base_url="http://localhost:1234/v1")
     c._catalog = [{"id": "m", "max_context_length": 131072, "loaded_context_length": 4096}]
     c._props = {}
@@ -203,7 +203,7 @@ def test_a_server_with_no_props_is_not_mistaken_for_llama_cpp(monkeypatch):
 
 def test_a_huge_window_is_still_capped(openai_client):
     """The ceiling is about the KV cache, which is a property of the machine
-    rather than of the dialect — so it applies to both providers."""
+    rather than of the dialect, so it applies to both providers."""
     openai_client._context_lengths = {"m": 131072}
     assert openai_client.usable_context("m") == OpenAICompatClient.MAX_REQUESTED_CONTEXT
 
@@ -358,7 +358,7 @@ def test_a_streamed_answer_arrives_in_pieces(openai_client, capture_post):
 
 
 def test_think_tags_still_split_on_the_new_transport(openai_client, capture_post):
-    """The splitter sits above the wire format and needed no change — the
+    """The splitter sits above the wire format and needed no change, the
     split is kept at "parse one chunk" precisely so it wouldn't."""
     capture_post.queue.append(
         FakeResponse(
@@ -375,7 +375,7 @@ def test_think_tags_still_split_on_the_new_transport(openai_client, capture_post
 
 def test_reasoning_content_is_thinking_too(openai_client, capture_post):
     """DeepSeek-R1 and several servers send thinking as its own field rather
-    than as inline tags — the same distinction Ollama's `thinking` draws."""
+    than as inline tags, the same distinction Ollama's `thinking` draws."""
     capture_post.queue.append(
         FakeResponse(
             lines=sse(
@@ -390,7 +390,7 @@ def test_reasoning_content_is_thinking_too(openai_client, capture_post):
 
 def test_streamed_tool_call_fragments_are_reassembled_by_index(openai_client, capture_post):
     """The piece with no Ollama equivalent. Arguments arrive as a partial JSON
-    string spread over many chunks, and two concurrent calls interleave — the
+    string spread over many chunks, and two concurrent calls interleave, the
     index is the only thing tying a fragment to the call it belongs to."""
     capture_post.queue.append(
         FakeResponse(
@@ -446,7 +446,7 @@ def test_a_keepalive_line_is_not_fatal(openai_client, capture_post):
 
 def test_a_model_without_tool_support_is_a_gap_not_an_outage(openai_client, capture_post):
     """Plain Q&A still works, so the agent falls back rather than failing the
-    chat — the same distinction the Ollama path draws."""
+    chat: the same distinction the Ollama path draws."""
     capture_post.queue.append(
         FakeResponse(status=400, text="This model does not support tools")
     )
@@ -531,7 +531,7 @@ def test_every_generation_path_sends_the_output_cap(openai_client, capture_post)
     for the second provider.
 
     §6 called this out by name: a new provider needs an assertion of its own or
-    it runs on the backend's defaults — which is the bug §11a was spent fixing,
+    it runs on the backend's defaults: which is the bug §11a was spent fixing,
     arriving again through a different door. Asserted against the payloads that
     actually went out rather than against the source text, because the point is
     what the server receives.
@@ -557,7 +557,7 @@ def test_every_generation_path_sends_the_output_cap(openai_client, capture_post)
 
 def test_there_is_no_num_ctx_to_send(openai_client):
     """The window is fixed when the server loads the model, so unlike Ollama
-    there is nothing to ask for — only something to discover and ration
+    there is nothing to ask for, only something to discover and ration
     against. Sending Ollama's spelling here would be silently ignored, which
     reads as working."""
     options = openai_client.runtime_options("m")
@@ -568,7 +568,7 @@ def test_there_is_no_num_ctx_to_send(openai_client):
 
 def test_the_neutral_budget_is_the_same_question_for_both_providers():
     """§6: either each provider translates a neutral
-    `{context_tokens, max_output_tokens}`, or it owns the whole payload — and
+    `{context_tokens, max_output_tokens}`, or it owns the whole payload, and
     the agent should not learn four dialects."""
     ollama = OllamaClient(base_url="http://127.0.0.1:1")
     openai = OpenAICompatClient(base_url="http://127.0.0.1:1/v1")
@@ -596,7 +596,7 @@ def test_the_shared_helpers_are_still_importable_from_the_old_place():
 
 
 def test_the_moved_helpers_were_moved_and_not_copied():
-    """A copy is the failure mode this refactor exists to avoid — two gates
+    """A copy is the failure mode this refactor exists to avoid, two gates
     that drift apart, and a tool-call bug fixed in one dialect and not the
     other."""
     source = Path("src/memorymap/ai/ollama_client.py").read_text(encoding="utf-8")
@@ -610,7 +610,7 @@ def test_the_moved_helpers_were_moved_and_not_copied():
 
 def _queued_post(monkeypatch, target, responses):
     """Monkeypatch `target.requests.post` to hand back `responses` in order,
-    one per call — the shape both retry tests below need: a first call that
+    one per call: the shape both retry tests below need: a first call that
     fails, a second that doesn't."""
     calls = {"n": 0}
     queue = list(responses)
@@ -624,7 +624,7 @@ def _queued_post(monkeypatch, target, responses):
 
 
 def _skip_show_probe(client, model="m"):
-    """`chat`'s options block calls `context_length`, which calls `show` —
+    """`chat`'s options block calls `context_length`, which calls `show`, 
     a separate `/api/show` POST, cached per model. Pre-filling the cache
     keeps these retry tests' fake_post queues counting only the `/api/chat`
     calls they actually mean to test."""
@@ -649,7 +649,7 @@ def test_ollama_chat_retries_once_on_a_transient_500(monkeypatch):
 
 
 def test_ollama_chat_does_not_retry_a_non_transient_4xx(monkeypatch):
-    """A 400 (bad request, model not found) means retrying changes nothing —
+    """A 400 (bad request, model not found) means retrying changes nothing, 
     only a 5xx from the backend itself is worth a silent resend."""
     calls = _queued_post(
         monkeypatch,
@@ -664,7 +664,7 @@ def test_ollama_chat_does_not_retry_a_non_transient_4xx(monkeypatch):
 
 
 def test_ollama_chat_gives_up_after_a_second_500(monkeypatch):
-    """One retry, not an infinite loop — a backend still down on the resend
+    """One retry, not an infinite loop, a backend still down on the resend
     should fail exactly like it always has."""
     calls = _queued_post(
         monkeypatch,
@@ -717,7 +717,7 @@ def test_openai_chat_retries_once_on_a_transient_500(capture_post, openai_client
 # Reported live: a skill run died with `500 Server Error … /api/chat` on a 3B
 # abliterated GGUF, twice in a row, while ordinary chat with the same model
 # worked. Ollama answers 400 "does not support tools" for a model that declares
-# none — but a model whose *chat template* breaks on the tools path answers
+# none: but a model whose *chat template* breaks on the tools path answers
 # 500, and for the user those are the same situation. Community finetunes and
 # re-quants hit this often, because the template is what gets rewritten.
 
@@ -749,7 +749,7 @@ def test_a_model_whose_tools_path_500s_falls_back_instead_of_failing(ollama, mon
 
 
 def test_a_real_outage_is_still_reported_as_one(ollama, monkeypatch):
-    """A genuine 500 — the backend is down, a model is still swapping in — must
+    """A genuine 500, the backend is down, a model is still swapping in, must
     not be recorded as "this model can't use tools". Permanently disabling a
     working model because the server hiccuped is worse than the error."""
     monkeypatch.setattr(ollama, "_tools_path_is_broken", lambda *a, **k: False)
@@ -842,7 +842,7 @@ def test_an_empty_500_body_still_says_something_useful():
     asked, that a local server answered 5xx, and that 500s on `/api/chat`
     come overwhelmingly from a model that would not load or ran out of
     memory. Naming those, and pointing at Ollama's own log for the real
-    text, is not a manufactured diagnosis — it is what is left to say.
+    text, is not a manufactured diagnosis, it is what is left to say.
 
     The raw error still has to be in there. Replacing the server's own words
     with a guess is the thing this function must never do.
@@ -873,7 +873,7 @@ def test_http_error_reads_a_non_json_body():
 #
 # Reported with a screenshot of the Ctrl+Shift+A popup agent, and the user's
 # own words: "also no note was made". The model had written its call as plain
-# text — which `extract_text_tool_calls` already recovers — but named it
+# text, which `extract_text_tool_calls` already recovers, but named it
 # `make_note`, and this app's tool is `create_note`. The salvage dropped it on
 # the one check it could not pass, and the raw JSON was printed to the user as
 # if it were an answer.
@@ -936,7 +936,7 @@ def test_an_invented_capability_is_still_refused():
         '{"name": "send_email", "arguments": {"to": "x"}}', _NAMES
     )
     assert calls == []
-    # Not silently swallowed either — it stays in the text.
+    # Not silently swallowed either, it stays in the text.
     assert "send_email" in cleaned
 
 

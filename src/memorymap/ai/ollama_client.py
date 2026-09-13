@@ -1,14 +1,14 @@
 """Ollama's native `/api` dialect (plan §6.5, generalised in §6).
 
 One of two backends MemoryMap speaks. The parts of this file that were never
-about Ollama — the think-tag splitter, the tool-text gate and recovery, the
-error classes, the context ceiling — now live in `ai/provider.py` and are
+about Ollama: the think-tag splitter, the tool-text gate and recovery, the
+error classes, the context ceiling, now live in `ai/provider.py` and are
 shared with `ai/openai_client.py`; they are re-exported below so the imports
 that already point here keep working.
 
 What stays is genuinely Ollama's own: `/api/chat` with a JSON-lines stream, an
 `options` block carrying `num_ctx` and `num_predict`, `/api/show` for the
-context window, and `/api/pull` — the one thing no OpenAI-compatible server
+context window, and `/api/pull`, the one thing no OpenAI-compatible server
 can do, because those are handed a model that is already on disk.
 """
 
@@ -35,7 +35,7 @@ from memorymap.ai.provider import (
     split_thinking,
 )
 
-# `OllamaError` is not a subclass of the neutral error — it *is* the neutral
+# `OllamaError` is not a subclass of the neutral error, it *is* the neutral
 # error. Every `except OllamaError` in the routes was written to mean "the AI
 # backend failed", and aliasing keeps all of them catching a failing LM Studio
 # too. A new parent class would have looked tidier and quietly stopped those
@@ -70,7 +70,7 @@ def describe_http_error(exc: requests.HTTPError, model: str) -> str:
 
     So: quote the server's own words, and where the wording is one of the
     handful of failures that are actually common with a locally-built or
-    downloaded GGUF, say what to do about it. The raw text is always kept —
+    downloaded GGUF, say what to do about it. The raw text is always kept, 
     a message that replaces the server's diagnosis with a guess is worse than
     one that adds to it.
     """
@@ -96,19 +96,19 @@ def describe_http_error(exc: requests.HTTPError, model: str) -> str:
         #     http://localhost:11434/api/chat
         #
         # Ollama usually puts a reason in `{"error": …}`, and the branches
-        # below read it — but when the runner dies mid-request the body can
+        # below read it: but when the runner dies mid-request the body can
         # come back empty, and then the user is told only that something
         # went wrong somewhere. The app knows more than that: it knows which
         # model was asked, that the failure was a 5xx from a local server,
         # and (because 500s on this path are dominated by two causes) what
         # is worth checking first.
         #
-        # Still no guessing about *which* it was — the raw error stays in
+        # Still no guessing about *which* it was, the raw error stays in
         # the text, exactly as the docstring above requires.
         if isinstance(status, int) and status >= 500:
             return (
                 f"Chat with '{model}' failed: Ollama returned {status} and no "
-                "reason. That is almost always the model itself — either it "
+                "reason. That is almost always the model itself, either it "
                 "could not be loaded (a GGUF built for a newer llama.cpp than "
                 "this Ollama, or a truncated download) or it ran out of "
                 "memory partway through. Ollama's own log has the real "
@@ -128,7 +128,7 @@ def describe_http_error(exc: requests.HTTPError, model: str) -> str:
         advice = (
             " Ollama could not load the model file itself. That is usually a "
             "GGUF built for a newer llama.cpp than this Ollama has, or a "
-            "truncated download — try `ollama pull` again, or update Ollama."
+            "truncated download: try `ollama pull` again, or update Ollama."
         )
     elif status == 404 or "not found" in lowered:
         advice = (
@@ -138,7 +138,7 @@ def describe_http_error(exc: requests.HTTPError, model: str) -> str:
     else:
         advice = ""
 
-    return f"Chat with '{model}' failed — Ollama said: {detail}.{advice}"
+    return f"Chat with '{model}' failed: Ollama said: {detail}.{advice}"
 
 
 class OllamaClient(Provider):
@@ -164,8 +164,8 @@ class OllamaClient(Provider):
         # rather than hanging forever.
         self.timeout = timeout
         # Ollama unloads an idle model after its own default keep-alive (5
-        # minutes) and reloads it — cold, hitting the same timeout risk
-        # above — on the next request. A notebook app used on and off through
+        # minutes) and reloads it, cold, hitting the same timeout risk
+        # above: on the next request. A notebook app used on and off through
         # the day spends most of its requests idle-then-reload under that
         # default. 30 minutes keeps a model warm across a normal working
         # session instead of paying the load cost on almost every turn.
@@ -188,8 +188,8 @@ class OllamaClient(Provider):
         """Everything `/api/show` says about a model, cached per process.
 
         One call answers several questions the app used to guess at or ignore:
-        the context length, the parameter count and quantisation, and — the
-        one that changes behaviour — `capabilities`, where Ollama lists what
+        the context length, the parameter count and quantisation, and, the
+        one that changes behaviour, `capabilities`, where Ollama lists what
         the model can actually do (`tools`, `thinking`, `vision`, …).
 
         Cached because none of it can change without the model being re-pulled,
@@ -218,7 +218,7 @@ class OllamaClient(Provider):
     def capabilities(self, model: str) -> set[str]:
         """What Ollama says this model can do, or an empty set if it won't say.
 
-        Empty means *unknown*, never *none* — see `show`. Callers must fail
+        Empty means *unknown*, never *none*, see `show`. Callers must fail
         open on an empty set: the alternative is an older Ollama build turning
         off tools and thinking for every model it serves.
         """
@@ -245,7 +245,7 @@ class OllamaClient(Provider):
 
         Reading these was the gap: the app knew the context length and nothing
         else, so Settings → Models could not say how big a model was, how it
-        was quantised, or whether it could use tools at all — which is the
+        was quantised, or whether it could use tools at all, which is the
         first thing to check when "agent mode does nothing".
         """
         info = self.show(model)
@@ -259,7 +259,7 @@ class OllamaClient(Provider):
             "quantisation": details.get("quantization_level"),
             "context_length": declared,
             # What the app will actually run it at, which is the number the
-            # window percentage on each message is measured against — and is
+            # window percentage on each message is measured against, and is
             # often *lower* than the declared one, deliberately (KV cache).
             "usable_context": self.usable_context(model),
             "capabilities": sorted(self.capabilities(model)),
@@ -272,18 +272,18 @@ class OllamaClient(Provider):
         """How many tokens this model can actually hold, or None if unknown.
 
         The app used to assume 4096 for everyone, which is Ollama's fallback
-        rather than a fact about any particular model — most current ones
+        rather than a fact about any particular model, most current ones
         declare 8k, 32k or far more. Rationing the tool schemas against 4096
         on a model with 128k means withholding tools for no reason; assuming
         128k on a 3B model means the system prompt falls off the front and it
         stops knowing it has tools at all. So: ask.
 
         Reported by `/api/show` under `model_info` as `<architecture>.
-        context_length` — the prefix varies by model family, so the key is
+        context_length`, the prefix varies by model family, so the key is
         found by suffix rather than guessed.
 
-        When Ollama says nothing — an old build, or a model whose manifest
-        omits it — the shared known-model table is asked before giving up. That
+        When Ollama says nothing, an old build, or a model whose manifest
+        omits it: the shared known-model table is asked before giving up. That
         table is a guess and `/api/show` is a fact, so it is only ever the
         fallback, never the first answer.
         """
@@ -317,7 +317,7 @@ class OllamaClient(Provider):
             "num_ctx": budget["context_tokens"],
             "num_predict": budget["max_output_tokens"],
         }
-        # Sampling, from three layers — see ai/sampling.py for the order and
+        # Sampling, from three layers, see ai/sampling.py for the order and
         # why omission means "the backend's own default".
         #
         # The model's own recommendations come from the `/api/show` payload
@@ -325,7 +325,7 @@ class OllamaClient(Provider):
         # capability list; the `parameters` field was being dropped. A GGUF
         # ships its author's recommended temperature/top_p/repeat_penalty, so
         # "the right settings for this model" is something to read rather than
-        # to guess at — and a table maintained by hand would be right the day
+        # to guess at: and a table maintained by hand would be right the day
         # it was written and quietly wrong later.
         preset_options = {}
         if "temperature" in budget:
@@ -350,13 +350,13 @@ class OllamaClient(Provider):
           request that errors, so that direction is never sent at all.
         - **Capability.** Ollama rejects `think` outright for a model without
           the `thinking` capability on recent builds, so `quick` mode on an
-          ordinary model would have failed *every* turn — the preset breaking
+          ordinary model would have failed *every* turn, the preset breaking
           the chat it was meant to speed up. `capabilities` is what makes the
           check possible; before it, the app could only guess.
 
         An *unknown* capability (an older Ollama that reports none) sends
         nothing. Not sending means "whatever the model does by default", which
-        is exactly what happened before presets existed — so unknown degrades
+        is exactly what happened before presets existed, so unknown degrades
         to the old behaviour rather than to a broken one.
         """
         from memorymap.ai import presets
@@ -367,7 +367,7 @@ class OllamaClient(Provider):
         return {"think": False} if self.supports(model, "thinking") else {}
 
     def is_running(self) -> bool:
-        """Cheap reachability probe — short timeout so the UI never hangs
+        """Cheap reachability probe: short timeout so the UI never hangs
         just to discover Ollama is off (plan §6.5)."""
         try:
             response = requests.get(f"{self.base_url}/api/tags", timeout=2)
@@ -387,7 +387,7 @@ class OllamaClient(Provider):
 
     def pull(self, name: str) -> Iterator[dict]:
         """Download a model. Ollama streams JSON lines with 'status' and
-        'completed'/'total' bytes — yield each so a progress bar can be
+        'completed'/'total' bytes: yield each so a progress bar can be
         driven from them (used by the Model Manager)."""
         try:
             with requests.post(
@@ -419,11 +419,11 @@ class OllamaClient(Provider):
         """Strip the `data:image/…;base64,` prefix `images` carries internally.
 
         A data URI is the app's own neutral representation (it round-trips
-        through `openai_client._to_openai_messages` unchanged — that dialect's
+        through `openai_client._to_openai_messages` unchanged: that dialect's
         `image_url.url` accepts one directly). Ollama's `/api/chat` wants a
         flat list of *bare* base64 strings instead and sniffs the format
         itself, so this is the one place that has to know the difference.
-        Messages without an `images` key pass through untouched — most of
+        Messages without an `images` key pass through untouched, most of
         them, since only a turn with an attached image ever carries one.
         """
         out = []
@@ -439,13 +439,13 @@ class OllamaClient(Provider):
     def chat(self, model: str, messages: list[dict], mode: str | None = None) -> dict:
         """One non-streamed chat turn.
 
-        Returns {"content": str, "thinking": str | None} — thinking is
+        Returns {"content": str, "thinking": str | None}: thinking is
         filled from Ollama's native field (newer thinking models) or by
         splitting inline <think> tags out of the content.
 
         Retries once on a transient 5xx (reported live: a chat call and a
         captioning call both failing on a plain 500 and succeeding on the
-        exact same resend) — see `is_transient_server_error`'s docstring."""
+        exact same resend): see `is_transient_server_error`'s docstring."""
         for attempt in range(2):
             try:
                 response = requests.post(
@@ -486,7 +486,7 @@ class OllamaClient(Provider):
         Inline <think> tags are routed to thinking_delta too, even when
         a tag is split across two chunks.
 
-        Retries once on a transient 5xx, same as `chat` above — safe here
+        Retries once on a transient 5xx, same as `chat` above: safe here
         specifically because `raise_for_status()` is the only line in this
         attempt able to raise `HTTPError`, and it always runs before this
         attempt's first `yield`, so a retry can never duplicate output
@@ -520,7 +520,7 @@ class OllamaClient(Provider):
                         if data.get("done"):
                             yield from splitter.flush()
                             # Ollama's final chunk carries token counts and
-                            # timings — worth surfacing, so the UI can show
+                            # timings: worth surfacing, so the UI can show
                             # what the answer actually cost.
                             yield {"stats": self._stats_from(data, model)}
                 return
@@ -531,7 +531,7 @@ class OllamaClient(Provider):
             except (requests.RequestException, KeyError, TypeError, ValueError) as exc:
                 raise OllamaError(f"Chat with '{model}' failed: {exc}") from exc
 
-    # Both dialects normalise the same way — see `provider.normalise_tool_calls`.
+    # Both dialects normalise the same way, see `provider.normalise_tool_calls`.
     _normalise_tool_calls = staticmethod(normalise_tool_calls)
 
     def _stats_from(self, payload: dict, model: str) -> dict:
@@ -564,7 +564,7 @@ class OllamaClient(Provider):
         Reported live: a skill run died with `500 Server Error … /api/chat` on
         a 3B abliterated GGUF, twice in a row, while ordinary chat with the
         same model worked fine. Ollama answers 400 with "does not support
-        tools" for a model that declares no tool support — but a model whose
+        tools" for a model that declares no tool support, but a model whose
         *chat template* breaks on the tools path answers 500, and for the user
         those are the same situation: the request cannot be made this way.
         Community finetunes and re-quants hit this often, because the template
@@ -610,7 +610,7 @@ class OllamaClient(Provider):
         tools: list[dict],
         mode: str | None = None,
     ) -> Iterator[dict]:
-        """Streamed tool-calling turn — the agent loop's normal path.
+        """Streamed tool-calling turn: the agent loop's normal path.
 
         Same decisions as chat_tools, but the assistant's prose arrives as it's
         written instead of in one block at the end. That difference is the
@@ -686,7 +686,7 @@ class OllamaClient(Provider):
             raise
         except (requests.RequestException, KeyError, TypeError, ValueError) as exc:
             # A 5xx here may be an outage, or a model whose chat template
-            # breaks on the tools path — see _tools_path_is_broken, which
+            # breaks on the tools path, see _tools_path_is_broken, which
             # settles it by asking rather than by reading the status code.
             if (
                 tools
@@ -712,7 +712,7 @@ class OllamaClient(Provider):
         calls = self._normalise_tool_calls(raw_calls)
         clean = content
         if not calls:
-            # Nothing structured — the text may itself be the call. Anything
+            # Nothing structured: the text may itself be the call. Anything
             # still gated was never shown, so removing it costs the user
             # nothing; if the gate had already opened, recovery still strips
             # the JSON from what we hand back as the final answer.
@@ -772,7 +772,7 @@ class OllamaClient(Provider):
                 timeout=self.timeout,
             )
             # Ollama answers 400 with a "...does not support tools" body
-            # for models without tool support — that's a capability gap,
+            # for models without tool support, that's a capability gap,
             # not an outage, so signal it distinctly.
             if response.status_code == 400 and "tool" in response.text.lower():
                 raise ToolsUnsupportedError(f"'{model}' can't use tools")
@@ -823,7 +823,7 @@ class OllamaClient(Provider):
             raise
         except (requests.RequestException, KeyError, TypeError, ValueError) as exc:
             # A 5xx here may be an outage, or a model whose chat template
-            # breaks on the tools path — see _tools_path_is_broken, which
+            # breaks on the tools path, see _tools_path_is_broken, which
             # settles it by asking rather than by reading the status code.
             if (
                 tools
@@ -861,14 +861,14 @@ class OllamaClient(Provider):
             # A chat/generation model can't embed: Ollama answers /api/embed
             # with 501 Not Implemented (older builds: 400 "does not support
             # embeddings"). Surface a message the user can act on instead of a
-            # raw HTTP error — this is the #1 way people misconfigure the
+            # raw HTTP error: this is the #1 way people misconfigure the
             # Ollama search engine (they pick their chat model by mistake).
             resp = exc.response
             body = (resp.text if resp is not None else "") or ""
             status = resp.status_code if resp is not None else None
             if status in (400, 501) or "does not support" in body.lower():
                 raise OllamaError(
-                    f"'{model}' can't create embeddings — it looks like a chat "
+                    f"'{model}' can't create embeddings: it looks like a chat "
                     "model, not an embedding model. Download and select a "
                     "dedicated embedding model such as 'nomic-embed-text' as the "
                     "search engine."

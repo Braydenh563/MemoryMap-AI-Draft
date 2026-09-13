@@ -1,4 +1,4 @@
-"""`list_notes(untagged=true)` — one filter instead of a research project.
+"""`list_notes(untagged=true)`, one filter instead of a research project.
 
 Reported after watching a skill run fail twice: "skills are too hard for small
 ais and things go wrong often", with the model announcing "due to the
@@ -7,7 +7,7 @@ nothing.
 
 That is not a model failing at tagging. It is the app asking a 3B model to
 page through the whole notebook, hold every note's tags in mind, subtract one
-set from another and only then begin — inside a context budget the app itself
+set from another and only then begin, inside a context budget the app itself
 enforces. REDESIGN.md §R5's rule for exactly this: *do not ask a small model to
 be careful; make it structurally hard for it to be wrong.*
 """
@@ -39,7 +39,7 @@ def test_every_shape_of_no_tags_counts(session):
     """`tags` is a JSON string, so "no tags" is `"[]"` on a note saved today,
     `NULL` on a row from before that column was always written, and `""` on
     one cleared by hand. A filter that checked only the shape in front of it
-    would be right on a fresh notebook and wrong on a restored backup — which
+    would be right on a fresh notebook and wrong on a restored backup, which
     is exactly what the first version of this did."""
     ids = set()
     #: `NULL` is left out of this loop and asserted separately: the column is
@@ -65,7 +65,7 @@ def test_the_filter_still_names_null(session):
 
 
 def test_the_filter_composes_with_the_others(session):
-    """`untagged` is one clause among several, not a mode that replaces them —
+    """`untagged` is one clause among several, not a mode that replaces them, 
     "tag the untagged notes in Recipes" has to be one call."""
     manager.create_entry(session, "Untagged, wrong category", category_name="Other", tags=[])
     wanted = manager.create_entry(session, "Untagged in Recipes", category_name="Recipes", tags=[])

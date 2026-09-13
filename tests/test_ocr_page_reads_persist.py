@@ -7,7 +7,7 @@ that."*
 
 The second sentence is the diagnosis. A page read is a model round-trip of
 several seconds, and the app deliberately announces it as a background task so
-the workspace can be closed while it runs (`test_ocr_page_read_tasks.py`) — but
+the workspace can be closed while it runs (`test_ocr_page_read_tasks.py`), but
 the result only ever existed in the HTTP response and in the DOM that response
 painted. Close the window, switch tab, or simply have the read land after you
 have moved on, and the reading was gone: reopening the document ran the
@@ -107,7 +107,7 @@ def test_an_empty_reading_is_not_stored(client, monkeypatch):
     """"Nothing found on page 4" is not a transcription.
 
     Storing it would make a later, better reader look like it had nothing to
-    add — the pane would show a stored blank instead of asking again.
+    add: the pane would show a stored blank instead of asking again.
     """
     attachment_id = _attach(client, "scan.pdf", ONE_PAGE_PDF)
     if not pdfpages.available():
@@ -146,7 +146,7 @@ def test_a_range_read_stores_every_page_it_managed(client, monkeypatch):
 #
 # Reported directly: "there's also no way to delete or redo ocr text
 # extractions in the ocr workspace." Redo already worked (the test just above
-# this one pins it — a re-read replaces the row); delete genuinely did not,
+# this one pins it, a re-read replaces the row); delete genuinely did not,
 # and these are its coverage.
 
 
@@ -178,7 +178,7 @@ def test_deleting_a_page_read_removes_it(client, monkeypatch):
 
 def test_deleting_a_page_that_was_never_read_is_not_an_error(client):
     """Idempotent, matching the rest of this table's own stance that it is a
-    cache of a reading rather than the reading itself — deleting a row that
+    cache of a reading rather than the reading itself, deleting a row that
     was never there is the state the caller wanted, not a failure."""
     attachment_id = _attach(client, "blank.pdf", ONE_PAGE_PDF)
     response = client.delete(f"/files/{attachment_id}/page-reads/0")
@@ -188,7 +188,7 @@ def test_deleting_a_page_that_was_never_read_is_not_an_error(client):
 
 def test_deleting_one_page_leaves_the_others(client, monkeypatch):
     """A delete is scoped to the page you are looking at, not the whole
-    document — the OCR workspace reads and deletes one page at a time, and a
+    document: the OCR workspace reads and deletes one page at a time, and a
     delete that took the rest with it would silently undo work on pages the
     person never touched."""
     attachment_id = _attach(client, "scan.pdf", ONE_PAGE_PDF)
@@ -204,7 +204,7 @@ def test_deleting_one_page_leaves_the_others(client, monkeypatch):
     )
     client.post(f"/files/{attachment_id}/ocr-page-read?page=0")
     # Fake a second page's reading directly, since this fixture PDF has only
-    # one real page — the identity this test cares about is the (kind,
+    # one real page: the identity this test cares about is the (kind,
     # source_id, page) key, not whether the document actually has two pages.
     from memorymap.core import deps
     from memorymap.core.database import PageRead
@@ -219,7 +219,7 @@ def test_deleting_one_page_leaves_the_others(client, monkeypatch):
 
 
 def test_media_page_reads_can_be_deleted_too(client, monkeypatch):
-    """The upload-table sibling of the attachment route above — two id
+    """The upload-table sibling of the attachment route above, two id
     spaces, two routes, one shared implementation underneath."""
     upload = client.post(
         "/media/upload",

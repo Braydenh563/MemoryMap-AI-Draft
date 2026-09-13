@@ -1,4 +1,4 @@
-"""What a tool call touched — notes *and* documents — for the live action line.
+"""What a tool call touched, notes *and* documents, for the live action line.
 
 Asked for: *"is it also possible to have live action lines show on the chat ui,
 to show and visually show as the ai accesses specific notes, files and
@@ -38,7 +38,7 @@ def test_the_same_note_is_named_once():
 
 
 def test_a_row_without_content_is_not_a_note():
-    """Plenty of results carry an `id` that is not a note's — a link id, a
+    """Plenty of results carry an `id` that is not a note's: a link id, a
     reminder's, a category's. `content` is what every note-shaped result has."""
     assert _touched_items({"id": 5, "name": "Games", "total": 3}) == []
 
@@ -74,7 +74,7 @@ def test_a_non_dict_result_is_survivable():
 def test_a_document_result_is_a_document_not_a_note():
     """The defect this function exists to prevent: `read_document` returns
     `id`, `title` *and* `content`, so a `content`-only test called it a note
-    and the UI opened the note with that id — a different object entirely."""
+    and the UI opened the note with that id, a different object entirely."""
     touched = _touched_items(
         {"id": 12, "title": "Lease agreement", "content": "body text", "words": 900}
     )
@@ -112,7 +112,7 @@ def test_the_chip_routes_on_kind_rather_than_assuming_a_note():
 
 def test_the_transcript_serialiser_matches_the_wrapped_row():
     """`classList.contains` is an exact token match, so a row wrapped as
-    `.tool-chip-wrap` is invisible to a `.tool-chip` test — and the whole tool
+    `.tool-chip-wrap` is invisible to a `.tool-chip` test: and the whole tool
     call then disappears from the conversation when it is reopened."""
     source = APP_JS.read_text(encoding="utf-8")
     assert 'node.classList.contains("tool-chip-wrap")' in source
@@ -127,5 +127,5 @@ def test_rows_that_are_not_notes_or_documents_are_left_alone():
     assert _touched_items({"results": [{"title": "A page", "url": "https://x"}]}) == []
     assert _touched_items({"matches": [{"board_id": 2, "object_id": 9, "text": "hi"}]}) == []
     assert _touched_items({"id": 5, "name": "Games"}) == []
-    # `link_notes` returns plain ids, not rows — nothing to name.
+    # `link_notes` returns plain ids, not rows, nothing to name.
     assert _touched_items({"linked": [3, 4]}) == []

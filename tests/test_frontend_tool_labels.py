@@ -1,7 +1,7 @@
 """A tool's own label carries an icon, and the icon has to survive rendering.
 
 **The convention.** Every AI tool result in `ai/tools/` writes a `label`
-shaped `"ph:icon-name Some human sentence"` — `_merge_categories` produces
+shaped `"ph:icon-name Some human sentence"`, `_merge_categories` produces
 `ph:folder Merged “X” into “Y” (N notes moved)`, `_search` produces
 `ph:magnifying-glass Searched notes for …`, and so on for the ~40 of them.
 The `ph:` prefix is not decoration in the string: `setLabel()` (app.js)
@@ -10,9 +10,9 @@ rest as text beside it.
 
 **The bug this exists to stop.** Assign one of those strings with plain
 `.textContent` instead and nothing errors, nothing logs, and the page shows
-the icon spec as literal words — reported with a screenshot of three agent
+the icon spec as literal words, reported with a screenshot of three agent
 rows each reading `ph:folder Merged “…” into “Hobbies”`. `changeRow()` did
-exactly that, on both the initial render and the "— undone" rewrite after an
+exactly that, on both the initial render and the ", undone" rewrite after an
 undo, while every neighbouring renderer (`toolChip`, `renderToolConfirm`)
 went through `setLabel` correctly. One renderer out of step is invisible
 until someone runs the one tool whose output it draws.
@@ -33,7 +33,7 @@ TOOLS_DIR = Path(__file__).resolve().parents[1] / "src" / "memorymap" / "ai" / "
 
 
 def _change_row_source() -> str:
-    """`changeRow`'s own body — the renderer for a skill/tool change line."""
+    """`changeRow`'s own body: the renderer for a skill/tool change line."""
     source = APP_JS.read_text(encoding="utf-8")
     start = source.index("function changeRow(")
     # The next top-level `function ` declaration ends it; `changeRow` has no
@@ -45,7 +45,7 @@ def _change_row_source() -> str:
 def test_the_change_row_renders_its_label_through_set_label():
     body = _change_row_source()
     assert "setLabel(label," in body, (
-        "changeRow must build its label with setLabel() — a plain textContent "
+        "changeRow must build its label with setLabel(), a plain textContent "
         "assignment prints the 'ph:icon-name' prefix as visible text"
     )
     assert "label.textContent =" not in body, (
@@ -56,13 +56,13 @@ def test_the_change_row_renders_its_label_through_set_label():
 
 def test_the_undo_rewrite_also_keeps_the_icon():
     """The second half of the same bug: undoing a change rewrote the label to
-    `… — undone` and, doing it with textContent, dropped the icon that had
+    `…, undone` and, doing it with textContent, dropped the icon that had
     been rendering correctly a moment earlier."""
     body = _change_row_source()
-    assert "— undone" in body, "the undone-state rewrite has moved or changed name"
-    undone_line = next(line for line in body.splitlines() if "— undone" in line)
+    assert ", undone" in body, "the undone-state rewrite has moved or changed name"
+    undone_line = next(line for line in body.splitlines() if ", undone" in line)
     assert "setLabel(" in undone_line, (
-        "the '— undone' rewrite must go through setLabel too, or an undone row "
+        "the ', undone' rewrite must go through setLabel too, or an undone row "
         "loses the icon the same row had before it was undone"
     )
 

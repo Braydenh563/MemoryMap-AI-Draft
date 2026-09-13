@@ -2,7 +2,7 @@
 
 Split out of `searxng_manager.py` (see that module for the two backends this
 feeds): everything here is about *what SearXNG is told*, not how it is
-started — the managed settings.yml (secret key preserved across rewrites,
+started: the managed settings.yml (secret key preserved across rewrites,
 rate-limited/hostile engines removed, JSON API turned on), the environment
 variables layered on top for a from-source run, and the one platform shim
 SearXNG's own source needs on Windows (`pwd`, imported at module scope in
@@ -31,11 +31,11 @@ from memorymap.search.searxng_manager import (
 # calls it as `searxng_manager._run` so a patched or a real implementation is
 # picked up exactly as it was when this was one file.
 
-# use_default_settings keeps SearXNG's own defaults and layers ours on top —
+# use_default_settings keeps SearXNG's own defaults and layers ours on top, 
 # the important bit being the json format, without which the API returns 403.
 #
 # Engine defaults: several engines that SearXNG ships are broken or hostile
-# for a local/private install, and a broken engine is not a quiet failure —
+# for a local/private install, and a broken engine is not a quiet failure, 
 # module import and engine init happen at startup, so one bad engine fills
 # the start window with tracebacks and can sink the whole start. They are
 # *removed* here, not merely `disabled: true`, for two reasons this module
@@ -49,7 +49,7 @@ from memorymap.search.searxng_manager import (
 #     same name, key by key. Upstream's `torch` engine is really the `xpath`
 #     module in disguise (`name: torch, engine: xpath`), so an override that
 #     said `engine: torch` sent SearXNG looking for a `torch.py` that does
-#     not exist — FileNotFoundError, from our own settings file.
+#     not exist: FileNotFoundError, from our own settings file.
 #
 # `use_default_settings.engines.remove` has neither problem: a removed engine
 # is never imported at all, and the loader treats it as a plain name filter,
@@ -62,11 +62,11 @@ from memorymap.search.searxng_manager import (
 #   - wikidata: performs an outbound HTTP request during engine *init* and
 #     fails it with an ERROR log on every startup of a home install.
 #   - brave: requires an API key; returns 403 without one.
-#   - ahmia / torch: Tor onion-network engines — useless without a Tor proxy,
+#   - ahmia / torch: Tor onion-network engines: useless without a Tor proxy,
 #     and both have broken startup on a plain install.
 #   - bilibili: the module-scope tzdata crash above.
 #
-# duckduckgo — the most permissive engine for private instances — is enabled
+# duckduckgo, the most permissive engine for private instances, is enabled
 # in SearXNG's own defaults and is the working default here. The user can
 # edit settings.yml, but MemoryMap rewrites the managed sections on each
 # start, preserving secret_key (pass rewrite=False to ensure_settings to
@@ -81,7 +81,7 @@ use_default_settings:
       - brave
       # Removing an engine must take every engine that shares its network:
       # these three declare `network: brave`, and SearXNG's network init
-      # does NETWORKS[name] = NETWORKS['brave'] — KeyError once brave is
+      # does NETWORKS[name] = NETWORKS['brave'], KeyError once brave is
       # gone, and the whole start dies on it.
       - brave.images
       - brave.videos
@@ -91,7 +91,7 @@ use_default_settings:
       - bilibili{extra_removes}
 server:
   secret_key: "{secret}"
-  # Safe ONLY because the instance is bound to loopback — the source path sets
+  # Safe ONLY because the instance is bound to loopback, the source path sets
   # SEARXNG_BIND_ADDRESS=127.0.0.1 and the docker path publishes
   # 127.0.0.1:PORT. The limiter is SearXNG's bot/abuse protection; with it off
   # and the port reachable from the network, anyone on that network could run
@@ -101,7 +101,7 @@ server:
   # Result images are fetched by SearXNG and passed on, rather than by the
   # browser going to the result's own domain. Without it, merely *rendering*
   # a result page tells every pictured site that someone searched and got
-  # them back — before anything is clicked.
+  # them back: before anything is clicked.
   image_proxy: true
 search:
   safe_search: 0
@@ -109,7 +109,7 @@ search:
     - html
     - json
   # Off explicitly, not just by default. Autocomplete sends a fragment of
-  # every query to a third-party suggestion endpoint as it is typed — the one
+  # every query to a third-party suggestion endpoint as it is typed, the one
   # thing in a search UI that leaks even when no search is ever run. SearXNG
   # already defaults it off; pinning it here means a changed upstream default
   # or a hand-edited file cannot quietly turn it back on, and this file is
@@ -125,7 +125,7 @@ engines:
   # One general engine is not enough: DuckDuckGo rate-limits by IP, and a
   # home instance that leans on it alone goes dark the moment it throttles.
   # Qwant and Mojeek run their own indexes and tolerate private instances.
-  # Deliberately no `engine:` key — these merge onto the default entries by
+  # Deliberately no `engine:` key: these merge onto the default entries by
   # name and only flip `disabled`, so they can never point an entry at a
   # module that is not there (which is how the torch override broke starts).
   - name: qwant
@@ -146,8 +146,8 @@ plugins:
 
 
 # SearXNG imports `pwd` at module scope in `searx/valkeydb.py`, and `pwd` is a
-# POSIX-only stdlib module. So `import searx.webapp` — the first thing a start
-# does — dies on Windows with:
+# POSIX-only stdlib module. So `import searx.webapp`, the first thing a start
+# does: dies on Windows with:
 #
 #     File "…\\searx\\valkeydb.py", line 22, in <module>
 #         import pwd
@@ -156,7 +156,7 @@ plugins:
 # reported with a photo. It is the *only* POSIX-only import in the whole
 # package, and the only thing it is used for is one line of an error message
 # ("[user (uid)] can't connect valkey DB") in a branch that is unreachable
-# unless a Valkey/Redis URL is configured — which MemoryMap never does.
+# unless a Valkey/Redis URL is configured, which MemoryMap never does.
 #
 # So a stand-in module is written into the virtualenv where the platform
 # hasn't got one. Not a patch to SearXNG's own source: a patch has to match
@@ -166,8 +166,8 @@ plugins:
 _PWD_SHIM = '''"""A stand-in for the POSIX-only `pwd` module, written by MemoryMap.
 
 SearXNG imports `pwd` at module scope in `searx/valkeydb.py`, which makes it
-unimportable on Windows. It uses it in exactly one place — naming the current
-user in an error message when a Valkey DB connection fails — and MemoryMap
+unimportable on Windows. It uses it in exactly one place, naming the current
+user in an error message when a Valkey DB connection fails, and MemoryMap
 configures no Valkey DB, so that line never runs.
 
 If it ever does run, these values are honest about being placeholders rather
@@ -205,7 +205,7 @@ def getpwall():
 
 
 def _searxng_env(data_dir: Path) -> dict:
-    """The environment SearXNG runs in — the generated settings included.
+    """The environment SearXNG runs in, the generated settings included.
 
     Used by the start *and* by the install's final check, because verifying
     against SearXNG's own defaults is verifying something nobody will ever
@@ -246,7 +246,7 @@ def _write_pwd_shim(python: str) -> bool:
         )
     Path(target, "pwd.py").write_text(_PWD_SHIM, encoding="utf-8")
     logging.getLogger("memorymap.searxng").info(
-        "Wrote a `pwd` compatibility module into %s — SearXNG imports it at "
+        "Wrote a `pwd` compatibility module into %s, SearXNG imports it at "
         "module scope and this platform has no such module.",
         target,
     )
@@ -343,7 +343,7 @@ def _restrict(path: Path, mode: int) -> None:
     """Keep a path to this user. Best effort, deliberately.
 
     settings.yml holds the instance's `secret_key` in clear text, because
-    SearXNG reads it from there — encrypting it would only move the problem
+    SearXNG reads it from there, encrypting it would only move the problem
     to wherever that key lived. What we *can* do is make sure nothing else
     on the machine can read it, which is the actual exposure.
 
@@ -375,7 +375,7 @@ def ensure_settings(data_dir: Path, rewrite: bool = True) -> Path:
     secret = _existing_secret_key(path) or secrets.token_hex(24)
     if rewrite or not path.exists():
         extra = "".join(f"\n      - {name}" for name in _extra_removes(data_dir))
-        # CodeQL flags this as clear-text storage of a secret, and it is —
+        # CodeQL flags this as clear-text storage of a secret, and it is, 
         # unavoidably. SearXNG reads `server.secret_key` out of its own
         # settings.yml as plain text and will not start without it, so
         # encrypting it here would only move the exposure to wherever the

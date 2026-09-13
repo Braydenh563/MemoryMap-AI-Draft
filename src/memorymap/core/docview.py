@@ -1,27 +1,27 @@
 """Reading an uploaded file's text, for the in-app viewer.
 
-The ask was a viewer that opens "all document types" — Word files, PDFs,
-markdown, code, spreadsheets, CSV, plain text — the way an editor does, rather
+The ask was a viewer that opens "all document types", Word files, PDFs,
+markdown, code, spreadsheets, CSV, plain text, the way an editor does, rather
 than the app's current answer, which is that a file it did not convert on
 import is a name in a list.
 
 **The whole design follows from one decision: nothing new is ever served to
 the browser inline.** `routes_files.media_file` already carries the reason in
-its own comment — an inline PDF viewer is a script host, and the folder it
+its own comment: an inline PDF viewer is a script host, and the folder it
 serves from is not guaranteed to contain only things this app wrote. A viewer
 built by widening that endpoint's allowlist and letting the browser render
 each new type would inherit that problem once per type added. So the viewer
 never receives a file at all: it receives *text*, extracted here, on the
 server, and renders it as text. A .docx that is really a zip bomb, a PDF with
-an embedded script, an SVG with an onload handler — none of them get near the
+an embedded script, an SVG with an onload handler, none of them get near the
 renderer, because none of them are what is sent.
 
 That also settles what "editing" can mean at this layer, and it is worth being
 plain about rather than discovering later: **extraction is one-way.** Text
 pulled out of a .docx is not a .docx, and writing it back would silently
 destroy the formatting, images and structure of the original. So a viewed file
-is read-only here, and the way to *edit* one is the path the app already has —
-`/import/document` turns it into notes, or its text goes into a document —
+is read-only here, and the way to *edit* one is the path the app already has, 
+`/import/document` turns it into notes, or its text goes into a document, 
 both of which produce something this app owns and can save without lying about
 what it is.
 
@@ -32,7 +32,7 @@ Three kinds of file, three ways in:
 - **A converted document** (.docx, .pdf, .pptx, .xlsx): `entry/importer.py`'s
   markitdown, which the app can already install from Settings → Optional
   extras. Absent, this reports that rather than failing in a way that looks
-  broken — the same contract `importer` itself keeps.
+  broken: the same contract `importer` itself keeps.
 - **A scanned page with no text layer**: the vision model's transcription,
   `ai/vision_ocr.py`. Deliberately *not* Tesseract, by direct instruction:
   "I basically dont want to download tesseract and only want to use an ai
@@ -42,7 +42,7 @@ Three kinds of file, three ways in:
 **The third one used to be a dependency gap and no longer is.**
 `ai/vision_ocr.py` reads an *image*, and a PDF page is not one until something
 rasterises it; this app shipped no rasteriser, so the hook was wired and the
-plug did not exist. `core/pdfpages.py` is now that plug — pypdfium2 behind the
+plug did not exist. `core/pdfpages.py` is now that plug, pypdfium2 behind the
 `pdfpages` extra, ~16 MB, no system packages and no torch, measured at about
 20 ms a page. It stays optional, and with it absent this still reaches the
 "probably a scan" message rather than failing: the extras catalogue exists so
@@ -56,7 +56,7 @@ from pathlib import Path
 
 from memorymap.core import pdfpages
 
-#: Files that are already text. Read straight off disk and decoded — no
+#: Files that are already text. Read straight off disk and decoded, no
 #: converter, no optional package, so these work on a bare install.
 #:
 #: Grouped by what the viewer does with them rather than alphabetically,
@@ -70,7 +70,7 @@ CODE_SUFFIXES = frozenset(
         ".yml", ".toml", ".ini", ".cfg", ".sh", ".bash", ".zsh", ".sql",
         ".html", ".htm", ".css", ".scss", ".xml", ".rs", ".go", ".java",
         ".c", ".h", ".cpp", ".hpp", ".rb", ".php", ".swift", ".kt", ".r",
-        # C# — reachable through the note-attachment picker (ATTACHMENT_SUFFIXES,
+        # C#: reachable through the note-attachment picker (ATTACHMENT_SUFFIXES,
         # routes_files.py) but not readable here, so a .cs file could be
         # attached and then had no viewer, no AI reading, and no import path.
         # Every other mainstream language already in this set had all three.
@@ -93,7 +93,7 @@ VIEWABLE_SUFFIXES = (
 )
 
 #: How much text one view returns. A viewer is for reading, and a megabyte of
-#: extracted text is not read — it is scrolled past once and then paid for on
+#: extracted text is not read, it is scrolled past once and then paid for on
 #: every open. Generous enough for a real chapter or a long spreadsheet, and
 #: bounded so a pathological file cannot be a memory problem for the browser.
 MAX_VIEW_CHARS = 400_000
@@ -107,7 +107,7 @@ MAX_VIEW_CHARS = 400_000
 #: version applied this floor to every converted type and a test caught it
 #: immediately: a real .docx whose text happened to be 36 characters was
 #: discarded as "no text found" and reported as a probable scan. A short Word
-#: document is a short document — .docx, .pptx and .xlsx do not have a
+#: document is a short document, .docx, .pptx and .xlsx do not have a
 #: "scanned" failure mode at all, because their text either is in the file or
 #: was never there. Only a PDF can be a photograph of a page wearing a
 #: document's file extension, so only a PDF needs the floor.
@@ -119,7 +119,7 @@ class ViewedFile:
     """What the viewer needs to render one file, and nothing else.
 
     `kind` says how to render (markdown, code, plain), `source` says where the
-    text came from — and `source` is shown to the reader, not just logged: text
+    text came from: and `source` is shown to the reader, not just logged: text
     a vision model transcribed off a scanned page is a *reading* of the file,
     and presenting it identically to text read out of a .txt would be the app
     stating a guess as a fact.
@@ -140,8 +140,8 @@ def kind_for(suffix: str) -> str:
     if suffix in CODE_SUFFIXES:
         return "code"
     if suffix in CONVERTED_SUFFIXES:
-        # A converted document comes back *as* markdown — that is what
-        # markitdown produces — so it renders the same way a .md does.
+        # A converted document comes back *as* markdown, that is what
+        # markitdown produces: so it renders the same way a .md does.
         return "markdown"
     return "plain"
 
@@ -165,8 +165,8 @@ def _read_text_file(path: Path) -> str:
 
 #: **The files this app may write back**, and the reason the set is smaller
 #: than `VIEWABLE_SUFFIXES` is the module docstring's own: extraction is
-#: one-way. For these, though, "extraction" is `bytes.decode()` — the text
-#: *is* the file — so writing it back is lossless, and refusing to would be
+#: one-way. For these, though, "extraction" is `bytes.decode()`, the text
+#: *is* the file: so writing it back is lossless, and refusing to would be
 #: refusing the request rather than protecting anything. §R7.1 item 2:
 #: *"all the files should be managable, viewable and editable in the library
 #: and document/file/text editor"*, with the honest reason in the UI where a
@@ -177,8 +177,8 @@ EDITABLE_SUFFIXES = PLAIN_TEXT_SUFFIXES | MARKDOWN_SUFFIXES | CODE_SUFFIXES
 def editability(path: Path, viewed: ViewedFile) -> tuple[bool, str]:
     """May this file be edited in place, and if not, what does the user get told?
 
-    Answered here rather than at the route, because every fact it turns on —
-    which suffixes are text, what `source` means, what `truncated` means —
+    Answered here rather than at the route, because every fact it turns on, 
+    which suffixes are text, what `source` means, what `truncated` means: 
     is defined in this module. A route deciding it independently would be a
     second copy of the format table, and the two would drift.
 
@@ -192,7 +192,7 @@ def editability(path: Path, viewed: ViewedFile) -> tuple[bool, str]:
         if suffix in CONVERTED_SUFFIXES:
             return False, (
                 f"A {suffix} file isn't the text pulled out of it. Saving this back "
-                "would replace the document with a plain-text copy — its formatting, "
+                "would replace the document with a plain-text copy, its formatting, "
                 "images and layout are not in what you can see here. Import it to a "
                 "document if you want a version you can edit."
             )
@@ -215,7 +215,7 @@ def write_text_file(path: Path, text: str) -> None:
     """Save edited text back over a text file.
 
     UTF-8 with no BOM, and `newline=""` so the text is written exactly as the
-    editor produced it rather than having "\n" translated by the platform —
+    editor produced it rather than having "\n" translated by the platform, 
     a Windows round trip would otherwise turn every line ending into "\r\n"
     on save and grow the file a little each time.
 
@@ -229,7 +229,7 @@ def write_text_file(path: Path, text: str) -> None:
 def extract(path: Path, vision_reader=None) -> ViewedFile:
     """One file's text, ready to render.
 
-    `vision_reader` is the fallback for a scanned page — a callable taking the
+    `vision_reader` is the fallback for a scanned page, a callable taking the
     path and returning its text, or None/"" when it cannot help. Injected
     rather than imported so this module stays free of the AI stack (and so a
     test can exercise the scanned-PDF branch without a model), and optional so
@@ -261,7 +261,7 @@ def _extract_converted(path: Path, suffix: str, vision_reader) -> ViewedFile:
     Order matters and is not arbitrary: conversion is instant and exact where
     it works, and the vision model is slow and is a *reading* rather than the
     text itself. So convert first, and only reach for the model when
-    conversion came back with nothing — which is exactly the scanned-page case
+    conversion came back with nothing, which is exactly the scanned-page case
     the fallback is for.
     """
     from memorymap.entry import importer
@@ -271,13 +271,13 @@ def _extract_converted(path: Path, suffix: str, vision_reader) -> ViewedFile:
         try:
             converted = importer.convert_to_markdown(path)
         except Exception:  # noqa: BLE001
-            # A file markitdown cannot parse is a viewer message, never a 500 —
+            # A file markitdown cannot parse is a viewer message, never a 500, 
             # the same contract `/import/document` keeps for the same reason.
             converted = ""
 
     # A PDF is the only converted type with a "scanned" failure mode, so it is
     # the only one that has to clear a floor rather than merely be non-empty.
-    # See EMPTY_CONVERSION_CHARS — applying the floor to every type discarded
+    # See EMPTY_CONVERSION_CHARS: applying the floor to every type discarded
     # a real, short .docx as "probably a scan".
     enough = (
         len(converted.strip()) >= EMPTY_CONVERSION_CHARS
@@ -291,11 +291,11 @@ def _extract_converted(path: Path, suffix: str, vision_reader) -> ViewedFile:
         )
 
     # Nothing usable came out. Before assuming "probably a scan", find out
-    # whether PDFium can even open the file — a corrupted, truncated or
+    # whether PDFium can even open the file, a corrupted, truncated or
     # encrypted PDF fails here with zero pages, which looks identical to a
     # real scan to every check above it but needs a completely different
     # message: no vision model on earth reads a file that can't be decoded
-    # at all. This was a real misdiagnosis, caught from a user's own log —
+    # at all. This was a real misdiagnosis, caught from a user's own log: 
     # `pdfpages.render_pages` logged "Failed to load document (PDFium: Data
     # format error)" while the viewer told them to go install a vision model.
     if suffix == ".pdf" and pdfpages.available() and pdfpages.page_count(path) == 0:
@@ -306,19 +306,19 @@ def _extract_converted(path: Path, suffix: str, vision_reader) -> ViewedFile:
             message=(
                 "This PDF couldn't be opened. It may be corrupted, "
                 "password-protected, or saved in a way this app's reader "
-                "doesn't support — re-exporting or re-saving it from its "
+                "doesn't support: re-exporting or re-saving it from its "
                 "original source usually fixes this."
             ),
         )
 
-    # Two different reasons, and they need two different messages —
+    # Two different reasons, and they need two different messages, 
     # "install markitdown" is unhelpful advice for a scanned page, and "this
     # looks like a scan" is wrong when the converter was simply not there.
     if suffix == ".pdf" and vision_reader is not None:
         read = ""
         try:
             read = vision_reader(path) or ""
-        except Exception:  # noqa: BLE001 — a viewer must not 500 on a bad file
+        except Exception:  # noqa: BLE001  # a viewer must not 500 on a bad file
             read = ""
         if read.strip():
             text, truncated = _clip(read)
@@ -339,7 +339,7 @@ def _extract_converted(path: Path, suffix: str, vision_reader) -> ViewedFile:
             kind="plain",
             source="converted",
             message=(
-                "There's no text layer in this file — it's probably a scan. "
+                "There's no text layer in this file, it's probably a scan. "
                 "Reading one needs its pages turned into images first: "
                 "install “Read scanned PDFs” in Settings → Extras, and pick a "
                 "vision or OCR model in Settings → Models."
@@ -350,7 +350,7 @@ def _extract_converted(path: Path, suffix: str, vision_reader) -> ViewedFile:
         kind="plain",
         source="converted",
         message=(
-            "There's no text layer in this file — it's probably a scan. "
+            "There's no text layer in this file, it's probably a scan. "
             "Reading one needs a vision or OCR model; pick one in "
             "Settings → Models."
         ),

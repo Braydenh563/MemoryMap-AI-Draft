@@ -1,7 +1,7 @@
 """The whole-notebook markdown export (a zip of files) and its import.
 
 (Unrelated to test_document_import.py, which is markitdown converting an
-uploaded PDF/DOCX/etc. into notes — this is the notebook's own round-trip
+uploaded PDF/DOCX/etc. into notes: this is the notebook's own round-trip
 format: one `.md` file per note, with frontmatter for category/tags.)
 """
 
@@ -114,3 +114,47 @@ def test_markdown_roundtrip(client):
     assert response.json()["imported"] == 1
     contents = [e["content"] for e in client.get("/entries").json()]
     assert contents.count("roundtrip me") == 2  # original + reimport
+
+
+def test_the_cli_export_writes_the_same_archive_as_the_route(client, tmp_path, monkeypatch):
+    """`python -m memorymap --export PATH` and the Settings download are one
+    function, not two implementations. uninstall.sh --export calls the first
+    so someone removing the app can take their notes out with no browser and
+    no running server, and it has to be the same zip.
+    """
+    _save(client, "buy milk", category="Shopping", tags=["errand"])
+    binned = _save(client, "old thought")
+    client.delete(f"/entries/{binned['id']}")
+
+    from memorymap.__main__ import _export_markdown
+
+    target = tmp_path / "out" / "notes.zip"
+    assert _export_markdown(str(target)) == 0
+    assert target.exists()
+
+    from_route = zipfile.ZipFile(io.BytesIO(client.get("/export/markdown").content))
+    from_cli = zipfile.ZipFile(target)
+    assert sorted(from_cli.namelist()) == sorted(from_route.namelist())
+    name = [n for n in from_cli.namelist() if n.startswith("Shopping/")][0]
+    assert from_cli.read(name) == from_route.read(name)
+
+
+def test_the_cli_export_puts_the_default_name_inside_a_directory(client, tmp_path):
+    """`--export .` is what someone types, and it must not try to write a
+    zip over the directory itself."""
+    _save(client, "buy milk")
+    from memorymap.__main__ import _export_markdown
+
+    assert _export_markdown(str(tmp_path)) == 0
+    assert (tmp_path / "memorymap-markdown.zip").exists()
+
+
+def test_the_cli_export_reports_rather_than_raises_on_an_unwritable_path(client, tmp_path):
+    """Someone exporting before an uninstall gets a sentence, not a
+    traceback, and a non-zero code so the uninstaller stops."""
+    _save(client, "buy milk")
+    from memorymap.__main__ import _export_markdown
+
+    blocker = tmp_path / "blocker"
+    blocker.write_text("not a directory", encoding="utf-8")
+    assert _export_markdown(str(blocker / "sub" / "notes.zip")) == 1

@@ -3,12 +3,14 @@
 Asked for directly: the Logs screen should read "like the terminal running in
 the background, with key errors flagged", not a list you refresh by hand.
 
-The stream's contract is the interesting part here — a log console that
+The stream's contract is the interesting part here, a log console that
 silently skips records, or replays them, is worse than one you refresh
 yourself, because you would not know to distrust it.
 """
 
 from __future__ import annotations
+
+import re
 
 import io
 import json
@@ -25,7 +27,7 @@ from memorymap.core import deps, logbuffer
 def _empty_buffer():
     # install() is what attaches the handler, and it normally runs from
     # create_app(). The buffer tests below have no app, so without this they
-    # would assert against a buffer nothing ever writes to — and pass for the
+    # would assert against a buffer nothing ever writes to, and pass for the
     # wrong reason the moment an assertion was weakened.
     logbuffer.install()
     logbuffer.clear()
@@ -50,7 +52,7 @@ def test_every_record_gets_an_increasing_id():
 
 
 def test_ids_are_not_reused_after_the_ring_wraps():
-    """Position in the deque cannot do this job — the deque shifts every time
+    """Position in the deque cannot do this job, the deque shifts every time
     it is full, so "the 400th record" means something different one message
     later. A reader resuming at 8,317 has to get exactly what follows it."""
     _log(logbuffer.MAX_RECORDS + 20)
@@ -89,7 +91,7 @@ def test_latest_seq_is_zero_on_an_empty_log():
 def test_clearing_does_not_restart_the_numbering():
     """Restarting at 1 would break every stream already open: a reader holding
     "I have seen up to 400" would treat the next 400 records as older than
-    what it had and show none of them — a console that goes silent the moment
+    what it had and show none of them, a console that goes silent the moment
     you press Clear."""
     _log(5)
     before = logbuffer.latest_seq()
@@ -107,7 +109,7 @@ def _brief_stream(monkeypatch):
 
     TestClient reads a response to completion, so an open-ended generator
     would hang the suite rather than fail it. Zeroing the lifetime exercises
-    the real code path — including the handover the client relies on — and
+    the real code path, including the handover the client relies on, and
     lets the response finish. The live behaviour that this cannot show was
     driven in a browser instead.
     """
@@ -123,7 +125,7 @@ def _stream_events(client, url: str = "/logs/stream?after=999999999") -> list[di
 def test_the_stream_is_ndjson_not_server_sent_events(client, _brief_stream):
     """EventSource cannot set request headers and this app authenticates with
     X-Auth-Token, so an EventSource here would simply 401. The usual fix is to
-    put the token in the query string — which on the endpoint that serves the
+    put the token in the query string, which on the endpoint that serves the
     log would write the token into the records it protects."""
     response = client.get("/logs/stream?after=999999999")
     assert response.status_code == 200
@@ -142,7 +144,7 @@ def test_the_stream_opens_immediately_rather_than_waiting_for_a_record(
 
 def test_the_stream_hands_back_instead_of_dying_quietly(client, _brief_stream):
     """The client reconnects from its cursor, so the handover costs no
-    records — but only if it is told the connection ended on purpose."""
+    records: but only if it is told the connection ended on purpose."""
     events = _stream_events(client)
     assert events[-1]["type"] == "reconnect"
     assert "cursor" in events[-1]
@@ -234,7 +236,7 @@ def test_free_text_settings_are_described_rather_than_disclosed(client):
 
 
 def test_diagnostic_settings_are_included_verbatim(client):
-    """Withholding everything would make the bundle useless — the point is to
+    """Withholding everything would make the bundle useless, the point is to
     diagnose a bug, and these are the settings that cause them."""
     deps.get_config().set_preference("search_provider", "duckduckgo")
     prefs = json.loads(_bundle(client).read("preferences.json"))
@@ -290,8 +292,7 @@ def test_the_console_does_not_authenticate_through_the_query_string():
     """The reason NDJSON was chosen over EventSource. Putting the token in the
     URL would write it into the very log being streamed."""
     source = _settings_js()
-    start = source.index("async function startLogStream(")
-    body = source[start : start + 1200]
+    body = _function_body(source, "startLogStream")
     assert "X-Auth-Token" in body
     assert "token=" not in body
 
@@ -315,10 +316,40 @@ def _settings_js() -> str:
     return (FRONTEND_DIR / "settings.js").read_text(encoding="utf-8")
 
 
+def _function_body(source: str, name: str) -> str:
+    """The whole of a top-level function, brace-matched.
+
+    Every assertion below used to slice a fixed number of characters from the
+    function's opening line: 400, 500, 600, 900, 1200, 1800, each one a guess
+    at how long that function would stay. `renderCopyLogsLabel` grew a comment
+    explaining a bug it had just been fixed for, the string the test looks for
+    moved past character 600, and the suite reported a broken Copy button on a
+    Copy button that was fine.
+
+    A test that fails when a comment is added is a test nobody trusts the
+    second time. This reads what the assertions have always meant: the body of
+    that function, however long it is.
+    """
+    match = re.search(rf"(?:async )?function {re.escape(name)}\s*\(", source)
+    assert match, f"{name} is gone or has been renamed"
+    start = match.start()
+    brace = source.index("{", match.end())
+    depth, index = 0, brace
+    while index < len(source):
+        if source[index] == "{":
+            depth += 1
+        elif source[index] == "}":
+            depth -= 1
+            if depth == 0:
+                return source[start : index + 1]
+        index += 1
+    raise AssertionError(f"{name} is not brace-balanced")
+
+
 # --- getting an error OUT of the log ----------------------------------------
 #
 # "Copy all" plus a filter can technically reach one error, but that is a
-# three-step answer to "send me that error" — and hand-selecting a row whose
+# three-step answer to "send me that error", and hand-selecting a row whose
 # traceback sits in its own scrolling box is worse than it sounds.
 
 
@@ -332,10 +363,9 @@ def test_every_record_has_its_own_copy_button():
 
 def test_copying_a_record_takes_its_traceback_with_it():
     """The traceback is the half worth having, and it lives in a separate
-    element — copying the row without it would be the useless half."""
+    element: copying the row without it would be the useless half."""
     source = _settings_js()
-    start = source.index("function logRecordText(record) {")
-    body = source[start : start + 400]
+    body = _function_body(source, "logRecordText")
     assert "record.trace" in body
 
 
@@ -348,14 +378,13 @@ def test_a_records_copy_button_does_not_toggle_the_fold_it_sits_beside():
 
 def test_copy_falls_back_when_the_clipboard_api_is_missing():
     """`navigator.clipboard` only exists in a SECURE CONTEXT. On
-    http://localhost that holds, which is why this looked fine — but reach the
+    http://localhost that holds, which is why this looked fine, but reach the
     app at http://192.168.1.20:8000 or through a tunnel and the whole API is
     `undefined`, so every copy button in the app becomes a no-op that says
     "couldn't copy". Worst on this screen, where the thing being copied is the
     error you are trying to report."""
     source = _app_js()
-    start = source.index("async function copyToClipboard(")
-    body = source[start : start + 900]
+    body = _function_body(source, "copyToClipboard")
     assert "window.isSecureContext" in body
     assert "copyViaTextarea" in body
     assert "showCopyFallback" in body
@@ -365,8 +394,7 @@ def test_the_last_resort_shows_the_text_already_selected():
     """If both copy mechanisms are refused, the answer to "how do I get this
     error out" still must not be "you can't"."""
     source = _app_js()
-    start = source.index("function showCopyFallback(text) {")
-    body = source[start : start + 1800]
+    body = _function_body(source, "showCopyFallback")
     assert ".select()" in body
     assert "Ctrl+C" in body
 
@@ -376,7 +404,7 @@ def test_every_copy_path_goes_through_the_fallback():
     No raw navigator.clipboard writes should remain outside the helper.
 
     Scans settings.js too now (§88.3 item 4 moved the logs console's own
-    copy buttons there) — a raw write introduced in either file should still
+    copy buttons there): a raw write introduced in either file should still
     be caught, not just one this split happened to touch.
     """
     app_source = _app_js()
@@ -398,8 +426,7 @@ def test_the_copy_button_says_what_it_will_copy():
     """"Copy all" while a filter hides 400 records is a promise it does not
     keep, and the reader would not find out until they pasted it."""
     source = _settings_js()
-    start = source.index("function renderCopyLogsLabel() {")
-    body = source[start : start + 600]
+    body = _function_body(source, "renderCopyLogsLabel")
     assert "Copy all" in body and "shown" in body
 
 
@@ -407,18 +434,16 @@ def test_the_error_badge_leads_to_the_errors():
     """The badge is the only place a failure announces itself, so it should
     also be the shortest way to reach one."""
     source = _settings_js()
-    start = source.index("function renderLogErrorBadge() {")
-    body = source[start : start + 900]
+    body = _function_body(source, "renderLogErrorBadge")
     assert 'log-level").value = "error"' in body
 
 
 def test_the_live_pill_is_not_left_claiming_to_be_live():
     """A deliberate abort returns early from the stream's own exit path, so the
     pill would still read "live" with nothing behind it. Found in a browser,
-    not by a test — this is the test that would notice it coming back."""
+    not by a test, this is the test that would notice it coming back."""
     source = _settings_js()
-    start = source.index("function closeLogs() {")
-    body = source[start : start + 500]
+    body = _function_body(source, "closeLogs")
     assert "setLogLive" in body
 
 

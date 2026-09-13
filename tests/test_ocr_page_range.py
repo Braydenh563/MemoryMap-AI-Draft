@@ -6,8 +6,8 @@ pages."* The OCR workspace could read the page you were looking at and
 nothing else, so transcribing a ten-page scan meant ten clicks and ten waits.
 
 The parser is what these cover. The read itself is a loop over the existing
-single-page reader — deliberately, so "no rasteriser", "no vision model" and
-"nothing legible" keep one definition — and the model half is unverifiable
+single-page reader: deliberately, so "no rasteriser", "no vision model" and
+"nothing legible" keep one definition: and the model half is unverifiable
 here for the usual reason (no Ollama in the sandbox).
 """
 
@@ -64,7 +64,7 @@ def test_junk_is_skipped_rather_than_refusing_the_whole_range():
 
 
 def test_duplicates_and_overlaps_collapse():
-    """Asking for a page twice must not read it twice — a vision pass is
+    """Asking for a page twice must not read it twice, a vision pass is
     seconds per page, and the overlap in "1-3,2-4" is easy to type."""
     assert _parse_page_spec("1-3,2-4", 10) == [0, 1, 2, 3]
     assert _parse_page_spec("2,2,2", 5) == [1]

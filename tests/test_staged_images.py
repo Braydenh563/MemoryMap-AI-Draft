@@ -6,14 +6,14 @@ this file enforces:
 
 > Every path that can save the composer has to rewrite the staged markers
 > first; one that does not leaves `staged:`/`blob:` URLs inside saved note
-> content — **corrupted notes, which is worse than the recoverable orphan it
+> content: **corrupted notes, which is worse than the recoverable orphan it
 > replaces** (orphans already have a collector: Library → orphan cleanup,
 > `media_gc.find_orphaned_media`). Do it with a test per save path, not as a
 > drive-by.
 
 "A test per save path" is the weaker version of what is built, and the
 difference matters: a list of save paths is an enumeration a *new* save path
-joins by being forgotten — this repo's own recurring defect shape. Every
+joins by being forgotten, this repo's own recurring defect shape. Every
 request in the frontend goes through `api()`, so the check sits there and a
 save path written next year is covered by existing.
 
@@ -42,7 +42,7 @@ def test_every_request_passes_through_the_guard():
     guard = body.index("refuseStagedUrls(fetchOptions.body)")
     fetch = body.index("await fetch(path")
     assert guard < fetch, (
-        "the staged-URL guard has to run before the request leaves — after it, "
+        "the staged-URL guard has to run before the request leaves, after it, "
         "the corrupted note is already saved"
     )
 
@@ -57,7 +57,7 @@ def test_the_guard_covers_both_schemes_and_only_the_embed_shape():
         "is the object URL a preview renders from"
     )
     assert pattern.startswith(r"]\("), (
-        "match the markdown embed shape, not the bare scheme — a note that "
+        "match the markdown embed shape, not the bare scheme, a note that "
         "mentions the word 'staged:' in prose must still save"
     )
 
@@ -75,7 +75,7 @@ def test_the_guard_throws_rather_than_repairing():
 def test_committing_staged_images_is_always_followed_by_the_rewrite():
     """`commitCaptureImages()` returns the map from staged key to real URL.
     A call site that uploads but never rewrites has done the expensive half
-    and none of the useful half — the note still points at dead keys."""
+    and none of the useful half, the note still points at dead keys."""
     source = _source()
     for match in re.finditer(r"await commitCaptureImages\(\)", source):
         window = source[match.end() : match.end() + 400]

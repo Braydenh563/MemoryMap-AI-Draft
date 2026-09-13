@@ -6,7 +6,7 @@ hobbies but basically none came up in the semantic search."*
 
 The consequence nobody had wired up: rename "Games" to "Hobbies", or merge it
 into an existing "Hobbies", and every note that moved still carries a vector
-built from the old name — so semantic search keeps missing exactly the notes
+built from the old name, so semantic search keeps missing exactly the notes
 the user just tidied. The same symptom, produced by the fix for it.
 
 Vectors are dropped rather than recomputed: re-embedding is a model call per
@@ -63,7 +63,7 @@ def test_merging_two_categories_drops_the_merged_notes_vectors(ai_client, fake_e
 
         # Everything now under "Hobbies" is stale: the notes that moved changed
         # category outright, and the ones already there are in a category whose
-        # membership — and so whose meaning to the user — just changed.
+        # membership, and so whose meaning to the user, just changed.
         assert _vector_count(session, moved_ids + stayed_ids) == 0
     finally:
         session.close()

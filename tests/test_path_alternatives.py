@@ -1,4 +1,4 @@
-"""`paths.find_many` — the best route between two notes, then the others.
+"""`paths.find_many`, the best route between two notes, then the others.
 
 Asked for directly: "allow for multiple paths to be displayed if they exist."
 These pin the three properties that make several routes worth showing at all:
@@ -17,8 +17,8 @@ class FakeIndex(Connections):
 
     `paths.build` needs Entry rows, a session and the tag/thread scan; every
     property under test here is a property of the *search*, so the graph is
-    written down literally instead. Anything the search reads — `entries` for
-    the membership check, `edges` for the walk — is populated.
+    written down literally instead. Anything the search reads, `entries` for
+    the membership check, `edges` for the walk: is populated.
     """
 
     def __init__(self, edges: list[tuple[int, int, float]]) -> None:
@@ -52,7 +52,7 @@ def test_the_alternatives_are_ordered_cheapest_first() -> None:
     # come out right by accident.
     index = FakeIndex(
         [
-            (1, 2, 1), (2, 5, 1),      # cost 2 — the best
+            (1, 2, 1), (2, 5, 1),      # cost 2, the best
             (1, 3, 2), (3, 5, 2),      # cost 4
             (1, 4, 5), (4, 5, 5),      # cost 10
         ]
@@ -83,7 +83,7 @@ def test_no_route_visits_the_same_note_twice() -> None:
     """Looplessness, which is what Yen's spur/root split buys.
 
     A route that walked back through a note it had already passed would read as
-    nonsense in the trace readout — and a cheap-looking one is easy to build
+    nonsense in the trace readout, and a cheap-looking one is easy to build
     accidentally, because the graph is undirected and every edge can be walked
     both ways.
     """

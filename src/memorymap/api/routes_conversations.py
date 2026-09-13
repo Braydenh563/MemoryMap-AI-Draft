@@ -1,20 +1,20 @@
 """Saved chats.
 
 The frontend streams answers via /chat/stream, then records the finished
-turn here — keeping the streaming path simple and the history durable.
+turn here: keeping the streaming path simple and the history durable.
 """
 
 from __future__ import annotations
 
 import json
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from memorymap.core import deps
-from memorymap.core.database import Conversation, utcnow
+from memorymap.core.database import LIKE_ESCAPE, Conversation, like_escape, utcnow
 from memorymap.core.deps import get_session
 from memorymap.entry.manager import log_action
 
@@ -25,7 +25,7 @@ class TurnBody(BaseModel):
     question: str = Field(min_length=1)
     answer: str
     thinking: str | None = None
-    # Tool-activity chips shown in the bubble — persisted so they
+    # Tool-activity chips shown in the bubble, persisted so they
     # survive a reload instead of vanishing. Each item is {label, ok}.
     tools: list[dict] | None = None
     # The agent's work in the order it happened: thinking, tool calls and
@@ -37,7 +37,7 @@ class TurnBody(BaseModel):
     # What this answer cost, as the model reported it. Stored per turn so a
     # conversation can show its running total: "how much context am I
     # carrying?" is only answerable per-message today, which is the wrong
-    # granularity — the total is what decides whether to start a new chat.
+    # granularity: the total is what decides whether to start a new chat.
     tokens: int | None = None
     # The whole metadata line, not just its total: which model answered, how
     # long it took, prompt→output counts, how full the window got, whether
@@ -45,7 +45,7 @@ class TurnBody(BaseModel):
     #
     # Reported in IDEAS.md as "chat message metadata disappears on reload".
     # `tokens` above is a sum, which is the right shape for the conversation
-    # total and the wrong one for the per-message line — you cannot rebuild
+    # total and the wrong one for the per-message line, you cannot rebuild
     # "3.9k of 8k, 12 tok/s, llama3.2" from a single integer, so on reload the
     # line simply vanished and the chat looked like it had been answered by
     # nothing in particular.
@@ -60,7 +60,7 @@ class TurnBody(BaseModel):
     # only thing that saw all of it: the server reports per-round timings, and
     # an agent turn is several rounds plus the tool calls between them.
     elapsed_ms: int | None = None
-    # The "N matching notes" disclosure's own data — the same shape the
+    # The "N matching notes" disclosure's own data: the same shape the
     # `/chat/stream` "meta" event already carries. Reported: "semantic
     # search results in chat messages keep disappearing and don't persist" -
     # true on every reload, since none of this was ever saved here at all;
@@ -74,7 +74,7 @@ class TurnBody(BaseModel):
     # above, reported separately: reopening a chat, or just leaving the
     # tab, dropped the sources line because nothing here ever stored it.
     sentence_grounding: list[dict] | None = None
-    # Which MediaUpload ids this turn actually attached — asked for
+    # Which MediaUpload ids this turn actually attached, asked for
     # directly, and load-bearing beyond just redisplaying them on reopen:
     # media_gc.py's orphan scan can only see `/media/…` references inside
     # note, document and whiteboard content, so a sent chat image had no
@@ -82,7 +82,7 @@ class TurnBody(BaseModel):
     # media_gc._referenced_filenames can look conversations up too, instead
     # of "Clean orphaned media" silently deleting a real, sent attachment.
     image_media_ids: list[int] | None = None
-    #: Documents this turn attached — a file dropped on the chat that was not
+    #: Documents this turn attached, a file dropped on the chat that was not
     #: an image is imported into Documents (`POST /documents/import`) rather
     #: than sent as pixels, and until now the message kept no record that it
     #: had happened. Reported as attachments that "arent rendered with the
@@ -90,7 +90,7 @@ class TurnBody(BaseModel):
     #: their stored location in the library or documents": with nothing
     #: stored, there was nothing to render and nowhere to navigate to.
     document_ids: list[int] | None = None
-    #: Library files this turn attached — an Attachment row, not a Document
+    #: Library files this turn attached, an Attachment row, not a Document
     #: and not a MediaUpload, so it needs its own list for the same reason
     #: `document_ids` does. Without it a reopened conversation showed the
     #: images and documents a question was given and silently dropped the
@@ -99,13 +99,13 @@ class TurnBody(BaseModel):
     file_ids: list[int] | None = None
     #: Notes clipped to this question with the paperclip. Reported: *"if the
     #: user attaches a note to a chat message how does it show that that note
-    #: is attached to that message??"* — it did not, anywhere. The ids were
+    #: is attached to that message??"*, it did not, anywhere. The ids were
     #: sent to `/chat/stream`, used to build that one prompt, and thrown away:
     #: the bubble showed plain text, and reopening the conversation showed the
     #: same plain text, so the answer's whole basis was invisible after the
     #: fact. Same fix as images and documents above, one release later.
     note_ids: list[int] | None = None
-    #: Which mode actually answered this turn — Ask (read-only) or Request
+    #: Which mode actually answered this turn, Ask (read-only) or Request
     #: (tools allowed). Reported directly: a conversation can span mode
     #: switches, and each past message should say what answered it, not what
     #: the live #chat-mode-seg toggle happens to show now (ROADMAP §89.4).
@@ -178,7 +178,7 @@ def _existing(session: Session, conversation_id: int) -> Conversation:
 
 def _process_committed_media(session: Session, turn: TurnBody) -> None:
     """A sent chat message is one of the three "committed" moments
-    core/media_process.py waits for (asked for directly) — an image
+    core/media_process.py waits for (asked for directly): an image
     attached to the composer and never sent must not trigger OCR/
     captioning/vision-OCR just for having been uploaded. Keyed off
     `image_media_ids` directly (a conversation's own content is a question
@@ -208,42 +208,86 @@ def conversation_matches(conversation: Conversation, term: str) -> bool:
     return any(lowered in str(m.get("content", "")).lower() for m in messages)
 
 
+#: A page of the chat list, not a ceiling on how many chats a notebook may
+#: hold. 200 matches `GET /documents` and `GET /entries`, which are read the
+#: same way: a caller that wants all of them asks for the next page until
+#: `X-Total-Count` is satisfied (`apiPagedList` in documents.js).
+CONVERSATIONS_PAGE_SIZE = 200
+MAX_CONVERSATIONS_PAGE = 1000
+
+#: How deep a *search* reads before it answers. The SQL filter over-matches
+#: (the messages column is JSON, so its keys are text too), so the real
+#: matching happens in Python over what SQL returns, and that is a scan: this
+#: is the ceiling on it. High enough that a notebook with a few thousand chats
+#: searches all of them, low enough that one request cannot read a table of
+#: any size into memory.
+SEARCH_SCAN_CAP = 5000
+
+
 @router.get("")
 def list_conversations(
-    q: str = "", session: Session = Depends(get_session)
+    response: Response,
+    q: str = "",
+    limit: int = Query(default=CONVERSATIONS_PAGE_SIZE, ge=1, le=MAX_CONVERSATIONS_PAGE),
+    offset: int = Query(default=0, ge=0),
+    session: Session = Depends(get_session),
 ) -> list[dict]:
-    """Pinned first, then most recently used.
+    """Pinned first, then most recently used, one page at a time.
 
     `q` searches titles *and* message text: you remember what you asked
     about far more often than what the chat ended up being called, and
     title-only search can't find that.
+
+    **The cap this replaces made old chats unreachable.** It was a flat
+    `.limit(200)` with no offset, so the 201st chat could not be opened from
+    the sidebar, and could not be found by searching either, because the
+    search filtered *after* the limit: the post-filter ran over the 200 most
+    recent rows and everything else was never looked at. Same finding as
+    INBOX 117 on documents, reminders and media, one list later.
+
+    The id is a tiebreaker in the ordering for the same reason it is there:
+    two chats sharing an `updated_at` could otherwise swap places between two
+    pages and hide one of them.
     """
     term = (q or "").strip()
-    # Archived chats are kept, but out of the way — same shape as an
+    # Archived chats are kept, but out of the way, same shape as an
     # archived note dropping out of the Notes tab. Reachable via the
     # Library's Shelved filter (routes_library._shelved), not this list.
-    query = select(Conversation).where(Conversation.archived_at.is_(None))
-    if term:
-        # A cheap SQL prefilter — it over-matches (JSON keys count as text),
-        # so everything it returns is then checked properly below.
-        like = f"%{term}%"
-        query = query.where(
-            Conversation.title.ilike(like) | Conversation.messages.ilike(like)
-        )
-    # Same cap either way: browsing without a search term shouldn't see
-    # fewer conversations than searching does — a 50-row default cap with no
-    # way past it made anything older than the 50 most-recently-updated
-    # chats unreachable from the sidebar list.
-    rows = list(
-        session.scalars(
-            query.order_by(
-                Conversation.pinned.desc(), Conversation.updated_at.desc()
-            ).limit(200)
-        )
+    live = Conversation.archived_at.is_(None)
+    order = (
+        Conversation.pinned.desc(),
+        Conversation.updated_at.desc(),
+        Conversation.id.desc(),
     )
-    if term:
-        rows = [c for c in rows if conversation_matches(c, term)]
-    return [_summary(c) for c in rows]
+
+    if not term:
+        total = session.scalar(select(func.count(Conversation.id)).where(live)) or 0
+        rows = list(
+            session.scalars(
+                select(Conversation).where(live).order_by(*order).limit(limit).offset(offset)
+            )
+        )
+        response.headers["X-Total-Count"] = str(total)
+        return [_summary(c) for c in rows]
+
+    # A cheap SQL prefilter, which over-matches (JSON keys count as text), so
+    # everything it returns is then checked properly in Python. The page is
+    # taken *after* that check, never before: slicing first is what made the
+    # old version answer "nothing found" for a chat it had simply not read.
+    like = f"%{like_escape(term)}%"
+    candidates = session.scalars(
+        select(Conversation)
+        .where(
+            live,
+            Conversation.title.ilike(like, escape=LIKE_ESCAPE)
+            | Conversation.messages.ilike(like, escape=LIKE_ESCAPE),
+        )
+        .order_by(*order)
+        .limit(SEARCH_SCAN_CAP)
+    )
+    matched = [c for c in candidates if conversation_matches(c, term)]
+    response.headers["X-Total-Count"] = str(len(matched))
+    return [_summary(c) for c in matched[offset : offset + limit]]
 
 
 @router.put("/{conversation_id}/pin")
@@ -252,7 +296,7 @@ def pin_conversation(
 ) -> dict:
     conversation = _existing(session, conversation_id)
     # updated_at carries `onupdate=utcnow`, which fires on *any* write to the
-    # row — so the obvious `conversation.pinned = …; commit()` also marks the
+    # row: so the obvious `conversation.pinned = …; commit()` also marks the
     # chat as just-used, and unpinning would leave it at the top of the list
     # it was meant to drop back down. Passing the current value explicitly is
     # what suppresses the default: pinning is organising, not using.
@@ -270,7 +314,7 @@ def pin_conversation(
 def archive_conversation(
     conversation_id: int, session: Session = Depends(get_session)
 ) -> dict:
-    """Kept, but out of the way (BACKLOG §30b's named remaining scope) —
+    """Kept, but out of the way (BACKLOG §30b's named remaining scope), 
     same shape as `routes_entries.archive_entry`: never deleted, never
     auto-cleared, drops out of the sidebar list and out of the way, still
     reachable from the Library's Shelved filter."""
@@ -308,7 +352,7 @@ def unarchive_conversation(
 
 @router.post("", status_code=201)
 def create_conversation(body: TurnBody, session: Session = Depends(get_session)) -> dict:
-    """First turn of a new chat — the question becomes the title."""
+    """First turn of a new chat, the question becomes the title."""
     title = body.question if len(body.question) <= 60 else body.question[:59] + "…"
     conversation = Conversation(
         title=title, messages=json.dumps(_turn_messages(body))
@@ -326,7 +370,7 @@ def _hydrate_attachments(session: Session, messages: list[dict]) -> None:
 
     A message stores ids because ids are what survives a rename and what
     `media_gc` needs. A *bubble* needs a thumbnail, a name, and the caption
-    and transcription the app already holds for that picture — so the read
+    and transcription the app already holds for that picture, so the read
     path resolves them here, once for the whole conversation, rather than
     leaving the browser to fire one request per attachment per reopen.
 
@@ -389,7 +433,7 @@ def _hydrate_attachments(session: Session, messages: list[dict]) -> None:
                 "id": entry.id,
                 "kind": "note",
                 # Notes have no title of their own, so the chip says what the
-                # note says — the same first-line preview the picker uses, for
+                # note says: the same first-line preview the picker uses, for
                 # the same reason: it is how the user recognises it.
                 "name": (first_line[0][:60] if first_line else f"Note #{entry.id}"),
             }
@@ -443,7 +487,7 @@ def _clean_title(raw: str) -> str | None:
     text = text.strip().strip("\"'`*#").rstrip(".!,;:").strip()
     if not text or len(text) > 60 or len(text.split()) > 8:
         return None
-    # Models frequently reply in lowercase — a title should start capitalised.
+    # Models frequently reply in lowercase, a title should start capitalised.
     return text[0].upper() + text[1:]
 
 
@@ -486,7 +530,7 @@ def retitle_conversation(
                 ],
             )
             title = _clean_title(reply.get("content", "") if isinstance(reply, dict) else "")
-        except Exception:  # noqa: BLE001 — a failed rename is never fatal
+        except Exception:  # noqa: BLE001  # a failed rename is never fatal
             title = None
 
     conversation.title = title or fallback or conversation.title
@@ -578,7 +622,7 @@ def truncate_conversation(
 class ForkBody(BaseModel):
     """Where to cut the copy. Omitted means the whole conversation."""
 
-    #: The turn to keep *up to and including*. Same indexing `truncate` uses —
+    #: The turn to keep *up to and including*. Same indexing `truncate` uses: 
     #: one turn is a user message and its answer, so the message slice is
     #: `(up_to + 1) * 2`. `None` means "all of it", which is the plain
     #: duplicate case.
@@ -602,7 +646,7 @@ def fork_conversation(
     one JSON blob per row (see `Conversation`'s own docstring on why that is
     the right size for a single-user app), and a real branch would mean
     turning that into a tree with shared ancestry, a merge story and a
-    migration — an enormous amount of machinery so that two threads can share
+    migration: an enormous amount of machinery so that two threads can share
     the bytes of the first three messages. Copying is O(one chat) of disk and
     behaves exactly as a reader expects: the fork is a normal conversation
     from the moment it exists, and editing it cannot reach back into its
@@ -649,7 +693,7 @@ def set_turn_followups(
 
     Reported directly: "suggested repsponse continuation prompts in chat doesnt
     persist and disappears once I switch chat sessions or quit the app." They
-    did not persist because nothing ever stored them — they were generated by
+    did not persist because nothing ever stored them, they were generated by
     a second model call after the turn was already saved, appended to a live
     DOM node, and that was the whole of their existence.
 
@@ -657,7 +701,7 @@ def set_turn_followups(
     it happens: the turn is written the moment the answer finishes, and the
     suggestions arrive after that, deliberately (they are a second model call
     and must never delay the answer). A turn that has since been deleted is a
-    204-shaped no-op, not an error — the reader moved on, which is fine.
+    204-shaped no-op, not an error, the reader moved on, which is fine.
     """
     conversation = _existing(session, conversation_id)
     messages = json.loads(conversation.messages)
@@ -670,7 +714,7 @@ def set_turn_followups(
         messages[position]["followups"] = cleaned
     else:
         messages[position].pop("followups", None)
-    # `updated_at` is deliberately held where it was — and holding it takes an
+    # `updated_at` is deliberately held where it was, and holding it takes an
     # explicit assignment, because the column carries `onupdate=utcnow` and
     # would otherwise move on any UPDATE at all. A suggestion the user has not
     # read is not activity: bumping it would reshuffle the chat list under
@@ -679,7 +723,7 @@ def set_turn_followups(
     # A Core UPDATE naming both columns, not `conversation.messages = …`.
     # Assigning the same `updated_at` back through the ORM does nothing: it is
     # not a change, so the column is left out of the SET clause and `onupdate`
-    # fills it in — which is the behaviour being avoided. `values()` puts it in
+    # fills it in: which is the behaviour being avoided. `values()` puts it in
     # the statement explicitly, and an explicit value beats `onupdate`.
     session.execute(
         update(Conversation)
@@ -698,7 +742,7 @@ def _rewrite_answer_steps(steps: list[dict] | None, content: str) -> list[dict] 
     """Point a saved step timeline at an edited answer.
 
     `steps` carries its own copy of the prose, and it is the copy the client
-    actually renders when reopening a chat — `content` is only used for the
+    actually renders when reopening a chat, `content` is only used for the
     copy button. So editing `content` alone left the edit invisible the moment
     the chat was reopened: replay redrew the model's original wording and the
     correction looked like it had never been saved.
@@ -706,7 +750,7 @@ def _rewrite_answer_steps(steps: list[dict] | None, content: str) -> list[dict] 
     The reasoning and tool steps are deliberately left alone. They record what
     the model actually did, which the user's correction doesn't change. Only
     the prose is theirs to rewrite, so the answer steps collapse into the one
-    block they typed — the same shape the frontend produces when it edits a
+    block they typed: the same shape the frontend produces when it edits a
     timeline in place.
     """
     if not steps:
@@ -740,7 +784,7 @@ def edit_answer(
     Questions have been editable for a while; answers weren't, so the only
     way to fix a model's near-miss was to regenerate and hope. An edited
     answer is marked so the transcript never passes your words off as the
-    model's — that distinction is the whole point of keeping a transcript.
+    model's: that distinction is the whole point of keeping a transcript.
     """
     conversation = _existing(session, conversation_id)
     messages = json.loads(conversation.messages)

@@ -1,7 +1,7 @@
 """Find entries two ways.
 
-- Keyword search: word-based and ranked — always works, even with zero AI.
-- Semantic search: cosine similarity over stored vectors — needs an
+- Keyword search: word-based and ranked: always works, even with zero AI.
+- Semantic search: cosine similarity over stored vectors, needs an
   embedding backend.
 
 `retrieve()` is what /chat uses: semantic when possible, keyword as the
@@ -42,12 +42,12 @@ def _user_today(session: Session):
         from memorymap.core.config import user_now
 
         return user_now(deps.get_config()).date()
-    except Exception:  # noqa: BLE001 — a script or a test with no app state
+    except Exception:  # noqa: BLE001  # a script or a test with no app state
         return datetime.now().date()
 
-# Below this cosine similarity a match is probably noise — hide it. An
+# Below this cosine similarity a match is probably noise, hide it. An
 # absolute floor, kept as a sanity check alongside the relative one below
-# (RELATIVE_Z_MARGIN) — see semantic_search's own comment on why an
+# (RELATIVE_Z_MARGIN): see semantic_search's own comment on why an
 # absolute number alone is not enough for an anisotropic embedding space.
 MIN_SIMILARITY = 0.25
 
@@ -56,7 +56,7 @@ MIN_SIMILARITY = 0.25
 RELATIVE_Z_MARGIN = 0.5
 
 # Below this many valid candidate scores, a mean/std is too noisy an
-# estimate to reject anything by — semantic_search falls back to
+# estimate to reject anything by, semantic_search falls back to
 # MIN_SIMILARITY alone.
 RELATIVE_MIN_CANDIDATES = 5
 
@@ -89,14 +89,14 @@ def keyword_search(session: Session, query: str, limit: int = 10) -> list[Entry]
     something anyone should have to guess.
 
     Now every word must appear somewhere (content or tags), in any order.
-    Ranked by SQLite's own FTS5 `bm25()` — real IDF-weighted relevance
+    Ranked by SQLite's own FTS5 `bm25()`, real IDF-weighted relevance
     (ROADMAP.md item 32: the previous hand-rolled integer score treated a
-    rare, distinctive word the same as a common one) — with tag matches
+    rare, distinctive word the same as a common one), with tag matches
     weighted above a plain content mention, and an exact contiguous phrase
     (checked in Python against the small candidate set FTS already
     narrowed things to, not a second index) breaking ties in front of
     everything else, the same way the old +25 phrase bonus did. When no
-    note has all the words, it falls back to notes with *some* of them — a
+    note has all the words, it falls back to notes with *some* of them, a
     partial answer beats an empty page.
 
     This matters most with no AI running: keyword search is then the whole of
@@ -104,7 +104,7 @@ def keyword_search(session: Session, query: str, limit: int = 10) -> list[Entry]
     """
     terms = _meaningful_terms(query)
     if not terms:
-        # Nothing to match on — a question made entirely of common words
+        # Nothing to match on, a question made entirely of common words
         # ("what have I saved so far?") isn't a keyword search at all, and
         # saying so lets the caller fall through to recent notes instead.
         return []
@@ -116,7 +116,7 @@ def keyword_search(session: Session, query: str, limit: int = 10) -> list[Entry]
 
     def matching(require_all: bool, words: list[str] | None = None) -> dict[int, float]:
         # `terms` are pre-filtered to \W-stripped words by `_meaningful_terms`,
-        # so none of them can contain FTS5 query-syntax characters — safe to
+        # so none of them can contain FTS5 query-syntax characters, safe to
         # join directly rather than needing to quote/escape each one. (A
         # trailing `*` from the prefix stage is FTS5's own prefix operator.)
         match_expr = (" AND " if require_all else " OR ").join(words or terms)
@@ -130,7 +130,7 @@ def keyword_search(session: Session, query: str, limit: int = 10) -> list[Entry]
             ),
             {"expr": match_expr, "n": max(limit * 5, 50)},
         ).all()
-        # bm25() is *lower is better* — more negative means more relevant.
+        # bm25() is *lower is better*, more negative means more relevant.
         return {row.rowid: row.score for row in rows}
 
     # Four stages, each only when the one before found nothing, each a
@@ -170,7 +170,7 @@ def keyword_search(session: Session, query: str, limit: int = 10) -> list[Entry]
 
 # A query word this long or longer is also tried as a prefix when nothing
 # matched it whole. Three letters would turn "the" into "the*" and match
-# "theory", "thermal", "these" — a prefix that short is noise, not intent.
+# "theory", "thermal", "these", a prefix that short is noise, not intent.
 PREFIX_MIN_LEN = 4
 # Only words this long are ever "corrected": a three-letter word is one
 # edit from dozens of others, and difflib's ratio cannot tell them apart.
@@ -186,7 +186,7 @@ def _corrected_terms(session: Session, terms: list[str]) -> list[str]:
     terms, are returned unchanged.
 
     Reads `entries_fts_vocab` (database.py) one first-letter range at a time
-    — a few hundred candidates at most — and lets `difflib` pick. Nothing
+    - a few hundred candidates at most, and lets `difflib` pick. Nothing
     here is cleverer than that on purpose: it can only ever propose a word
     that is actually in a note, so a wrong correction still lands on real
     text rather than inventing a match."""
@@ -216,35 +216,30 @@ def _corrected_terms(session: Session, terms: list[str]) -> list[str]:
     return corrected
 
 
-# Words that carry no signal in a search. Matching on them is worse than
-# useless: "%a%" matches nearly every note ever written, so a broad question
-# would return the whole notebook ranked by noise.
-_STOPWORDS = frozenset(
-    """a an and are as at be been but by can did do does for from had has have
-    how i if in into is it its me my of on or our so than that the their them
-    then there these they this to was we were what when where which who why
-    will with would you your""".split()
-)
+#: The stopword list and the term splitter both moved to `search/query.py`,
+#: which is the floor both searches share (see its own comment on the import
+#: cycle that made the move necessary).
+#:
+#: A `_STOPWORDS = query_understanding.STOPWORDS` alias stood here for one
+#: commit, kept "under the name eighty lines of this file and
+#: `ai/grounding.py` already use". That was true before the move and false
+#: after it: the same commit rewrote every one of those call sites to go
+#: through `search_terms`, so the alias was read by nothing. CodeQL said so
+#: (alert 402, unused global) and a grep agreed, which is the whole value of
+#: that check: a name kept for compatibility is worth keeping only while
+#: something is compatible with it.
 
 
 def _meaningful_terms(query: str) -> list[str]:
-    """Search words worth matching on, in order.
-
-    Single characters and stopwords are dropped. If that leaves nothing, the
-    caller gets an empty list rather than a match against everything.
-    """
-    words = [w for w in re.split(r"\W+", (query or "").lower()) if w]
-    kept = [w for w in words if len(w) > 1 and w not in _STOPWORDS]
-    # An all-stopword query ("how do I") has no keywords in it; don't invent
-    # some by falling back to the raw words.
-    return kept
+    """Search words worth matching on, in order. See `query.search_terms`."""
+    return query_understanding.search_terms(query)
 
 
 def configured_thresholds() -> tuple[float, float]:
     """(min_similarity, relative_z_margin), from user preferences if set,
     the module defaults otherwise. One place for every real caller (the API
     routes, /chat's retrieve() below) to read these, so semantic_search
-    itself stays a pure function of its arguments — no hidden global-state
+    itself stays a pure function of its arguments, no hidden global-state
     dependency for a bare-session test to trip over."""
     from memorymap.core import deps
 
@@ -267,12 +262,12 @@ def semantic_search(
     unavailable (caller should fall back to keyword search).
 
     The MVP compared against every stored vector *and joined in the full
-    `Entry` for each one* in Python — this docstring used to say "revisit
+    `Entry` for each one* in Python, this docstring used to say "revisit
     only if it ever feels slow", and ANALYSIS.md §34's scale-test found it
     does: materialising every entry as an ORM object just to score and throw
     most of them away was ~85% of one search's cost at 20k+ notes (~6.6s of
-    a ~7.3s call at 50k). The vector scan itself is still brute-force — there
-    is no index to avoid it — but scoring needs only `(entry_id, embedding)`
+    a ~7.3s call at 50k). The vector scan itself is still brute-force, there
+    is no index to avoid it, but scoring needs only `(entry_id, embedding)`
     tuples, not full mapped entities, so that part is now a plain column
     query and only the handful of notes that actually rank get a real
     `Entry` fetched."""
@@ -282,7 +277,7 @@ def semantic_search(
 
     records = session.execute(
         select(EmbeddingRecord.entry_id, EmbeddingRecord.embedding).where(
-            # Vectors from other backends live in a different space —
+            # Vectors from other backends live in a different space, 
             # comparing them would give nonsense (plan §6.5).
             EmbeddingRecord.model_version
             == embeddings.backend_id()
@@ -296,7 +291,7 @@ def semantic_search(
     if query_norm == 0:
         return []
 
-    # One matrix multiply instead of a Python loop of dot products — the scan
+    # One matrix multiply instead of a Python loop of dot products, the scan
     # is still brute-force, but NumPy does it at memory speed.
     #
     # Only over the rows whose vector is the same width as the query, though.
@@ -304,7 +299,7 @@ def semantic_search(
     # dimension: swapping the embedding *model* inside the same backend (which
     # Settings → Embedding models offers as a button) leaves the old rows in
     # place at their old width. Stacking those into one array raises on the
-    # ragged list and took the whole search down with it — every query
+    # ragged list and took the whole search down with it, every query
     # returning nothing, until a reindex that the error gave no hint to run.
     # Mismatched rows are skipped instead; they get their real scores back as
     # the reindex refills them.
@@ -317,14 +312,14 @@ def semantic_search(
     if not usable:
         logger.warning(
             "no stored vectors match the query's %d dimensions (widths present: %s) "
-            "— reindex to score these notes again",
+            ", reindex to score these notes again",
             query_vector.shape[0],
             sorted(by_width),
         )
         return []
     if len(usable) < len(records):
         logger.info(
-            "%d of %d vectors are a different width and were skipped — reindex to include them",
+            "%d of %d vectors are a different width and were skipped, reindex to include them",
             len(records) - len(usable),
             len(records),
         )
@@ -340,7 +335,7 @@ def semantic_search(
         scores[valid] = np.dot(vectors[valid], query_vector) / (norms[valid] * query_norm)
 
     # MIN_SIMILARITY alone assumes "0.25" means the same thing regardless of
-    # which embedding model produced the vectors — it does not. A BGE-family
+    # which embedding model produced the vectors, it does not. A BGE-family
     # model (the current DEFAULT_ST_MODEL, embeddings.py) is anisotropic:
     # its vectors cluster in a narrow cone, so two genuinely unrelated notes
     # routinely land at 0.4-0.6 cosine similarity, nowhere near the "0 is
@@ -348,17 +343,17 @@ def semantic_search(
     # unrelated note scored 57% for an unconnected query, comfortably above
     # this floor. MIN_SIMILARITY predates that model (the built-in default
     # was all-MiniLM before it, which does not have anisotropy to nearly the
-    # same degree — see embeddings.py's own comment on the switch) and was
+    # same degree: see embeddings.py's own comment on the switch) and was
     # never recalibrated.
     #
-    # Rather than guess a new fixed number for BGE specifically — unverified
+    # Rather than guess a new fixed number for BGE specifically, unverified
     # in this sandbox, which cannot run sentence-transformers at all per
-    # CLAUDE.md — this adds a second, *relative* floor from the query's own
+    # CLAUDE.md: this adds a second, *relative* floor from the query's own
     # score distribution: a candidate has to beat what an unrelated note
     # typically scores for THIS query, not just clear an absolute number
     # picked for a different model. Self-calibrating regardless of backend,
     # and it degrades to "floor only" (relative_floor = -inf) when there
-    # are too few candidates for a mean/std to mean anything — a two-note
+    # are too few candidates for a mean/std to mean anything, a two-note
     # notebook has no "typical unrelated score" to measure against.
     valid_scores = scores[valid]
     if valid_scores.size >= RELATIVE_MIN_CANDIDATES:
@@ -412,7 +407,7 @@ def semantic_search(
 # Reciprocal rank fusion combines the two by **rank** rather than by score,
 # which is what makes it robust here: a cosine similarity and a keyword tally
 # are not on the same scale and never will be, so any weighted sum of the two
-# needs a tuning constant per notebook. RRF needs none — it only asks "how near
+# needs a tuning constant per notebook. RRF needs none: it only asks "how near
 # the top of each list did this note come?"
 RRF_K = 10
 
@@ -424,7 +419,7 @@ FUSION_DEPTH = 20
 
 def _recency_pin_ranking(entries: list[Entry]) -> list[Entry]:
     """The same candidates, reordered by pinned-first then most-recently-
-    touched — a third vote for `_fuse` rather than a new source of matches.
+    touched: a third vote for `_fuse` rather than a new source of matches.
 
     BACKLOG.md §95 item B.6, asked for directly: "search ranks by relevance;
     it does not know that a note pinned last week matters more than a
@@ -432,12 +427,12 @@ def _recency_pin_ranking(entries: list[Entry]) -> list[Entry]:
     `Entry.updated_at`); nothing read them at search time.
 
     Deliberately a *reorder of the candidates a real search already found*,
-    never a fresh query — a pinned note that has nothing to do with the
+    never a fresh query, a pinned note that has nothing to do with the
     question is not a better answer to it, so this only ever influences
     ranking among notes that already matched by meaning or by word. Fed into
     `_fuse` exactly like the semantic and keyword rankings: by rank
     position, not a weighted score, for the same reason those two are (see
-    RRF_K's own comment) — "how recently pinned" and "how many days old"
+    RRF_K's own comment): "how recently pinned" and "how many days old"
     are not on a shared scale with cosine similarity or a BM25 tally, and a
     weighted sum of the three would need a tuning constant this notebook has
     no way to pick.
@@ -465,20 +460,20 @@ def _fuse(ranked_lists: list[list[Entry]], limit: int) -> list[Entry]:
 #
 # **This is what makes the app a memory *map* rather than a search box.** A
 # question retrieves the notes that match it; the notes those *link to* are
-# very often where the answer actually is — you wrote the question's subject in
+# very often where the answer actually is, you wrote the question's subject in
 # one note and the thing you need in the note you linked from it. That
 # connection is the structure the whole app is built around, and until now no
 # answer used it: only the agent could walk links, and only when it thought to.
 #
 # Deliberately small, and deliberately at the end of the list. These are
-# context, not matches — they earned their place by being connected to
+# context, not matches: they earned their place by being connected to
 # something that matched, which is weaker evidence than matching. A large
 # expansion would push real matches out of a budgeted prompt to make room for
 # notes nobody searched for.
 GRAPH_EXPANSION_SEEDS = 3
 GRAPH_EXPANSION_LIMIT = 3
 # ROADMAP.md item 33: a second hop, opt-in by being small and automatic
-# rather than a user-visible "search deeper" action — the roadmap left that
+# rather than a user-visible "search deeper" action: the roadmap left that
 # choice open; automatic is the one that needs no new UI and degrades to
 # "just doesn't add much" rather than "a control nobody found". Smaller than
 # the first hop on purpose: a neighbour-of-a-neighbour is weaker evidence
@@ -490,13 +485,13 @@ GRAPH_EXPANSION_HOP2_LIMIT = 2
 def _linked_neighbours(
     session: Session, seeds: list[int], exclude: set[int]
 ) -> tuple[list[int], dict[int, str]]:
-    """One hop of `graph_expansion`'s own walk — links plus reply threads,
+    """One hop of `graph_expansion`'s own walk: links plus reply threads,
     strongest first (ties in the order found). Factored out so a second hop
     can call it again starting from the first hop's own results, rather than
     duplicating the walk.
 
     Ordering matters here specifically because both `GRAPH_EXPANSION_LIMIT`
-    and `GRAPH_EXPANSION_HOP2_LIMIT` truncate this list — §87.5's payoff for
+    and `GRAPH_EXPANSION_HOP2_LIMIT` truncate this list: §87.5's payoff for
     this side is which neighbours *survive* that truncation, not just how
     they're labelled.
     """
@@ -505,7 +500,7 @@ def _linked_neighbours(
     neighbours: list[int] = []
     reasons: dict[int, str] = {}
     # A reply/parent thread has no EntryLink to read a type or confidence
-    # off, so it gets no entry here — the sort below falls back to 1.0 for
+    # off, so it gets no entry here, the sort below falls back to 1.0 for
     # it, the same baseline `entry/paths.py`'s THREAD_WEIGHT == LINK_WEIGHT
     # already treats a reply and a bare link as equally strong.
     strengths: dict[int, float] = {}
@@ -541,7 +536,7 @@ def _linked_neighbours(
         if entry.id not in exclude and entry.id not in neighbours:
             neighbours.append(entry.id)
     # The seeds' own parents, in one query rather than one `session.get` each
-    # — same reasoning as `semantic_search`'s own docstring on avoiding
+    #, same reasoning as `semantic_search`'s own docstring on avoiding
     # per-row fetches.
     for parent_id in session.scalars(
         select(Entry.parent_id).where(Entry.id.in_(seeds), Entry.parent_id.is_not(None))
@@ -555,18 +550,18 @@ def _linked_neighbours(
 def graph_expansion(
     session: Session, matches: list[Entry], limit: int = GRAPH_EXPANSION_LIMIT
 ) -> tuple[list[Entry], dict[int, str], dict[int, int]]:
-    """Notes connected to the best matches, nearest first, plus *why* — a
-    link's own reason, keyed by neighbour id, for the ones that have one —
+    """Notes connected to the best matches, nearest first, plus *why*, a
+    link's own reason, keyed by neighbour id, for the ones that have one, 
     and *how far*, keyed the same way (1 = directly linked to a match, 2 =
     linked to one of those). Only the one caller (`_retrieve`) reads either
     extra dict; the reason is what lets the "linked to a match" badge say
     what the link actually is instead of just that one exists (asked for
     directly: "does the reason in the links show in [connected results] as
-    well?" — it didn't, this is that gap closed), and the hop count is what
+    well?", it didn't, this is that gap closed), and the hop count is what
     lets a second-hop note render as a visibly weaker tier rather than
     merged in with the first hop's (ROADMAP.md item 33).
 
-    Links and reply threads only — not shared tags. A tag is a filing label
+    Links and reply threads only, not shared tags. A tag is a filing label
     that can put fifty unrelated notes one hop apart, and the same reasoning
     that made `entry/paths.py` weight tag steps down applies with more force
     here: this list goes straight into a prompt, where a weak connection is
@@ -622,8 +617,8 @@ def in_range(
 ) -> list[Entry]:
     """Every note written in a date range, newest first.
 
-    The answer to a question that is *only* about time — "what did I save last
-    week?" — where ranking by similarity would be ranking noise: there is no
+    The answer to a question that is *only* about time, "what did I save last
+    week?", where ranking by similarity would be ranking noise: there is no
     subject to be similar to.
     """
     clauses = [
@@ -646,14 +641,14 @@ def in_range(
 
 def _written_at(entry: Entry):
     """When a note was written, for sorting. A note with no timestamp sorts
-    oldest rather than crashing the comparison — the same choice `_within`
+    oldest rather than crashing the comparison, the same choice `_within`
     makes when it keeps an undated note rather than filtering on an absence."""
     written = getattr(entry, "created_at", None)
     return written or datetime.min
 
 
 def _within(entry: Entry, since, until) -> bool:
-    """Was this note written in the range? Notes with no timestamp are kept —
+    """Was this note written in the range? Notes with no timestamp are kept, 
     dropping a note because its date is missing would be filtering on an
     absence rather than on a fact."""
     written = getattr(entry, "created_at", None)
@@ -669,7 +664,7 @@ def _within(entry: Entry, since, until) -> bool:
 
 @dataclass
 class Retrieval:
-    """What a search found, and how — everything `retrieve` knows.
+    """What a search found, and how, everything `retrieve` knows.
 
     A separate shape rather than a wider tuple because the *provenance* is the
     part that matters to the model: a note that arrived because it is linked to
@@ -686,7 +681,7 @@ class Retrieval:
     since: object = None
     until: object = None
     when_phrase: str = ""
-    #: Why each entry is here, keyed by id — e.g. {"type": "semantic",
+    #: Why each entry is here, keyed by id, e.g. {"type": "semantic",
     #: "score": 0.81} or {"type": "keyword", "terms": ["gym"]}. Built from
     #: information `_rank`/`_fuse` would otherwise discard once they've
     #: collapsed two ranked lists into one ordered-by-relevance list of
@@ -735,7 +730,7 @@ def retrieve(
     `recent` (a broad question matched nothing specific, so the notebook must
     not look empty), `dated` (the question was about *when*), or `none`.
 
-    `expand_graph` adds notes *connected* to the matches — see
+    `expand_graph` adds notes *connected* to the matches, see
     `graph_expansion`. On by default because it is the app's whole premise;
     switched off by callers that want the matches alone, such as a duplicate
     check, where a linked note is not a candidate for anything.
@@ -758,7 +753,7 @@ def _rank(
         return keyword[:limit], "keyword"
     if semantic and keyword:
         sem_entries = [entry for entry, _s in semantic]
-        # The pool both searches already agreed is relevant — recency/pin
+        # The pool both searches already agreed is relevant, recency/pin
         # only ever reorders within it, see _recency_pin_ranking's own
         # docstring on why that scope matters.
         candidates = {entry.id: entry for entry in [*sem_entries, *keyword]}.values()
@@ -786,7 +781,7 @@ def _retrieve(
     `retrieve_detailed`; the plain caller passes a dict it throws away."""
     # What the question is actually asking. A time phrase becomes a filter
     # instead of search terms, and the question's scaffolding comes off before
-    # anything is embedded — see `search/query.py` for why both matter.
+    # anything is embedded: see `search/query.py` for why both matter.
     asked = query_understanding.understand(query, _user_today(session))
     found["since"] = asked.since
     found["until"] = asked.until
@@ -800,7 +795,7 @@ def _retrieve(
         if dated:
             return _without_private(dated)[: max(limit, 10)], "dated"
         # An empty week is a real answer, but an empty *list* looks like a
-        # failure — fall through so the caller still gets recent notes.
+        # failure: fall through so the caller still gets recent notes.
 
     # Searching for the subject rather than the sentence. Falls back to the
     # whole question when stripping left nothing to search for.
@@ -817,7 +812,7 @@ def _retrieve(
     semantic_any_time, keyword_any_time = semantic, keyword
     # Captured here, before range-filtering or `_rank`/`_fuse` collapse both
     # lists into one ordered-by-relevance list of entries and lose the
-    # per-entry detail — a cosine score means something, a fused rank
+    # per-entry detail: a cosine score means something, a fused rank
     # position doesn't. Range-filtering only removes candidates, never
     # changes their score, so looking these up by id later stays correct
     # regardless of what the caller keeps or drops afterwards.
@@ -828,8 +823,8 @@ def _retrieve(
     # ranked, so "the allotment, last week" cannot be answered with a note from
     # March that happens to be a better match.
     #
-    # **Except when the range is soft.** "Recently" is a lean, not a boundary —
-    # see `Understood.soft` — and filtering on it is what made "jokes I have
+    # **Except when the range is soft.** "Recently" is a lean, not a boundary, 
+    # see `Understood.soft`, and filtering on it is what made "jokes I have
     # saved recently" come back with a note about a gym routine: the two notes
     # tagged `jokes` were 16 and 30 days old, the fortnight window dropped both,
     # and the empty-handed fallback below listed whatever *was* in the window.
@@ -854,7 +849,7 @@ def _retrieve(
     entries, mode = _rank(semantic, keyword, limit)
 
     if not entries:
-        # Nothing matched. The "never look empty" fallback is recent notes —
+        # Nothing matched. The "never look empty" fallback is recent notes, 
         # but **not when the question named a date range.** "What did I write
         # about the allotment last week", with nothing about the allotment that
         # week, would otherwise come back with unrelated notes from any time at
@@ -864,12 +859,12 @@ def _retrieve(
         #
         # So a dated question that finds nothing falls back *within its range*,
         # and if the range is genuinely empty it returns nothing and says
-        # `dated` — which is a true answer the caller can render as "nothing
+        # `dated`, which is a true answer the caller can render as "nothing
         # that week".
         #
         # **Only when the question was about time alone.** With a subject, this
         # fallback drops the more specific of the two constraints and hands
-        # back every note in the window — which is how "jokes I have saved
+        # back every note in the window, which is how "jokes I have saved
         # recently" was answered with a gym routine. Listing the window is a
         # true answer to "what did I write last week"; presented as the answer
         # to "which jokes", it is a confident answer to a question nobody
@@ -881,17 +876,17 @@ def _retrieve(
             return _without_private(in_window), "dated"
         if asked.has_range:
             # A subject was named and nothing matched it *inside* the
-            # window — reported directly: a note tagged joke/jokes/funny,
+            # window: reported directly: a note tagged joke/jokes/funny,
             # asked about as "two weeks ago", was actually written three
             # weeks ago, and came back empty rather than found-but-
             # mislabelled. This is not the fallback rejected above: that one
             # dropped the *subject* and kept the date ("jokes... recently"
             # answered with a gym routine); this drops the date and keeps
             # the subject, so it can never return something unrelated to
-            # what was asked for — only the same match, outside the window
+            # what was asked for, only the same match, outside the window
             # the person's memory of *when* turned out to be wrong about.
             #
-            # **Bounded, not unbounded** — widened by the window's own span
+            # **Bounded, not unbounded**: widened by the window's own span
             # rather than searched across the whole notebook. Without a
             # bound this reintroduces the *other* shape of the rejected
             # fallback: "the allotment, last week" must still answer nothing
@@ -918,7 +913,7 @@ def _retrieve(
             return _without_private(recent), "recent"
 
     entries = _without_private(entries)
-    # Why each of these is here — built before graph expansion appends any
+    # Why each of these is here, built before graph expansion appends any
     # connected notes, so "connected" always wins over an incidental keyword
     # overlap for those (a neighbour that also happens to share a word with
     # the question is still here *because it's linked*, not because it
@@ -946,9 +941,9 @@ def _retrieve(
             if all(neighbour.id != entry.id for entry in entries):
                 entries.append(neighbour)
                 found["connected"].add(neighbour.id)
-                # A second-hop note (item 33) is real evidence but weaker —
+                # A second-hop note (item 33) is real evidence but weaker, 
                 # linked to something linked to a match, not to the match
-                # itself — so it gets its own badge type rather than being
+                # itself: so it gets its own badge type rather than being
                 # indistinguishable from a direct neighbour.
                 two_hops = neighbour_hops.get(neighbour.id) == 2
                 info = {"type": "connected_2hop" if two_hops else "connected"}
@@ -959,9 +954,63 @@ def _retrieve(
 
     # One final filter covering every mode. Private notes are also excluded by
     # the individual queries and have no embeddings to match on, but retrieval
-    # feeds the AI's context — a single missed path would hand a private note
+    # feeds the AI's context: a single missed path would hand a private note
     # to the model, so it's checked once more here where every route converges.
-    return _without_private(entries), mode
+    return _learned_order(session, query, _without_private(entries)), mode
+
+
+def _learned_order(session: Session, query: str, entries: list[Entry]) -> list[Entry]:
+    """Move what the person opened last time a question like this was asked.
+
+    WORLD_CLASS_PLAN I7. The ranking above has no memory: asked the same
+    question next week it returns the same order, including the order that
+    was wrong enough that the person scrolled past the first result to open
+    the third. An `open_after_ask` correction records which one they opened,
+    and this puts it back on top.
+
+    Deliberately a *reorder of what was already found*, never an addition: a
+    boost that could inject a note the search did not match would make one
+    click permanently change what the notebook appears to contain, which is
+    the failure mode of every recommender that learns too eagerly. If the
+    note is not in this result, it stays out of it.
+
+    "A question like this" is word overlap against the recorded question, so
+    "sourdough notes" and "my sourdough notes" are the same question and
+    "sourdough" and "tax return" are not. Half the recorded question's words,
+    at least one, which is strict enough that two unrelated questions sharing
+    "notes" do not match.
+    """
+    if not entries:
+        return entries
+    importlib = __import__("importlib")
+    # Imported at the call site: `search` is imported by `ai`, so a module
+    # level `from memorymap.ai import learning` here is a cycle, and
+    # `tests/test_no_import_cycles.py` counts the statement wherever it sits.
+    learning = importlib.import_module("memorymap.ai.learning")
+    boosts = learning.boosts(session, kind="search")
+    if not boosts:
+        return entries
+    asked = learning._words(query)
+    if not asked:
+        return entries
+    by_id = {entry.id: entry for entry in entries}
+    promoted: list[tuple[float, int]] = []
+    for (question, entry_id), weight in boosts.items():
+        if entry_id not in by_id:
+            continue
+        words = learning._words(question)
+        if not words:
+            continue
+        shared = len(words & asked)
+        if shared and shared * 2 >= len(words):
+            promoted.append((weight, entry_id))
+    if not promoted:
+        return entries
+    promoted.sort(reverse=True)
+    order = [by_id[entry_id] for _weight, entry_id in promoted]
+    seen = {entry.id for entry in order}
+    order.extend(entry for entry in entries if entry.id not in seen)
+    return order
 
 
 def _without_private(entries: list[Entry]) -> list[Entry]:

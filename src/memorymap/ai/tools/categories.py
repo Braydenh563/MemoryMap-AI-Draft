@@ -1,6 +1,6 @@
 """AI tool handlers for category CRUD: find/create/rename/merge/delete.
 
-Split out of `ai/tools.py` (ROADMAP.md §0/§4) — small and self-contained
+Split out of `ai/tools.py` (ROADMAP.md §0/§4): small and self-contained
 apart from the shared helpers in `_common.py`.
 """
 
@@ -18,7 +18,7 @@ from ._common import ToolError
 #
 # Asked for indirectly: "more tools for managing… creating, editing, deleting,
 # and applying categories". Renaming and deleting already existed as UI actions
-# in routes_categories, but not as tools — so the agent could file a note into
+# in routes_categories, but not as tools, so the agent could file a note into
 # a category it had no way to create, which is the wrong half of the job.
 #
 # These take NAMES, not ids. The model has never seen an id and would have to
@@ -31,7 +31,7 @@ def _find_category(session: Session, name: str) -> Category:
     Exact match FIRST, then case-insensitively. That order is not fussiness:
     the case this tool exists for is a notebook that has grown both "Work" and
     "work", and a purely case-insensitive lookup resolves both spellings to
-    whichever row comes back first — so `merge_categories(from="work",
+    whichever row comes back first, so `merge_categories(from="work",
     into="Work")` found the same category twice and refused itself. The
     duplicate is precisely what the user is trying to clear up.
 
@@ -101,7 +101,7 @@ def _rename_category(session: Session, args: dict) -> dict:
     if result["merged"]:
         # An undo is deliberately NOT offered here. Renaming onto an existing
         # name merges the two, and once both sets of notes sit in one category
-        # nothing records which came from where — "undo" would move all of them
+        # nothing records which came from where, "undo" would move all of them
         # back, inventing a history that never happened.
         return {
             "name": new_name,
@@ -129,7 +129,7 @@ def _merge_categories(session: Session, args: dict) -> dict:
 
     `rename_category` merges as a side effect when the new name is taken, which
     is the right behaviour for a rename and a terrible way to *ask* for a merge
-    — the model would have to know a name was already used to predict what its
+    - the model would have to know a name was already used to predict what its
     call did. Saying "merge" says what is meant.
     """
     source = _find_category(session, str(args.get("from") or ""))
@@ -155,7 +155,7 @@ def _merge_categories(session: Session, args: dict) -> dict:
 def _delete_category(session: Session, args: dict) -> dict:
     """Remove a category. Its notes survive as Uncategorised.
 
-    Deleting a category never deletes notes — an organising action that could
+    Deleting a category never deletes notes, an organising action that could
     destroy writing is not what anyone means by "delete category". Still marked
     destructive, so the user approves it before it runs: it is not reversible
     from here, because nothing records which notes were moved out.
@@ -170,7 +170,7 @@ def _delete_category(session: Session, args: dict) -> dict:
         "name": name,
         "notes_moved": result["moved"],
         "label": (
-            f"ph:folder Deleted the category “{name}” — {result['moved']} "
+            f"ph:folder Deleted the category “{name}”: {result['moved']} "
             f"note{'' if result['moved'] == 1 else 's'} kept, now Uncategorised"
         ),
     }

@@ -2,7 +2,7 @@
 
 Same shape as test_captioning.py, deliberately: vision_ocr_text/
 vision_ocr_and_store mirror caption_text/caption_and_store, with one added
-wrinkle covered here specifically — a genuine "no text in this image"
+wrinkle covered here specifically, a genuine "no text in this image"
 result must not be recorded as a failed background task the way a real
 call failure is.
 """
@@ -152,7 +152,7 @@ def test_vision_ocr_and_store_records_a_completed_task(app_state, session, fake_
 def test_vision_ocr_and_store_records_completed_not_failed_when_no_text_is_found(
     app_state, session, fake_ollama, tmp_path
 ):
-    """A genuine "nothing to transcribe" result is not a failure — it must
+    """A genuine "nothing to transcribe" result is not a failure, it must
     not be recorded the same way a real backend error is, or the
     background-tasks list would fill with "failed" for every ordinary
     photo with no text in it."""
@@ -213,7 +213,7 @@ def test_vision_ocr_and_store_does_not_record_a_task_with_no_vision_model(
 # --- Scanned PDFs, read automatically on upload ---------------------------
 #
 # The gap these cover: `VISION_OCR_SUFFIXES` is raster-only, so a filed PDF
-# started no reader at all — `pdf_vision_reader` existed but was only ever
+# started no reader at all, `pdf_vision_reader` existed but was only ever
 # reached from a button. Asked for directly: "make sure all the file and
 # document ocr works with ai ocr models, I dont use tesseract."
 
@@ -244,7 +244,7 @@ def test_pdf_vision_ocr_and_store_leaves_a_text_layer_pdf_alone(
     app_state, session, monkeypatch, tmp_path
 ):
     """A model asked to transcribe a page whose text is already exact can only
-    make it worse — so the expensive path is for scans only."""
+    make it worse: so the expensive path is for scans only."""
     from memorymap.core import docview
 
     upload_id = _pdf_upload(session)

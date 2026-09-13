@@ -66,11 +66,11 @@ def test_a_deleted_note_cannot_be_exported(client):
 def test_a_clippings_source_is_stored_as_real_metadata(client):
     """BACKLOG §65 ("source as metadata, not just folded into body text").
     The frontend's own `clippingMarkdown` still puts the same link in the
-    body for portability — this is the queryable half that adds."""
+    body for portability: this is the queryable half that adds."""
     created = client.post(
         "/entries",
         json={
-            "content": "> a clipped passage\n\n— [Example](https://example.com/page)",
+            "content": "> a clipped passage\n\n: [Example](https://example.com/page)",
             "source_url": "https://example.com/page",
             "source_title": "Example",
         },
@@ -92,7 +92,7 @@ def test_a_source_title_is_optional(client):
 
 
 def test_an_ordinary_note_has_no_source(client):
-    """The overwhelming majority of notes are never a clipping — this
+    """The overwhelming majority of notes are never a clipping, this
     proves the new columns are a no-op for them, not just "doesn't crash"."""
     created = client.post("/entries", json={"content": "an ordinary thought"}).json()
     assert created["source_url"] is None
@@ -133,7 +133,7 @@ def test_entries_page_and_report_the_real_total(client):
 
 def test_entries_default_page_size_is_bounded_but_generous(client):
     """No params at all still has to work exactly as before for any
-    notebook under the default page size — the common case — and still
+    notebook under the default page size, the common case, and still
     report the true total either way."""
     for i in range(3):
         client.post("/entries", json={"content": f"note {i}"})
@@ -147,7 +147,7 @@ def test_entries_limit_is_validated(client):
     assert client.get("/entries", params={"limit": 0}).status_code == 422
     assert client.get("/entries", params={"limit": -1}).status_code == 422
     assert client.get("/entries", params={"offset": -1}).status_code == 422
-    # Past the hard ceiling — a client can't force one giant page either.
+    # Past the hard ceiling, a client can't force one giant page either.
     assert client.get("/entries", params={"limit": 999999}).status_code == 422
 
 
@@ -160,11 +160,11 @@ def test_frontend_served_at_root(client):
     # Priority 0 item 2), loaded by a second <script> tag in index.html.
     assert client.get("/whiteboard.js").status_code == 200
     # Graph view split out of app.js into its own file (frontend refactor
-    # path, the step after whiteboard), loaded by a third <script> tag —
+    # path, the step after whiteboard), loaded by a third <script> tag: 
     # before app.js, not after, see index.html/graph.js for why.
     assert client.get("/graph.js").status_code == 200
     # style.css split into multiple linked files (ROADMAP.md Priority 0 item
-    # 2) — every one of them has to actually be reachable at the path
+    # 2): every one of them has to actually be reachable at the path
     # index.html's <link> tags use, not just the directory that holds them.
     for name in CSS_FILES:
         assert client.get(f"/css/{name.name}").status_code == 200
@@ -172,3 +172,52 @@ def test_frontend_served_at_root(client):
 
 def test_empty_content_rejected(client):
     assert client.post("/entries", json={"content": ""}).status_code == 422
+
+
+def test_a_note_has_the_same_ceiling_a_document_has(client):
+    """The same app said yes and no to the same paste, by which box it went in.
+
+    `routes_documents` has had `MAX_CONTENT` since it was written; capture
+    never grew one. Measured 2026-09-12: a 5 MB note was accepted and took
+    2.26 s of blocking handler time, while a 5 MB document was refused. This
+    is not a new opinion about how long a note may be, it is the document's
+    own number applied to the other box: 500,000 characters is a hundred
+    times the longest note anyone writes.
+    """
+    assert client.post("/entries", json={"content": "word " * 1_000_000}).status_code == 422
+    assert client.post("/entries", json={"content": "word " * 20_000}).status_code == 201
+
+
+def test_a_tag_is_a_label_and_has_a_label_s_length(client):
+    """A 50,000-character tag was accepted, which is a chip 50,000 characters
+    wide in every list the note appears in. Clipped rather than refused: a
+    save that fails because one tag was long throws the note away, which is a
+    worse answer than a shortened tag. Blank tags drop out, which is what a
+    trailing comma produces.
+    """
+    saved = client.post(
+        "/entries", json={"content": "tagged", "tags": ["x" * 50_000, "   ", "fine"]}
+    )
+    assert saved.status_code == 201, saved.text
+    assert [len(tag) for tag in saved.json()["tags"]] == [60, 4]
+    # A list long enough to be a paste rather than a set of labels is refused.
+    assert client.post(
+        "/entries", json={"content": "t", "tags": [f"t{i}" for i in range(400)]}
+    ).status_code == 422
+
+
+def test_the_same_two_limits_hold_on_an_edit(client):
+    """A cap that only guards the create path is not a cap.
+
+    Every note in the notebook can be edited, so the long paste and the
+    50,000-character tag simply arrive through `PUT` instead. Found by asking
+    where else the shape this was fixed in can enter, rather than by a second
+    report.
+    """
+    note = client.post("/entries", json={"content": "a note"}).json()
+    assert client.put(
+        f"/entries/{note['id']}", json={"content": "word " * 1_000_000}
+    ).status_code == 422
+    edited = client.put(f"/entries/{note['id']}", json={"tags": ["y" * 50_000, "ok"]})
+    assert edited.status_code == 200, edited.text
+    assert [len(tag) for tag in edited.json()["tags"]] == [60, 2]

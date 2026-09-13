@@ -2,8 +2,8 @@
 
 `LINK_TYPES` lives in `core/database.py` because the column, the traversal and
 the AI pass all read it there. The graph's drag-to-link dialog needs the same
-list *before* any request has been made — a picker that waits on the network to
-learn what it can offer opens empty — so `frontend/graph.js` carries its own
+list *before* any request has been made, a picker that waits on the network to
+learn what it can offer opens empty, so `frontend/graph.js` carries its own
 copy as `GRAPH_LINK_TYPES`.
 
 Two copies of one vocabulary is exactly the shape that rots: someone adds a
@@ -33,7 +33,7 @@ def test_the_two_vocabularies_match():
         "The graph's link-type picker and core.database.LINK_TYPES disagree.\n"
         f"  backend:  {list(LINK_TYPES)}\n"
         f"  graph.js: {_frontend_types()}\n"
-        "Add the kind to both, in the same order — the dialog lists them in "
+        "Add the kind to both, in the same order, the dialog lists them in "
         "the order it finds them, and 'related' is deliberately first because "
         "it is the default selection."
     )
@@ -48,8 +48,8 @@ def test_related_is_first_so_it_can_be_the_default():
 def test_every_kind_has_a_human_description():
     for key, description in LINK_TYPES.items():
         assert description.strip(), f"{key} has no description"
-        assert "—" in description, (
-            f"{key}'s description should read 'Name — what it means'; the UI "
+        assert ": " in description, (
+            f"{key}'s description should read 'Name: what it means'; the UI "
             "splits on that dash to show the label and the hint separately."
         )
 
@@ -86,7 +86,7 @@ def test_a_link_stores_and_returns_its_kind(client):
 
 
 def test_an_unknown_kind_is_stored_as_null_not_refused(client):
-    """A typo should cost you the label, not the link — see manager.create_link."""
+    """A typo should cost you the label, not the link, see manager.create_link."""
     a = _note(client, "Gym on Tuesday")
     b = _note(client, "Gym on Thursday")
     made = client.post(

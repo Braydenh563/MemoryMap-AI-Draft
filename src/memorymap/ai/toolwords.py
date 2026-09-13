@@ -9,7 +9,7 @@ more than it saves, and a rule you can read is a rule you can argue with.
 tool. `tools.CORE_TOOLS` is always offered whatever this returns, a request
 this cannot read gets the whole toolbox rather than a guess, and a tool left
 out because no cue fired still runs if the model asks for it. What it changes
-is only what is *put in front of* the model — which on a small window is the
+is only what is *put in front of* the model, which on a small window is the
 difference between the notes fitting and not.
 
 Why it replaced plain substring matching
@@ -26,7 +26,7 @@ with what was asked:
 
 ``tag`` inside *vintage* and *advantages*, ``link`` inside *blinking*,
 ``file `` inside *profile *, ``draft`` inside *drafting*. Each one dragged
-three to five schemas — one to two thousand characters — into the prompt of a
+three to five schemas, one to two thousand characters, into the prompt of a
 model that may only have four thousand tokens in total, and worse, put a
 delete_tag in front of a model that was asked about a camera.
 
@@ -50,7 +50,7 @@ WORD_WEIGHT = 0.6
 
 #: One cue is enough. The score **ranks**; it does not gate.
 #:
-#: This started life at 1.0 — a threshold a single word could not clear — and
+#: This started life at 1.0, a threshold a single word could not clear, and
 #: that was a straightforward mistake, caught by running it: "tag all my gym
 #: notes as fitness" scored 0.6 and was offered no tag tools at all, and "tidy
 #: up my notebook" stopped counting as a broad request. Trading a false
@@ -68,13 +68,13 @@ SCORE_THRESHOLD = WORD_WEIGHT
 #:
 #: Deliberately NOT a list of action verbs. That is what this was first, and it
 #: was wrong in a way only running it showed: after stripping the question
-#: opener from "how do I tag a note?", what is left is "tag a note" — so a verb
+#: opener from "how do I tag a note?", what is left is "tag a note", so a verb
 #: list marked the sentence an instruction on the strength of the very word
 #: naming the capability being asked about, and every question about tagging,
 #: linking or deleting was read as a request to do it. The verb after "how do
 #: I" is always the capability; it can never be the signal.
 #:
-#: What genuinely distinguishes "what's the best way to do this — please tag
+#: What genuinely distinguishes "what's the best way to do this, please tag
 #: them all" from "how do I tag a note?" is the asking, not the verb.
 _INSTRUCTION_MARKER = re.compile(
     r"\b(?:please|can you|could you|would you|i want|i'd like|i would like|"
@@ -82,7 +82,7 @@ _INSTRUCTION_MARKER = re.compile(
     re.I,
 )
 
-#: "How do I tag a note?", "what does the link tool do?" — these name a
+#: "How do I tag a note?", "what does the link tool do?", these name a
 #: capability while asking *about* it. Offering the write tools for them is how
 #: a small model ends up tagging something in the middle of answering a
 #: question about tagging.
@@ -101,14 +101,14 @@ _ASKING_ABOUT = re.compile(
 
 @dataclass(frozen=True)
 class Focus:
-    """What the words said, and why — the whole result of one reading.
+    """What the words said, and why, the whole result of one reading.
 
     ``tools`` is the answer callers want. Everything else is the reasoning, so
     a log line can say *why* a tool was offered and a test can assert on the
     cue rather than on the outcome.
     """
 
-    #: The tool names worth offering, or None meaning "everything" — a request
+    #: The tool names worth offering, or None meaning "everything", a request
     #: too broad to narrow safely.
     tools: list[str] | None
     #: (group index, score), best first. Empty when nothing scored.
@@ -116,7 +116,7 @@ class Focus:
     #: The cue strings that actually fired, for the log.
     cues: list[str] = field(default_factory=list)
     #: True when the message was a "do something about my notebook" with no
-    #: object — the case that genuinely needs the whole toolbox.
+    #: object: the case that genuinely needs the whole toolbox.
     broad: bool = False
     #: True when the message asks *about* a capability rather than for it.
     #: Callers use this to hold back the write tools, not to drop the group.
@@ -166,7 +166,7 @@ def _compile(cues: tuple[str, ...]) -> list[tuple[re.Pattern[str], str, float]]:
 
     A cue containing a space is matched as a phrase and weighted higher; a
     single word is matched on both boundaries. `re.escape` throughout, because
-    these are literals from a table, not patterns — one of them is "draw.io",
+    these are literals from a table, not patterns, one of them is "draw.io",
     whose dot would otherwise match "drawnio" and anything else.
     """
     out = []
@@ -180,7 +180,7 @@ def _compile(cues: tuple[str, ...]) -> list[tuple[re.Pattern[str], str, float]]:
         head = r"\b" if cue[0].isalnum() else r"(?<!\w)"
         if cue[-1].isalpha():
             # A word that can be inflected. The leading \b is what does the
-            # real work — it is why "tag" no longer matches "vintage" — and the
+            # real work, it is why "tag" no longer matches "vintage", and the
             # ending only has to let the same word through in another number or
             # tense.
             tail = _INFLECTION + r"\b"
@@ -226,7 +226,7 @@ def looks_like_a_question_about(text: str) -> bool:
     was in front of them.
 
     An imperative anywhere in the sentence wins: "what's the best way to do
-    this — please tag them all" opens as a question and ends as an instruction.
+    this: please tag them all" opens as a question and ends as an instruction.
     """
     text = (text or "").strip()
     if not text:

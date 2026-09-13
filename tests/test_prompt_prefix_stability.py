@@ -4,7 +4,7 @@ Asked for directly: *"Keep the system prompt + persona byte-identical turn
 to turn so the cache is reused."* A prefix cache (Ollama's, llama.cpp's,
 every backend that has one) keeps the tokens **before the first
 difference** and re-processes everything after it. The agent prompt has
-exactly one byte that changes on its own — the wall clock — so where that
+exactly one byte that changes on its own, the wall clock, so where that
 byte sits decides whether the persona, the grounding line and the tools
 guide (the large, unchanging majority of the prompt) survive a minute
 ticking over mid-conversation.
@@ -47,7 +47,7 @@ def test_everything_before_the_clock_is_identical_across_minutes(app_state, monk
     assert first != second  # the clock really did move
     head = first[: first.index(CLOCK_MARKER)]
     assert second.startswith(head)
-    # And the cached head is the bulk of the prompt, not a token of it — the
+    # And the cached head is the bulk of the prompt, not a token of it, the
     # whole point of the ordering.
     assert len(head) > 0.8 * len(first)
 

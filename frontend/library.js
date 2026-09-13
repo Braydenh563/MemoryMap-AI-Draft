@@ -1,14 +1,14 @@
-// library.js — the Library tab, split out of app.js and whiteboard.js
+// library.js: the Library tab, split out of app.js and whiteboard.js
 // (§88.3 of the app.js split plan; documents.js was the first file, this
 // is the second).
 //
-// Loaded after app.js and after whiteboard.js — see index.html's <script>
+// Loaded after app.js and after whiteboard.js, see index.html's <script>
 // ordering comment for why the whiteboard-relative order is load-bearing
 // here in a way documents.js's own split never had to care about: this
 // file's own bottom section (the sub-tab switcher) calls
 // wbShowBoardsLanding() when the Whiteboard sub-tab is chosen, and
 // whiteboard.js's own boards-gallery code (openWhiteboardBoard) clicks the
-// Library's #library-subtabs whiteboard button to jump back — both calls
+// Library's #library-subtabs whiteboard button to jump back, both calls
 // are made from inside event-listener closures, never at parse time, so
 // neither direction is actually load-bearing; loading after whiteboard.js
 // simply keeps this file, like documents.js before it, as one of the later,
@@ -19,7 +19,7 @@
 // trusting this split was safe: grepped every Library-owned function/const
 // name (loadLibrary, renderLibrary*, flashLibraryItem, openBinnedNote,
 // closeBinnedReader, openLibraryItem, refreshLibrarySemantic) for a bare
-// top-level call anywhere left in app.js. None exists — every call site is
+// top-level call anywhere left in app.js. None exists: every call site is
 // inside a function or an event-listener body, which resolves the
 // identifier at *call* time, long after every <script> tag (this one
 // included) has parsed. So unlike documents.js's initDocSidebarTabs(),
@@ -27,54 +27,55 @@
 //
 // What moved, and from where:
 //
-//  - app.js:19272-20114 — the Library's core module (§4, §36F): the item
+//  - app.js:19272-20114: the Library's core module (§4, §36F): the item
 //    list, filters, sort, selection, cards, bulk actions' helpers, and
 //    "reading a binned note in full" (§36G, openBinnedNote/closeBinnedReader
 //    and the #binned-overlay reader). The binned-note reader is included
 //    deliberately, resolving this split's own open question: it is called
 //    from nowhere but this file's own openLibraryItem(), and its overlay
-//    exists only to serve the Library's Bin filter chip — it is Library's
+//    exists only to serve the Library's Bin filter chip, it is Library's
 //    own code that happened to get its own §-number and its own "---"
 //    comment banner, not a separate feature.
-//  - app.js:4866-4904 — flashLibraryItem(), the "View in bin" deep link a
+//  - app.js:4866-4904: flashLibraryItem(), the "View in bin" deep link a
 //    skill's undo-row uses (BACKLOG §22). It lived far from the rest of the
 //    Library's code (next to changeRow(), an agent-result renderer) because
-//    its *caller* is a Notes/agent feature — but its *body* is nothing but
+//    its *caller* is a Notes/agent feature, but its *body* is nothing but
 //    Library internals (libraryKind, renderLibraryFilters, renderLibrary,
 //    #library-grid), the same shape documents.js's own split judged by:
 //    what a function's body touches, not where its caller happens to sit.
-//  - app.js:24022-24031 and 24391-24533 — the Library's own wiring: the
+//  - app.js:24022-24031 and 24391-24533: the Library's own wiring: the
 //    "+ New Skill" button on the AI Skills sub-tab, and the main view's
 //    search/sort/view-toggle/bulk-action/bin-empty/refresh controls.
-//  - app.js:26717-26899 — the AI Skills sub-tab's dashboard
+//  - app.js:26717-26899: the AI Skills sub-tab's dashboard
 //    (renderSkillsDashboard, renderSkillLogs) and the `switchTab` override
 //    that calls them whenever the Library tab is opened. That override is
 //    moved **verbatim, not folded into switchTab's own `if (name ===
 //    "library")` branch** in app.js (which already exists, and already
-//    calls loadLibrary()) — merging the two would be a real behaviour
+//    calls loadLibrary()), merging the two would be a real behaviour
 //    change (one code path instead of two) riding along with a split, which
 //    the split's own rules forbid. Logged to ROADMAP.md instead as a
 //    worthwhile follow-up, not built here.
-//  - whiteboard.js:82-91 — two `Set()`s (libraryExpandedCaptions,
-//    libraryDocsSelection) that whiteboard.js declared alongside its own
+//  - whiteboard.js:82-91: two `Set()`s (the image gallery's expanded-caption
+//    set, since folded into `openRowReadings`, and libraryDocsSelection) that
+//    whiteboard.js declared alongside its own
 //    per-card state purely because nothing else existed yet; both are read
 //    and written only inside code that moved here too.
-//  - whiteboard.js:5515-5706 — the Library's Documents sub-tab
+//  - whiteboard.js:5515-5706: the Library's Documents sub-tab
 //    (renderLibraryDocuments, its selection bar, its bulk-delete).
-//  - whiteboard.js:5874-6191 — the Library's Image Gallery sub-tab
+//  - whiteboard.js:5874-6191: the Library's Image Gallery sub-tab
 //    (renderLibraryImagesGallery, filterLibraryImagesGallery).
-//  - whiteboard.js:5710-5813 (of the original file) — **the fix ROADMAP.md
+//  - whiteboard.js:5710-5813 (of the original file), **the fix ROADMAP.md
 //    §88.3 called "an accident worth fixing while splitting"**: the
 //    `#library-subtabs` button switcher (deciding which library-view-*
 //    section is visible) and the library-docs-*/library-images-* refresh,
-//    search and upload listeners. These were never whiteboard's own code —
+//    search and upload listeners. These were never whiteboard's own code: 
 //    they switch between the Library's Documents/Skills/Whiteboard/Media
-//    sub-tabs and wire the Documents/Media sub-tabs' own controls — they
+//    sub-tabs and wire the Documents/Media sub-tabs' own controls: they
 //    just landed in whiteboard.js's DOMContentLoaded listener because the
 //    Whiteboard sub-tab's own two listeners (wb-boards-new,
 //    wb-back-to-boards) were written in the same block right after them.
 //    Those two *are* whiteboard's own code and stayed in whiteboard.js, in
-//    a DOMContentLoaded listener of their own — see that file's comment.
+//    a DOMContentLoaded listener of their own, see that file's comment.
 //    This file's own copy of the switcher still calls wbShowBoardsLanding()
 //    (whiteboard.js) and renderLibraryImagesGallery()/renderLibraryDocuments()
 //    (this file) exactly as before; only the listener's *location* changed.
@@ -83,7 +84,7 @@
 // --- the Library (§4, §36F) ---------------------------------------------------
 //
 // The one surface for finding something you made before. It **replaces** the
-// Documents tab's list and the chat sidebar's list rather than joining them —
+// Documents tab's list and the chat sidebar's list rather than joining them, 
 // a library that duplicates two lists that already exist is a third place to
 // look, which is worse than no library. The tab bar is the same length it was.
 //
@@ -92,7 +93,7 @@
 // metadata per unit, and sort and filter at the top as controls rather than at
 // the side as an afterthought.
 //
-// The list itself is assembled by the server (GET /library) — see
+// The list itself is assembled by the server (GET /library): see
 // routes_library.py for why. Filtering and sorting are **not**: they have to
 // feel instant as you type, so the client owns them and holds the whole list.
 
@@ -103,7 +104,7 @@ let libraryCounts = {};
 let libraryOverview = {};
 let libraryKind = "all";
 
-//: Same pattern as Notes' and the Library Documents sub-tab's own paging —
+//: Same pattern as Notes' and the Library Documents sub-tab's own paging: 
 //: "all" (the default) leaves renderIncrementally's chunked scroll untouched;
 //: a number slices the already-filtered/sorted list to one flat page instead.
 let libraryPageSize = localStorage.getItem("library-page-size") || "all";
@@ -111,7 +112,7 @@ let libraryCurrentPage = 1;
 
 //: Order matters: it is the order of the chips. "All" first because it is the
 //: default and the one you come back to, then by how often you would reach for
-//: the kind — a document is something you sat down to write, a binned note is
+//: the kind: a document is something you sat down to write, a binned note is
 //: something you threw away.
 const LIBRARY_KINDS = [
   { key: "all", icon: "ph:books", label: "Everything" },
@@ -120,13 +121,23 @@ const LIBRARY_KINDS = [
   { key: "chat", icon: "ph:chat-circle", label: "Chats" },
   { key: "file", icon: "ph:paperclip", label: "Files" },
   { key: "tag", icon: "ph:tag", label: "Tags" },
+  //: A board and a mind map are `Entry` rows carrying `is_board`
+  //: (MINDMAP_PLAN §4 chose option B), so "Everything" listed them with a
+  //: note's pencil and the Notes chip counted them. Reported on 2026-09-09:
+  //: "in the all library subtab, the mindmap I made called bubble tea shows
+  //: as a note". The server tells them apart now (`_entry_kind`); these two
+  //: rows are what let this view draw and count them as what they are. Same
+  //: icons the Boards and maps sub-tab uses, so one thing has one glyph
+  //: wherever it appears.
+  { key: "board", icon: "ph:pencil-circle", label: "Boards" },
+  { key: "map", icon: "ph:tree-structure", label: "Mind maps" },
   // Drafts used to be a Library sub-tab of its own. It is a *filter over
   // notes*, not a separate kind of thing, and it only sat up there because
-  // this chip row did not exist when it was added — so it moved here, which
+  // this chip row did not exist when it was added, so it moved here, which
   // is also where someone looking for "notes I have not finished" would
   // reasonably expect to find it.
   { key: "draft", icon: "ph:pencil-simple-line", label: "Drafts" },
-  // Not a real kind — item.kind is still "note" for these, same as every
+  // Not a real kind, item.kind is still "note" for these, same as every
   // other tagged note. A meeting note is finished, unlike a draft, so it
   // stays reachable from "Everything" too; this chip is a client-side tag
   // filter (renderLibrary()'s own special case for libraryKind === "meeting"),
@@ -134,7 +145,7 @@ const LIBRARY_KINDS = [
   // server's per-kind counts, which only exist for real kinds.
   { key: "meeting", icon: "ph:video-camera", label: "Meetings" },
   // "archived" is the bin's own internal kind (see routes_library.py's
-  // _archive()) — this app's real archive uses "shelved" specifically so
+  // _archive()), this app's real archive uses "shelved" specifically so
   // the two are never confused at the code level, even though the words
   // read almost the same to a user.
   { key: "shelved", icon: "ph:archive", label: "Archived" },
@@ -143,11 +154,11 @@ const LIBRARY_KINDS = [
 ];
 
 //: The overview strip. Each tile is a *state worth knowing*, and each one goes
-//: somewhere — the same test the status bar had to pass, for the same reason:
+//: somewhere: the same test the status bar had to pass, for the same reason:
 //: a number you cannot act on is decoration, and a management screen made of
 //: decoration is a dashboard nobody opens twice.
-//: What is ticked. Ids alone would collide — a tag's id 3 and a note's id 3 are
-//: different things — so the key is kind + id, and it survives a re-render
+//: What is ticked. Ids alone would collide, a tag's id 3 and a note's id 3 are
+//: different things: so the key is kind + id, and it survives a re-render
 //: because it is not read off the DOM.
 let librarySelection = new Set();
 
@@ -190,8 +201,8 @@ async function loadLibrary() {
 
 /** The one line of the old overview strip that was not already on screen.
  *
- *  The strip used to be six stat tiles above the filter chips —
- *  notes / documents / chats / tags / archived / in the bin — each showing a
+ *  The strip used to be six stat tiles above the filter chips, 
+ *  notes / documents / chats / tags / archived / in the bin, each showing a
  *  count and, on click, setting `libraryKind`. Six of the chips directly
  *  below it are the same six filters, with the same counts, doing the same
  *  thing. Measured: 61px of duplicate control, in a screen that already put
@@ -200,8 +211,8 @@ async function loadLibrary() {
  *
  *  Removing the tiles loses nothing: every filter they offered is still one
  *  click away in the row underneath, still labelled, still counted. What the
- *  chips never carried is the prose — how much disk the attachments take and
- *  how much writing is in the documents — so that stays, as one quiet line.
+ *  chips never carried is the prose, how much disk the attachments take and
+ *  how much writing is in the documents, so that stays, as one quiet line.
  */
 function renderLibraryOverview() {
   const box = $("library-overview");
@@ -221,7 +232,7 @@ function renderLibraryOverview() {
   }
   note.textContent = parts.length
     ? parts.join(" · ")
-    : "Everything you make — notes, documents, chats, files — is managed from here.";
+    : "Everything you make, notes, documents, chats, files, is managed from here.";
   box.appendChild(note);
 }
 
@@ -232,7 +243,7 @@ function renderLibraryFilters() {
   for (const kind of LIBRARY_KINDS) {
     // Not `libraryItems.length`: activity is unconditionally excluded from
     // the "Everything" view itself (see renderLibrary()'s own comment on
-    // why — it would be 93%+ log on a real notebook), so a count that
+    // why: it would be 93%+ log on a real notebook), so a count that
     // included it disagreed with what pressing the chip actually shows.
     const count =
       kind.key === "all"
@@ -245,7 +256,7 @@ function renderLibraryFilters() {
     button.className =
       "library-chip" + (libraryKind === kind.key ? " active" : "");
     button.setAttribute("aria-pressed", String(libraryKind === kind.key));
-    // Reported live: "can the activity button be moved somewhere better" —
+    // Reported live: "can the activity button be moved somewhere better", 
     // it isn't a *kind of thing you made* the way the ten chips before it
     // are (it is excluded from "Everything"'s own count above for exactly
     // that reason), so it read as just one more chip in a row it doesn't
@@ -253,11 +264,11 @@ function renderLibraryFilters() {
     // far end with a divider ahead of it, the same "different question,
     // visually apart" treatment the reminder view-toggle already gets next
     // to the reminder filter (05-sidebars-themes.css). Still one click away
-    // in the same toolbar — a second surface for one chip would be a second
+    // in the same toolbar, a second surface for one chip would be a second
     // place to remember, not a better one.
     if (kind.key === "activity") {
       button.classList.add("library-chip-activity");
-      button.title = "What you did — a record, not a kind of thing you made";
+      button.title = "What you did: a record, not a kind of thing you made";
     }
     const icon = document.createElement("span");
     setLabel(icon, kind.icon);
@@ -266,7 +277,7 @@ function renderLibraryFilters() {
     setLabel(label, kind.label);
     // The count is on the chip, not discovered by pressing it. A filter you
     // have to try before you learn it is empty is a filter that wastes a click
-    // every time — and with five of them that is most of the toolbar.
+    // every time: and with five of them that is most of the toolbar.
     const badge = document.createElement("span");
     badge.className = "library-chip-count";
     badge.textContent = count;
@@ -289,7 +300,7 @@ function librarySorted(items) {
     copy.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: "base" }));
   } else if (sort === "biggest") {
     // Within a kind this is words, turns or bytes; across a mixed list it is
-    // whichever of those each card is showing. Deliberately not normalised —
+    // whichever of those each card is showing. Deliberately not normalised: 
     // a number that made a document's words comparable with an image's bytes
     // would sort cleanly and mean nothing.
     copy.sort((a, b) => (b.size || 0) - (a.size || 0));
@@ -307,7 +318,7 @@ function librarySorted(items) {
 //
 // **The design question this answers, which is why it was not built sooner.**
 // The Library mixes notes, documents, chats, images and skills, and only
-// *notes* have embeddings — nothing in this app has ever embedded a PDF, a
+// *notes* have embeddings: nothing in this app has ever embedded a PDF, a
 // conversation or an image. So "semantic search over the Library" has no
 // single honest meaning, and the two tempting answers are both wrong: pretend
 // everything is searched by meaning (it is not, and the results would quietly
@@ -319,7 +330,7 @@ function librarySorted(items) {
 // everywhere else, and say so on the control.** A note matches if the semantic
 // search returned it *or* its words match; every other kind matches on words,
 // exactly as before. Turning the toggle on can therefore only ever *add*
-// results, never remove one — which is the property that makes it safe to
+// results, never remove one, which is the property that makes it safe to
 // leave on, and the reason the two filters are OR-ed rather than swapped.
 //
 // Reuses `GET /entries?semantic=true`, the same endpoint and the same
@@ -343,7 +354,7 @@ async function refreshLibrarySemantic() {
   } catch {
     // No embedding backend, or the search failed. Falling back to keyword-only
     // is the same graceful degradation the rest of the app uses when the AI is
-    // unavailable — never a failed search, just a less clever one.
+    // unavailable: never a failed search, just a less clever one.
     librarySemanticIds = null;
     librarySemanticQuery = "";
   }
@@ -354,7 +365,7 @@ function renderLibrary() {
   if (!grid) return;
   const query = ($("library-search")?.value || "").trim().toLowerCase();
   let items = libraryItems;
-  // "meeting" isn't a real kind (item.kind is still "note") — a meeting note
+  // "meeting" isn't a real kind (item.kind is still "note"), a meeting note
   // is a real, finished note, unlike a draft, so it stays reachable from
   // "Everything" too and doesn't get its own excluded bucket there. The chip
   // is a client-side tag filter over the same notes the Notes chip shows,
@@ -364,7 +375,7 @@ function renderLibrary() {
   } else if (libraryKind !== "all") items = items.filter((i) => i.kind === libraryKind);
   else {
     // Two kinds stay out of the mixed list. Deleted things are not part of
-    // "everything you have made" — they are things you decided you had not —
+    // "everything you have made", they are things you decided you had not , 
     // and the Include-bin toggle is how you ask for them anyway.
     //
     // **Activity is out unconditionally, and that is not a toggle worth
@@ -382,7 +393,7 @@ function renderLibrary() {
       items = items.filter((i) => i.kind !== "archived");
     }
     // Shelved notes get the same "kept, out of the way" treatment as
-    // activity — no extra checkbox, since the "Archived" chip already
+    // activity: no extra checkbox, since the "Archived" chip already
     // gives full access, and this is the one place "kept out of the way"
     // actually matters: the mixed view is exactly where an archived note
     // would otherwise clutter the notebook it was archived to get out of.
@@ -397,7 +408,7 @@ function renderLibrary() {
       (i.preview || "").toLowerCase().includes(query);
     // With Semantic on, a note also matches if the meaning search returned it,
     // even when it shares no words with the query. Everything else is
-    // unchanged — see `librarySemanticIds`.
+    // unchanged: see `librarySemanticIds`.
     items = librarySemanticIds
       ? items.filter((i) => (i.kind === "note" && librarySemanticIds.has(i.id)) || wordMatch(i))
       : items.filter(wordMatch);
@@ -463,7 +474,7 @@ function renderLibrary() {
 
 // What you can do to a thing without leaving the surface you found it on. A
 // library that could only *show* you a document would send you to the Documents
-// page to rename it and to the bin panel to restore a note — which is the
+// page to rename it and to the bin panel to restore a note, which is the
 // scatter it was built to end.
 //
 // One ⋯ per card rather than a row of icons, the same choice the note cards
@@ -495,7 +506,7 @@ function libraryActions(item) {
         reload();
         loadConversationList();
       }),
-      makeMenuItem("ph:archive Archive", "Keep it, but out of the way — not deleted", async () => {
+      makeMenuItem("ph:archive Archive", "Keep it, but out of the way, not deleted", async () => {
         await apiJson(`/conversations/${item.id}/archive`, { method: "PUT" }).catch((e) =>
           toast(e.message, true)
         );
@@ -529,7 +540,7 @@ function libraryActions(item) {
       makeMenuItem("⬇ Download .md", "Save a copy as a markdown file", () => {
         window.open(`/documents/${item.id}/export.md`, "_blank");
       }),
-      makeMenuItem("ph:archive Archive", "Keep it, but out of the way — not deleted", async () => {
+      makeMenuItem("ph:archive Archive", "Keep it, but out of the way, not deleted", async () => {
         await apiJson(`/documents/${item.id}/archive`, { method: "PUT" }).catch((e) =>
           toast(e.message, true)
         );
@@ -575,7 +586,7 @@ function libraryActions(item) {
   if (item.kind === "shelved") {
     // Notes, chats and documents all land in "shelved" (routes_library.
     // _shelved), each with its own unarchive route/method and its own
-    // "bring it back to..." wording — `subtype` is what tells them apart.
+    // "bring it back to..." wording: `subtype` is what tells them apart.
     const UNARCHIVE = {
       note: { url: `/entries/${item.id}/unarchive`, method: "POST", noun: "note", reload: () => loadEntries() },
       chat: { url: `/conversations/${item.id}/unarchive`, method: "PUT", noun: "chat", reload: () => loadConversationList() },
@@ -594,7 +605,7 @@ function libraryActions(item) {
         }
       ),
       // No delete-for-good here: an archived item was never at risk of
-      // being lost — that's the whole difference from the bin above — so
+      // being lost, that's the whole difference from the bin above, so
       // the only way out of this list is back to the notebook.
     ];
   }
@@ -607,7 +618,7 @@ function libraryActions(item) {
       makeMenuItem("⬇ Download .md", "Save a copy of this note as a markdown file", () => {
         window.open(`/entries/${item.id}/export.md`, "_blank");
       }),
-      makeMenuItem("ph:archive Archive", "Keep it, but out of the way — not the bin", async () => {
+      makeMenuItem("ph:archive Archive", "Keep it, but out of the way, not the bin", async () => {
         await apiJson(`/entries/${item.id}/archive`, { method: "POST" }).catch((e) =>
           toast(e.message, true)
         );
@@ -615,13 +626,34 @@ function libraryActions(item) {
         reload();
         loadEntries();
       }),
-      makeMenuItem("ph:trash Move to bin", "Bin this note — recoverable", async () => {
-        await apiJson(`/entries/${item.id}`, { method: "DELETE" }).catch((e) =>
-          toast(e.message, true)
-        );
-        toast("Moved to the bin.");
+      makeMenuItem("ph:trash Move to bin", "Bin this note: recoverable", async () => {
+        try {
+          await apiJson(`/entries/${item.id}`, { method: "DELETE" });
+        } catch (e) {
+          toast(e.message, true);
+          return;
+        }
         reload();
         loadEntries();
+        //: The one bin action in the app without Undo on its toast: the
+        //: Notes tab's had it (pushUndo, the undo bar and the toast agree),
+        //: the Library's card menu did not. Same recipe, same words.
+        const restoreIt = async () => {
+          await apiJson(`/entries/${item.id}/restore`, { method: "POST" });
+          reload();
+          loadEntries();
+        };
+        const binIt = async () => {
+          await apiJson(`/entries/${item.id}`, { method: "DELETE" });
+          reload();
+          loadEntries();
+        };
+        const action = pushUndo("Moved a note to the bin", restoreIt, binIt);
+        toastAction("Moved to the recycle bin.", "Undo", async () => {
+          settleUndoFromToast(action);
+          await restoreIt();
+          toast("Note restored.");
+        });
       }),
     ];
   }
@@ -658,13 +690,13 @@ function libraryActions(item) {
   if (item.kind === "file") {
     return [
       // `window.open` never attaches the `X-Auth-Token` header a plain
-      // navigation can't carry — the same gap `mediaSrc` already exists to
+      // navigation can't carry: the same gap `mediaSrc` already exists to
       // close for `<img src>`, just missed here. Every notebook with a
       // password set (the normal case) 401'd on Download until this.
       makeMenuItem("⬇ Download", "Save this file", () => {
         window.open(mediaSrc(`/files/${item.id}`), "_blank");
       }),
-      // Live-reported: an uploaded file "can't be deleted" — true for its
+      // Live-reported: an uploaded file "can't be deleted", true for its
       // own ⋯ menu specifically; bulk-select delete already worked
       // (`library-bulk-delete` already has a `file` branch), but nothing
       // offered it from the one place someone looks first.
@@ -740,7 +772,7 @@ function libraryCard(item) {
   const meta = LIBRARY_KINDS.find((k) => k.key === item.kind);
 
   // A thumbnail where there is one to show. A grid of picture files that shows
-  // the word "PNG" seven times is a list pretending to be a gallery — and this
+  // the word "PNG" seven times is a list pretending to be a gallery, and this
   // is the one kind whose content *is* what it looks like.
   if (item.kind === "file" && (item.mime || "").startsWith("image/")) {
     const thumb = document.createElement("img");
@@ -757,12 +789,12 @@ function libraryCard(item) {
     (item.thumb_attachment_id || item.thumb_url)
   ) {
     // A sketch is a note whose actual content is a file attachment, not
-    // text — without this a sketch card in the Library was a bare title
+    // text: without this a sketch card in the Library was a bare title
     // with nothing under it, indistinguishable from any empty note.
     //
     // `thumb_url` is the other half of the same fix: a pasted or dropped
     // image lives as inline markdown in the note's own content, never as an
-    // Attachment, so it needed its own source — a sketch's card showed its
+    // Attachment, so it needed its own source, a sketch's card showed its
     // drawing and a pasted-image note's card showed nothing at all, which
     // is the inconsistency this closes. Already an absolute URL
     // (`/media/...` or `https://...`, whatever the note itself renders it
@@ -781,7 +813,7 @@ function libraryCard(item) {
   const top = document.createElement("div");
   top.className = "library-card-top";
   // Tick to select. Only for the kinds a bulk action can actually do something
-  // to — an activity row is a record of the past and a tag is not a file, so
+  // to: an activity row is a record of the past and a tag is not a file, so
   // offering either a checkbox would be offering a Delete that does nothing.
   if (item.kind !== "activity" && item.kind !== "tag") {
     const tick = document.createElement("input");
@@ -812,13 +844,13 @@ function libraryCard(item) {
   const cleanTitle = item.title.replace(/^#{1,6}\s+/gm, "").replace(/^>\s?/gm, "");
   renderInlineMarkdown(title, cleanTitle, []);
   // The 2-line clamp above cuts a long title off mid-word with no way to read
-  // the rest short of opening the card — a native tooltip costs nothing.
+  // the rest short of opening the card, a native tooltip costs nothing.
   title.title = cleanTitle;
   top.append(icon, title);
   if (item.pinned) {
     //: **The same flag means two different things here**, and this card is
     //: the one place both kinds land side by side. A pinned *chat* is kept at
-    //: the top of the list — that is a pin. A pinned *note* is a Favourite:
+    //: the top of the list, that is a pin. A pinned *note* is a Favourite:
     //: one flag that both floats it and collects it into the sidebar's
     //: Favourites row, renamed everywhere else and missed here.
     const isChat = item.kind === "chat";
@@ -830,13 +862,13 @@ function libraryCard(item) {
   card.appendChild(top);
 
   // A chat's title *is* its first question, so its preview would be the same
-  // sentence again one line down and one shade greyer — a card that looks like
+  // sentence again one line down and one shade greyer, a card that looks like
   // a bug rather than one with more metadata on it.
   //
   // **But "starts with the title" was the wrong test**, and it is what was
   // behind "I can't see a lot of the response in the cards": a *note's* title
   // is the first 60 characters of the note, so every note card matched and
-  // every note card lost its preview entirely — leaving 60 characters of a
+  // every note card lost its preview entirely, leaving 60 characters of a
   // 420-character card. The question is not whether the preview begins with
   // the title, it is whether it goes on to say anything more.
   const bare = cleanTitle.replace(/…$/, "").trim();
@@ -851,7 +883,7 @@ function libraryCard(item) {
     // Inline markdown, the same renderer the note list uses (§22): a note
     // written with **bold** and `code` in it was showing its asterisks and
     // backticks here, which is the Library rendering the *source* of a note
-    // while every other surface renders the note. Inline only — block elements
+    // while every other surface renders the note. Inline only: block elements
     // would turn a card into a document, which is what the clamp is for.
     const cleanPreview = item.preview.replace(/^#{1,6}\s+/gm, "").replace(/^>\s?/gm, "");
     renderInlineMarkdown(preview, cleanPreview, []);
@@ -885,7 +917,7 @@ function libraryCard(item) {
   }
 
   card.addEventListener("click", () => openLibraryItem(item));
-  // An <article role="button"> gets neither of these for free — this is the
+  // An <article role="button"> gets neither of these for free, this is the
   // half of the button element we gave up to be allowed a menu inside.
   card.addEventListener("keydown", (event) => {
     if (event.key !== "Enter" && event.key !== " ") return;
@@ -908,8 +940,14 @@ function openLibraryItem(item) {
     // The note, not the raw file: a download is one click further and the note
     // is the thing that says why the file was kept.
     flashEntry(item.entry_id);
+  } else if (item.kind === "board" || item.kind === "map") {
+    //: The board, not the entry behind it. Opening the note would show the
+    //: row a board happens to be stored in, which is an empty note, and is
+    //: the same class of mistake as drawing it with a pencil icon.
+    if (typeof openWhiteboardBoard === "function") openWhiteboardBoard(item.id);
+    else flashEntry(item.id);
   } else if (item.kind === "note" || item.kind === "draft") {
-    // Drafts open exactly like notes. flashEntry already knows how — it turns
+    // Drafts open exactly like notes. flashEntry already knows how, it turns
     // the Drafts filter on when its target is one, because drafts are excluded
     // from every other view. What was missing was this branch: the "draft"
     // kind arrived with the Library's new Drafts chip and nothing routed it,
@@ -930,7 +968,7 @@ function openLibraryItem(item) {
     flashEntry(item.entry_id);
   } else if (item.kind === "activity") {
     // No related note to jump to (a preference change, a tag merge, a
-    // password change) — the click's only useful job left is showing the
+    // password change): the click's only useful job left is showing the
     // whole record. `item.preview` is what the card already shows, clipped
     // to ACTIVITY_DETAIL_CHARS server-side; re-fetching by id gets the
     // record's real, un-clipped `detail` for anything long enough to have
@@ -940,7 +978,7 @@ function openLibraryItem(item) {
       .catch(() => showDetailDialog(item.title, item.preview || "(no detail recorded)"));
   } else if (item.kind === "archived") {
     // Restore and permanent delete are both on this card's own ⋯ menu, and
-    // reading the note in full is the one thing a card cannot do — so that is
+    // reading the note in full is the one thing a card cannot do, so that is
     // all this opens. It used to send the user to #bin-panel, which is the
     // only reason that panel outlived the Library's Bin chip.
     openBinnedNote(item.id);
@@ -951,7 +989,7 @@ function openLibraryItem(item) {
 //
 // **This is what let #bin-panel be deleted.** The Library card shows a
 // preview, which is right for a grid of mixed things and wrong as the only
-// way to see a note you are about to destroy — "restore or delete for good?"
+// way to see a note you are about to destroy, "restore or delete for good?"
 // is a question you answer by reading the note, and the panel was the last
 // place in the app that could still show one.
 //
@@ -969,7 +1007,7 @@ async function openBinnedNote(entryId) {
   $("binned-close").focus();
   let entry;
   try {
-    // `?deleted=true` — an ordinary read still 404s on a binned note, so
+    // `?deleted=true`, an ordinary read still 404s on a binned note, so
     // reaching into the bin is something the caller says it means to do.
     entry = await apiJson(`/entries/${entryId}?deleted=true`);
   } catch (error) {
@@ -1012,7 +1050,7 @@ $("binned-purge").addEventListener("click", async () => {
   const id = binnedNoteId;
   if (!id) return;
   // The note is on screen and has just been read, so the dialog does not have
-  // to quote it back the way the old bin row's did — "this cannot be undone"
+  // to quote it back the way the old bin row's did: "this cannot be undone"
   // is the whole of what is left to say.
   if (!(await confirmDialog("Permanently delete this note?\n\nThis cannot be undone."))) return;
   try {
@@ -1028,7 +1066,7 @@ $("binned-purge").addEventListener("click", async () => {
 
 // BACKLOG §22's still-open half of "take me to the thing the agent just
 // changed": a destructive result (delete_note) used to reuse flashEntry,
-// which only ever looks in the ordinary browse list — a note the agent just
+// which only ever looks in the ordinary browse list, a note the agent just
 // binned is never there, so the "View" button silently found nothing. This
 // looks in the Library's own Bin filter instead, the one place a binned note
 // actually lives (routes_library.py's _archive(), kind "archived").
@@ -1039,7 +1077,7 @@ async function flashLibraryItem(kind, id) {
   if (kind === "archived" && showBinned) showBinned.checked = true;
   renderLibraryFilters();
   renderLibrary(); // in case libraryItems is already fresh (tab was already open)
-  // switchTab's own loadLibrary() fetch may still be in flight — starting a
+  // switchTab's own loadLibrary() fetch may still be in flight, starting a
   // second one here to await would race it, and whichever finishes last wins
   // the final render, silently dropping the flash the other one applied.
   // Polling for the card sidesteps the race: it waits for whichever render
@@ -1056,7 +1094,7 @@ async function flashLibraryItem(kind, id) {
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   card.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "center" });
   // "flash" alone only draws on a note-list <li> or something already
-  // carrying "flash-target" (01-forms-settings.css) — a library card is
+  // carrying "flash-target" (01-forms-settings.css): a library card is
   // neither, so both classes are needed here for the highlight to render.
   card.classList.remove("flash");
   void card.offsetWidth;
@@ -1086,7 +1124,10 @@ async function runLibrarySearch() {
   libraryCurrentPage = 1; // a new search can move an item off whatever page it was on
   renderLibrary();
 }
-$("library-semantic-toggle").addEventListener("change", runLibrarySearch);
+$("library-semantic-toggle").addEventListener("change", () => {
+  syncLibraryFilterButton();
+  runLibrarySearch();
+});
 $("library-search").addEventListener("input", () => {
   clearTimeout(librarySearchDebounceTimeout);
   librarySearchDebounceTimeout = setTimeout(runLibrarySearch, 150);
@@ -1095,18 +1136,17 @@ $("library-sort").addEventListener("change", () => {
   libraryCurrentPage = 1;
   renderLibrary();
 });
-for (const button of document.querySelectorAll("#library-sort-seg button")) {
-  button.addEventListener("click", () => {
-    document.querySelectorAll("#library-sort-seg button").forEach(b => b.classList.remove("active"));
-    button.classList.add("active");
-    const select = $("library-sort");
-    if (select) select.value = button.dataset.sort;
-    libraryCurrentPage = 1;
-    renderLibrary();
-  });
+//: The Filter menu's button says when a filter is on (Phase 8): a menu that
+//: hides "Include bin" must not also hide that the bin is being shown.
+function syncLibraryFilterButton() {
+  const on = Boolean($("library-semantic-toggle")?.checked || $("library-show-binned")?.checked);
+  const summary = document.querySelector("#library-filter-menu > summary");
+  summary?.classList.toggle("is-on", on);
+  summary?.setAttribute("aria-pressed", String(on));
 }
 $("library-show-binned").addEventListener("change", () => {
   libraryCurrentPage = 1;
+  syncLibraryFilterButton();
   renderLibrary();
 });
 for (const button of document.querySelectorAll("#library-view button, #library-boards-view button")) {
@@ -1131,7 +1171,7 @@ $("library-bin-empty").addEventListener("click", async () => {
   try {
     await apiJson("/recycle-bin/empty", { method: "POST" });
   } catch (e) {
-    // Was unconditional before — a failed request still showed "The bin is
+    // Was unconditional before: a failed request still showed "The bin is
     // empty." right under its own error toast, one saying it worked and one
     // saying it didn't, for the same click.
     toast(e.message, true);
@@ -1163,7 +1203,7 @@ $("library-bulk-restore").addEventListener("click", async () => {
   const chosen = librarySelectedItems().filter((i) => i.kind === "archived");
   if (!chosen.length) return;
   // Was `.catch(() => {})` then an unconditional "Restored N notes." for
-  // every item *attempted* — a per-item 404/500 was silently swallowed and
+  // every item *attempted*: a per-item 404/500 was silently swallowed and
   // still counted as a success. Track real outcomes instead.
   let restored = 0;
   for (const item of chosen) {
@@ -1184,7 +1224,7 @@ $("library-bulk-delete").addEventListener("click", async () => {
   const chosen = librarySelectedItems();
   if (!chosen.length) return;
   // Binned notes are destroyed; everything else is deleted the way its own
-  // menu deletes it. Saying which is which in the confirmation matters —
+  // menu deletes it. Saying which is which in the confirmation matters, 
   // "delete" means recoverable for a note and permanent for one already binned.
   const permanent = chosen.filter((i) => i.kind === "archived").length;
   const ok = await confirmDialog(
@@ -1230,14 +1270,14 @@ $("library-refresh").addEventListener("click", loadLibrary);
 // **The "All" tab's create button, matched to whichever filter chip is
 // active.** Reported directly: it always said "+ New document" and made a
 // document regardless of whether you were looking at Notes, Chats or
-// Meetings — the one obviously-wrong thing to create in three of those
+// Meetings: the one obviously-wrong thing to create in three of those
 // four views. `renderLibraryFilters()` (above) calls this every time the
 // chip changes; the four kinds with one unambiguous thing to create get a
 // matching button, everything else (Everything, Files, Tags, Drafts,
-// Activity, the bin) falls back to "+ New note" — the fastest capture path
+// Activity, the bin) falls back to "+ New note", the fastest capture path
 // in the app, and a reasonable default when there's no single obvious
 // answer. A real "choose what to create" picker for the Everything view
-// specifically was asked for too but not built this pass — logged rather
+// specifically was asked for too but not built this pass, logged rather
 // than rushed; see BACKLOG.md.
 const LIBRARY_CREATE_BY_KIND = {
   note: {
@@ -1270,7 +1310,7 @@ const LIBRARY_CREATE_BY_KIND = {
   // Asked for directly: "I want ways to make custom knowledge graphs that are
   // like mindmaps where I can add and remove nodes, move them around, change
   // how they connect and reasons, and just make my own thought process map"
-  // — and, on where it should live, "I should be able to make and manage map
+  //, and, on where it should live, "I should be able to make and manage map
   // graphs (maybe in library??)".
   //
   // **This is a board, not a third canvas**, and that is the whole design
@@ -1278,13 +1318,13 @@ const LIBRARY_CREATE_BY_KIND = {
   // freely-placed cards whose positions persist, a link tool, Tab for a new
   // branch and Enter for a new sibling off the selected card, "Arrange as
   // mind map" to re-tidy, pan/zoom, undo, spaces, and export. What it did
-  // not have was a *name* — nothing in the app said "concept map", so the
+  // not have was a *name*, nothing in the app said "concept map", so the
   // one feature the user was asking for was sitting behind a button called
   // "New board" on a tab called Whiteboards, which is why they reported it
   // missing. See `createConceptMap` for what the entry point adds on top.
   //
-  // It also answers the deferred half of the ask — "maybe with a way to
-  // export that into a visual diagram on the whiteboard" — by construction:
+  // It also answers the deferred half of the ask, "maybe with a way to
+  // export that into a visual diagram on the whiteboard", by construction:
   // the map *is* a whiteboard, so it exports through the export button that
   // is already there.
   map: {
@@ -1292,7 +1332,7 @@ const LIBRARY_CREATE_BY_KIND = {
     run: () => createConceptMap(),
   },
   // Reported directly: "in the library 'all' subtab, the files section has
-  // the general create button and not an upload button." It did — `file` had
+  // the general create button and not an upload button." It did: `file` had
   // no entry here, so it fell through to the "＋ Create" picker, which asks
   // you what you want to make when the answer for a file is never "make".
   //
@@ -1313,12 +1353,12 @@ const LIBRARY_CREATE_BY_KIND = {
 
 // **BACKLOG §105 item 1, built**: "Everything" and every kind with no
 // single obvious answer (Files, Tags, Drafts, Activity, the bin) now open
-// a real picker instead of silently defaulting to "+ New note" — asked for
+// a real picker instead of silently defaulting to "+ New note", asked for
 // again directly ("the buttons for creating and uploading the specific
 // things"). A modal overlay, not a `kebabMenu()` dropdown: the button
 // isn't wrapped in `.menu-wrap` the way every other kebab opener is, and
 // `.library-view-section`'s own `overflow-y: auto` is exactly the clipping
-// trap `wireEscapedActionMenu` exists to work around elsewhere — a full
+// trap `wireEscapedActionMenu` exists to work around elsewhere, a full
 // overlay sidesteps both instead of fighting them.
 function openLibraryCreatePicker() {
   const overlay = document.createElement("div");
@@ -1387,12 +1427,12 @@ updateLibraryCreateButton();
 
 // --- the AI Skills page ---------------------------------------------------------
 //
-// Asked for: "can you redesign the AI Skills tab in the library??" — and an
+// Asked for: "can you redesign the AI Skills tab in the library??", and an
 // audit of what was here first found five separate faults, four of which the
 // redesign removes rather than restyles:
 //
 // 1. **The grid was never used.** A `div.skills-grid` was created, appended,
-//    and then every card was appended to `container` instead — so the grid
+//    and then every card was appended to `container` instead: so the grid
 //    layout applied to an empty box and the cards stacked full-width below
 //    it. The "No skills found" message went *into* that empty box, which is
 //    why an empty library looked like nothing at all.
@@ -1400,11 +1440,11 @@ updateLibraryCreateButton();
 //    soon!". A button that does nothing is worse than a missing feature: it
 //    teaches people the app is unreliable. Gone; it is on the roadmap.
 // 3. **`innerHTML` templates**, against this file's own rule, including a
-//    `.switch`/`.slider` toggle that exists nowhere else in this app — so the
+//    `.switch`/`.slider` toggle that exists nowhere else in this app, so the
 //    one toggle on this page looked unlike every other toggle in it.
 // 4. **Nothing said what a skill would do.** A name and a description, with
 //    no indication of how many steps it runs, which tools it may use, or
-//    whether it has ever been run — which is exactly what you want to know
+//    whether it has ever been run, which is exactly what you want to know
 //    before letting something edit your notebook.
 // 5. `window.switchTab` was monkey-patched to notice the Library opening.
 //
@@ -1421,7 +1461,7 @@ function skillLastRunIndex(rows) {
   //: so the first one wins and later ones are skipped.
   const index = new Map();
   for (const row of rows || []) {
-    const name = (row.detail || "").split(" — ")[0];
+    const name = (row.detail || "").split(", ")[0];
     if (name && !index.has(name)) index.set(name, row);
   }
   return index;
@@ -1448,14 +1488,14 @@ function skillCard(skill, lastRun) {
   // **What running this will actually do.** The missing half of the old card:
   // a skill is a thing you are about to let edit your notebook, and "how many
   // steps" and "which tools" are the two facts that decide whether you want
-  // to. Only shown when there is something to say — a one-shot prompt skill
+  // to. Only shown when there is something to say, a one-shot prompt skill
   // has neither, and a row of zeroes is noise.
   const facts = document.createElement("div");
   facts.className = "skill-card-facts";
   const steps = (skill.steps || []).length;
   const tools = (skill.tools || []).length;
   const inputs = (skill.inputs || []).length;
-  // Steps and tools expand in place — reported directly: "allow dropdown
+  // Steps and tools expand in place, reported directly: "allow dropdown
   // expansions for the steps and tools in each." A hover title said the same
   // thing before, which is both unreachable on touch and one line, hidden
   // until you happened to rest a cursor on a chip that never looked
@@ -1520,8 +1560,8 @@ function skillCard(skill, lastRun) {
   const when = document.createElement("p");
   when.className = "skill-card-when muted text-xs";
   if (lastRun) {
-    const outcome = (lastRun.detail || "").split(" — ")[1] || "";
-    when.textContent = `Last run ${new Date(lastRun.created_at).toLocaleString()} — ${outcome}`;
+    const outcome = (lastRun.detail || "").split(", ")[1] || "";
+    when.textContent = `Last run ${new Date(lastRun.created_at).toLocaleString()}, ${outcome}`;
   } else {
     when.textContent = "Never run.";
   }
@@ -1534,13 +1574,13 @@ function skillCard(skill, lastRun) {
   run.title = `Run “${skill.name}” in the chat`;
   // runSkill, not startSkill: it prompts for the skill's inputs when it has
   // any, then calls startSkill with a real values object, and switches to the
-  // chat itself. (startSkill(skill.name) was the earlier bug here — a name
+  // chat itself. (startSkill(skill.name) was the earlier bug here, a name
   // string where a skill object was expected, and no `values` at all.)
   run.addEventListener("click", () => runSkill(skill));
   footer.appendChild(run);
 
-  // A built-in has nothing to edit — it is defined in the app, not in your
-  // preferences — so offering Edit on one would open a form that cannot save.
+  // A built-in has nothing to edit, it is defined in the app, not in your
+  // preferences: so offering Edit on one would open a form that cannot save.
   if (!skill.builtin) {
     const edit = document.createElement("button");
     edit.className = "ghost small";
@@ -1575,7 +1615,7 @@ function renderSkillCards(query = "") {
     empty.classList.toggle("hidden", matches.length > 0);
     empty.textContent = skillCardsCache.length
       ? "No skills match that."
-      : "No skills yet. “New skill” writes one — a name, what it should do, and the steps to take.";
+      : "No skills yet. “New skill” writes one, a name, what it should do, and the steps to take.";
   }
 }
 
@@ -1596,8 +1636,8 @@ async function renderSkillsDashboard() {
   // The same three preferences as Settings → Background tasks, and written
   // through `setPreference` for the reason that fix already documents: these
   // used to write straight to the server and update nothing locally, so
-  // `savePrefs` — which rebuilds the whole object from the *other* screen's
-  // DOM — silently switched them back off again. Reported as "the automated
+  // `savePrefs`, which rebuilds the whole object from the *other* screen's
+  // DOM: silently switched them back off again. Reported as "the automated
   // tasks option keeps automatically disabling itself even when turned on".
   const workers = document.createElement("section");
   workers.className = "card skills-workers";
@@ -1625,7 +1665,7 @@ async function renderSkillsDashboard() {
     wrap.append(box, text);
     return wrap;
   };
-  // The master switch, on its own — reported directly: it "should be
+  // The master switch, on its own, reported directly: it "should be
   // separate from the other two as they are like what the agent is running
   // in the background." Tag notes / Link related notes are jobs the agent
   // does *while* it's running, not independent switches of their own kind;
@@ -1658,14 +1698,17 @@ async function renderSkillsDashboard() {
   container.appendChild(workers);
 
   // --- the skills themselves --------------------------------------------------
-  const search = document.createElement("input");
-  search.type = "search";
-  search.id = "skills-search";
-  search.className = "skills-search";
-  search.placeholder = "Search skills…";
-  search.setAttribute("aria-label", "Search your skills");
-  search.addEventListener("input", () => renderSkillCards(search.value));
-  container.appendChild(search);
+  //: The search box is markup now, in this sub-tab's dock, because a Library
+  //: sub-tab's search belongs in its head row beside the title like the other
+  //: six. It used to be built here and appended below the background-workers
+  //: card, which is where it rendered: a card and a half beneath the heading.
+  //:
+  //: `oninput` rather than `addEventListener`: this function runs again every
+  //: time the sub-tab is opened, and on an element that now outlives the
+  //: render a listener added per visit would re-render the cards once for
+  //: every visit ever made. Assigning the handler replaces it instead.
+  const search = $("skills-search");
+  if (search) search.oninput = () => renderSkillCards(search.value);
 
   const grid = document.createElement("div");
   grid.id = "skills-grid";
@@ -1679,11 +1722,11 @@ async function renderSkillsDashboard() {
   container.append(grid, empty);
 
   skillCardsCache = skills.map((skill) => ({ skill, lastRun: lastRuns.get(skill.name) }));
-  renderSkillCards(search.value);
+  renderSkillCards(search ? search.value : "");
 }
 
 // The AI Skills page is rendered when its sub-tab is opened, by the sub-tab
-// handler below — not by monkey-patching `switchTab`, which is what this used
+// handler below: not by monkey-patching `switchTab`, which is what this used
 // to do (`window.switchTab = function(name) { originalSwitchTab(name); … }`).
 // That wrapper ran two network-backed renders every time *any* Library
 // sub-tab was opened, and it depended on load order: whichever script
@@ -1703,7 +1746,7 @@ async function renderSkillLogs() {
   
   // **Filtered in SQL, not here, and asking for 20 of *everything* was half
   // the reason this panel looked broken.** Reported as "I dont think the
-  // skill logs work in the ai skills section in the library??" — and it had
+  // skill logs work in the ai skills section in the library??", and it had
   // two independent causes, either of which alone was enough:
   //
   // 1. Nothing in the app ever wrote a `skill` audit row. The filter below
@@ -1712,7 +1755,7 @@ async function renderSkillLogs() {
   //    one now.
   // 2. Even once they exist, `/audit?limit=20` returns the last twenty
   //    things that happened *of any kind*, and this then filtered those in
-  //    the browser — so on any notebook where the last twenty events were
+  //    the browser: so on any notebook where the last twenty events were
   //    note edits, a real history of skill runs rendered as "none found".
   const skillLogs =
     (await apiJson("/audit?limit=50&entity_type=skill").catch(() => null)) || [];
@@ -1728,7 +1771,7 @@ async function renderSkillLogs() {
   // own rule. Worth noting what the old template actually contained: a
   // trailing `</div>` with nothing open to close, which the HTML parser
   // silently discarded on every single row. That is the argument for the rule
-  // in one line — a structural mistake in a string is invisible, and the same
+  // in one line: a structural mistake in a string is invisible, and the same
   // mistake in `append()` calls does not compile.
   for (const log of skillLogs) {
     const div = document.createElement("div");
@@ -1740,7 +1783,7 @@ async function renderSkillLogs() {
     // The detail carries the skill's name and outcome; `log.action` is just
     // "ran", which as a heading told the reader nothing they did not already
     // know from the panel they were looking at.
-    action.textContent = (log.detail || "").split(" — ")[0] || log.action;
+    action.textContent = (log.detail || "").split(", ")[0] || log.action;
     const when = document.createElement("span");
     when.className = "muted text-sm";
     when.textContent = new Date(log.created_at).toLocaleString();
@@ -1748,7 +1791,7 @@ async function renderSkillLogs() {
 
     const detail = document.createElement("div");
     detail.className = "muted text-sm log-detail";
-    detail.textContent = (log.detail || "").split(" — ").slice(1).join(" — ")
+    detail.textContent = (log.detail || "").split(", ").slice(1).join(", ")
       || log.detail || "";
 
     div.append(head, detail);
@@ -1756,18 +1799,26 @@ async function renderSkillLogs() {
   }
 }
 
-// Same shape again, for the Library image gallery's AI captions — keyed by
-// upload id. Reported: "the image caption can't be expanded or collapsed",
-// which the two-line clamp had no way to do at all until now.
-const libraryExpandedCaptions = new Set();
-// Same again for the two OCR fields below the caption. Asked for directly:
+//: The image gallery's own expanded-caption set used to sit here, next to
+//: these two. It is gone, not moved: a card's description is unclamped by
+//: opening the card's one fold now (`openRowReadings`, and `captionClamped`
+//: in renderLibraryImagesGallery), because four affordances under one picture
+//: is what INBOX 115 was reporting. The capability the original ask wanted
+//: ("the image caption can't be expanded or collapsed") is unchanged; the
+//: button that carried it is one fewer thing on the card.
+// The two OCR fields below the caption. Asked for directly:
 // "make the ocr extracted text in the image gallery collapsible and
-// expandable like the image captions as well" — captionText got the clamp
+// expandable like the image captions as well", captionText got the clamp
 // fix above; these two never did, so a long transcription still grew the
 // tile unboundedly.
 const libraryExpandedOcr = new Set();
 const libraryExpandedVisionOcr = new Set();
-// Which documents are ticked in the Library's Documents sub-tab — this
+//: All three are keyed by `mediaRowKey(image)` rather than `image.id`. An
+//: `Attachment` and a `MediaUpload` have separate id sequences and this one
+//: grid renders both kinds, so `id` alone names two rows at once: expanding
+//: attachment 1's reading also expanded upload 1's, on whichever sub-tab
+//: they happened to share.
+// Which documents are ticked in the Library's Documents sub-tab: this
 // view's own selection, separate from `librarySelection` (the "All" view's),
 // because this section never populates `libraryItems` and mixing the two
 // would let a checkbox here report "selected" while the "All" view's own
@@ -1775,22 +1826,22 @@ const libraryExpandedVisionOcr = new Set();
 const libraryDocsSelection = new Set();
 
 // BACKLOG §77's page-size pattern, extended to the Library's Documents
-// sub-tab (§89 item 1) — a plain newest-first list with no due/overdue
+// sub-tab (§89 item 1): a plain newest-first list with no due/overdue
 // framing to protect, unlike Reminders, so a straight full-list page slice
 // is safe here.
 let libraryDocsPageSize = localStorage.getItem("library-docs-page-size") || "all";
 let libraryDocsCurrentPage = 1;
 
-// The Library sub-tab drafts were supposed to live in from the start — a
+// The Library sub-tab drafts were supposed to live in from the start, a
 // stray comment already claimed "the sidebar/Library Drafts filter... is
 // what makes them findable" and HISTORY.md said the same, but no
 // library-view-drafts section ever existed to check off. Reported live:
 // "there is no drafts section in the library." Fetches its own list rather
-// than trusting Notes-tab state (`allEntries`) to already be loaded — the
+// than trusting Notes-tab state (`allEntries`) to already be loaded, the
 // Library can be opened first, before Notes ever has been.
 // Documents, on their own Library sub-tab.
 //
-// Reuses GET /documents — the same call the editor's sidebar makes — rather
+// Reuses GET /documents, the same call the editor's sidebar makes, rather
 // than adding an endpoint, and openDocument() to open one, so there is exactly
 // one code path from "a document in a list" to "the editor showing it".
 //
@@ -1803,7 +1854,7 @@ let libraryDocsCurrentPage = 1;
 //: memory by the time this runs.
 //:
 //: Sorted **before** paging, which is the only order that makes a page mean
-//: anything — sorting a slice would reorder ten rows within a page and leave
+//: anything: sorting a slice would reorder ten rows within a page and leave
 //: the pages themselves in the server's order, so "longest first" would show
 //: the longest of page two rather than the longest there is.
 const LIBRARY_DOC_SORTS = {
@@ -1811,7 +1862,7 @@ const LIBRARY_DOC_SORTS = {
   oldest: (a, b) => String(a.updated_at || "").localeCompare(String(b.updated_at || "")),
   az: (a, b) => String(a.title || "").localeCompare(String(b.title || ""), undefined, { sensitivity: "base" }),
   za: (a, b) => String(b.title || "").localeCompare(String(a.title || ""), undefined, { sensitivity: "base" }),
-  //: A document list has no file size, but it does have a word count — which
+  //: A document list has no file size, but it does have a word count, which
   //: is what "how big is this one" actually means here. The field is `words`
   //: (routes_documents.py's `_summary`), not `word_count`: reading the wrong
   //: name would have made every document sort as zero and the order look
@@ -1850,10 +1901,21 @@ async function renderLibraryDocuments() {
 
   let docs = [];
   try {
-    // `q` searches title *and* content server-side (routes_documents.py) —
+    // `q` searches title *and* content server-side (routes_documents.py): 
     // client-side filtering alone could only ever match a title, since a
     // document's body is never sent to the browser in the list view.
-    docs = await apiJson(needle ? `/documents?q=${encodeURIComponent(needle)}` : "/documents");
+    //
+    //: Read to the end rather than one page (`apiPagedList`, documents.js).
+    //: `GET /documents` returns a page now (INBOX 117), and this list sorts
+    //: and pages *client-side* below: on one page of the server's rows,
+    //: sorting oldest-first would show the oldest of the newest two hundred
+    //: and call it the oldest, and the pager would offer pages that do not
+    //: exist. With `q` given the server counts the matches, not the table,
+    //: so the loop ends on the size of the search.
+    docs = await apiPagedList(
+      needle ? `/documents?q=${encodeURIComponent(needle)}` : "/documents",
+      DOCUMENTS_PAGE_SIZE
+    );
   } catch (error) {
     toast(error.message || "Could not load documents.", true);
     return;
@@ -1878,7 +1940,7 @@ async function renderLibraryDocuments() {
   // Sliced after the selection-cleanup above (which has to see every live
   // id, not just the current page) and before the render loop below.
   const pageBar = document.getElementById("library-docs-pagination");
-  //: Before paging — see `LIBRARY_DOC_SORTS`. On a copy, because `docs` may be
+  //: Before paging: see `LIBRARY_DOC_SORTS`. On a copy, because `docs` may be
   //: an array another reader holds.
   docs = [...docs].sort(LIBRARY_DOC_SORTS[libraryDocSort()]);
   if (libraryDocsPageSize === "all" || !docs.length) {
@@ -1902,7 +1964,7 @@ async function renderLibraryDocuments() {
     // Reported: "can't rename, multi select, or delete documents in the
     // library subtab" - this row used to be nothing but the Open button
     // below. The tick and the ⋯ menu give it the same three actions a
-    // document's card already has in the "All" library view — and,
+    // document's card already has in the "All" library view: and,
     // reported again after the first pass, the same *placement*:
     // `libraryCard()`'s article-not-button shape (a button cannot contain
     // another button, which the tick and the kebab both are), the tick
@@ -1955,7 +2017,7 @@ async function renderLibraryDocuments() {
     title.textContent = doc.title || "Untitled";
     const meta = document.createElement("span");
     meta.className = "muted doc-list-meta";
-    // Words and when it was last touched — the two facts that tell you which
+    // Words and when it was last touched, the two facts that tell you which
     // of five similarly-named drafts is the one you meant.
     const words = typeof doc.words === "number" ? `${doc.words} words` : "";
     const when = doc.updated_at ? relativeTime(doc.updated_at) : "";
@@ -1963,7 +2025,7 @@ async function renderLibraryDocuments() {
     body.append(title, meta);
 
     // The document's own opening, which is the thing that actually tells four
-    // similarly-named drafts apart — a title, a word count and a date do not.
+    // similarly-named drafts apart: a title, a word count and a date do not.
     // Asked for directly: the Documents sub-tab is "boring and should probably
     // have previews". Served by the list endpoint as a flattened 240-character
     // snippet (`routes_documents._preview`) rather than by shipping every
@@ -1976,7 +2038,7 @@ async function renderLibraryDocuments() {
     }
 
     // Same three actions `libraryActions()` gives a document's card in the
-    // "All" view — kept as its own copy rather than calling that function
+    // "All" view: kept as its own copy rather than calling that function
     // directly, because its `reload` is hard-coded to `loadLibrary()` (the
     // "All" view's own data), which would leave this list showing a document
     // that was just renamed or deleted until something else refreshed it.
@@ -1984,7 +2046,7 @@ async function renderLibraryDocuments() {
       [
         // **A read-only showcase, not the editor.** Asked for directly:
         // "make a way to view documents in the documents tab in the
-        // lightbox." The row's own click already opens the full editor —
+        // lightbox." The row's own click already opens the full editor, 
         // this is the quick-look alternative, matching what the lightbox
         // already does for an uploaded PDF or a note attachment. A native
         // document needs no extraction (`GET /documents/{id}` already
@@ -2005,13 +2067,13 @@ async function renderLibraryDocuments() {
                 filename: full.title || "Untitled",
                 id: full.id,
                 //: What tells the lightbox this preview has an editor to open
-                //: — see `openDocBtn` there. Separate from `id`, which the
+                //:, see `openDocBtn` there. Separate from `id`, which the
                 //: lightbox also uses for attachments and uploads.
                 documentId: full.id,
                 kind: full.file_type === "md" ? "markdown" : "code",
                 text: full.content || "",
                 addedAt: full.updated_at || "",
-                // No file on /media to fetch a URL from — Save reads this
+                // No file on /media to fetch a URL from, Save reads this
                 // directly, the same route the kebab's own "Download .md"
                 // item already uses.
                 getUrl: () => `/documents/${full.id}/export.md`,
@@ -2041,7 +2103,7 @@ async function renderLibraryDocuments() {
             return;
           }
           //: The fourth and last door onto the same delete. All four now go
-          //: through `deleteDocumentWithUndo` — a delete that is recoverable
+          //: through `deleteDocumentWithUndo`, a delete that is recoverable
           //: from one menu and permanent from another is worse than one that
           //: is permanent everywhere, because it teaches a rule that is false.
           await deleteDocumentWithUndo(doc).catch((e) => toast(e.message, true));
@@ -2055,8 +2117,8 @@ async function renderLibraryDocuments() {
     menu.addEventListener("click", (event) => event.stopPropagation());
     // **Reported: "the documents popup menu in the library subtab gets cut
     // off."** `.library-view-section` (07-whiteboard-misc.css) is
-    // `overflow-y: auto`, and `.action-menu` — the shared kebab menu
-    // `kebabMenu()` builds — is `position: absolute`, so it is clipped by
+    // `overflow-y: auto`, and `.action-menu`, the shared kebab menu
+    // `kebabMenu()` builds: is `position: absolute`, so it is clipped by
     // The escape-to-<body> fix this list needed (it is clipped by
     // `#library-view-media`/`#tab-library` the same way
     // `.library-image-menu-list` was) now lives inside `kebabMenu()` itself,
@@ -2107,24 +2169,52 @@ $("library-docs-bulk-delete")?.addEventListener("click", async () => {
   renderLibraryDocuments();
 });
 
-// Every `/media/upload` has ever produced — note-inline images, document
+// Every `/media/upload` has ever produced: note-inline images, document
 // images, and whiteboard image objects alike, since all three funnel
 // through the same upload endpoint and (asked for directly) "images can be
 // managed (delete, rename etc) in the gallery as well." A file whose bytes
 // are gone (deleted from here, or off-disk by hand) leaves a broken-image
-// glyph — same guard `libraryCard`'s own thumbnail already uses — but a
+// glyph, same guard `libraryCard`'s own thumbnail already uses, but a
 // note or whiteboard still referencing a *deleted* url gets its own
 // placeholder instead of a broken glyph; see `renderInlineMarkdown`'s own
 // image `error` handler and `wbRenderObjects`'s image-object one.
 //: The last `GET /media` fetch, so the search box (below) can filter and
-//: re-render without a round-trip on every keystroke — the same reasoning
+//: re-render without a round-trip on every keystroke, the same reasoning
 //: the main Library search already uses against `libraryItems`.
 let libraryImagesCache = [];
 
-// Captioning runs on a background thread after upload (routes_files.py) —
+//: **What the gallery last drew**, so a poll that finds nothing new draws
+//: nothing new. Reported on 2026-09-09, against both media sub-tabs: "when I
+//: expand the ocr text in this image on the image cards in the images library
+//: sub tab, it keeps auto closing and scrolling me back to the top", and "the
+//: same happens on the text extracted from this file dropdown in the files
+//: subtab". The six-second caption poll rebuilt every tile from scratch
+//: whether or not anything had changed, so an open `<details>` was replaced
+//: by a closed one and the grid's scroll offset went with it: a reader had
+//: about six seconds to read a transcription before the app shut it.
+//:
+//: The signature is the fields a tile actually draws, not the whole payload:
+//: `/media` carries timestamps and sizes that move without changing a pixel,
+//: and comparing those would make this test always fail, which is the bug
+//: again with extra steps.
+let libraryImagesSignature = "";
+function libraryImagesFingerprint(rows) {
+  return JSON.stringify(
+    (rows || []).map((row) => [
+      row.url,
+      row.name,
+      row.caption || "",
+      row.ocr_text || "",
+      row.vision_ocr_text || "",
+      row.usage_count ?? null,
+    ]),
+  );
+}
+
+// Captioning runs on a background thread after upload (routes_files.py): 
 // the gallery only ever showed the caption once something re-fetched
 // `/media`, and nothing did that on its own. Reported directly: a caption
-// "doesn't work" at the time, then is there after reopening the app later —
+// "doesn't work" at the time, then is there after reopening the app later, 
 // it worked all along, the UI just never looked again. Runs only while the
 // Image Gallery is the visible sub-tab (started/stopped by the sub-tab
 // click handler below); skips a poll while a caption or rename field is
@@ -2136,7 +2226,7 @@ function startLibraryImagesPoll() {
     if (document.querySelector(".library-image-caption-input, .library-image-rename-input")) {
       return;
     }
-    renderLibraryImagesGallery();
+    renderLibraryImagesGallery({ ifUnchanged: "skip" });
   }, 6000);
 }
 function stopLibraryImagesPoll() {
@@ -2150,14 +2240,14 @@ function stopLibraryImagesPoll() {
 //: is what the allowlist that let the file in already validated.
 //: **What counts as an image**, in one place. The gallery tile code already
 //: had this test inline (a PDF rendered as an `<img>` decodes to nothing and
-//: the tile deletes itself — see `filterLibraryImagesGallery`), and the
+//: the tile deletes itself, see `filterLibraryImagesGallery`), and the
 //: Images/Files split needs exactly the same answer. Two copies of it would
 //: be two chances for a `.heic` to be an image in one and a file in the other.
 function isImageUrl(url) {
   //: Asked for directly: "make sure all image file types are sorted into the
   //: image gallery". The list was the eight this app's own upload input
-  //: happened to accept, so anything arriving by another route — dragged from
-  //: a phone export, attached to a note, restored from a backup — was an
+  //: happened to accept, so anything arriving by another route, dragged from
+  //: a phone export, attached to a note, restored from a backup, was an
   //: image the Files tab held. `.heic`/`.heif` are what a phone actually
   //: writes, `.tif`/`.tiff` what a scanner does, and `.jfif` is what some
   //: Windows tools still save a JPEG as. Widening the test is safe in the
@@ -2169,7 +2259,7 @@ function isImageUrl(url) {
   //: The extension is read up to a `?` or `#` rather than to the end of the
   //: string, because an Attachment's url can carry a cache-busting query and
   //: an anchored test called that a non-image. Written as a fixed alternation
-  //: with a single optional group — not a `[…]+$` run, which is the
+  //: with a single optional group, not a `[…]+$` run, which is the
   //: polynomial-backtracking shape CodeQL has already caught in this repo.
   return /\.(png|jpe?g|jfif|gif|webp|avif|bmp|ico|svg|heic|heif|tiff?|apng)(?:[?#]|$)/i.test(
     url || "",
@@ -2185,8 +2275,8 @@ function isImageUrl(url) {
 //: round-trip, so the grid does not flicker into the wrong mode on load.
 //:
 //: Applied as a class on the grid and resolved entirely in CSS. The tiles
-//: already contain both the page render and the glyph — the render simply
-//: covers the glyph — so switching modes is a matter of whether the cover is
+//: already contain both the page render and the glyph, the render simply
+//: covers the glyph: so switching modes is a matter of whether the cover is
 //: painted, and nothing has to be rebuilt, refetched or re-laid-out.
 const LIBRARY_MEDIA_VIEW_KEY = "library-media-view";
 let libraryMediaView = localStorage.getItem(LIBRARY_MEDIA_VIEW_KEY) === "type" ? "type" : "preview";
@@ -2199,13 +2289,13 @@ function applyLibraryMediaView() {
   //: single image or ocr caption doesnt fit them." A tile is the right shape
   //: for a picture, whose content *is* the thumbnail; it is the wrong shape
   //: for a document, whose content is a name, a description, a size, a page
-  //: count and a list of the notes it is used in — a card either truncates
+  //: count and a list of the notes it is used in, a card either truncates
   //: all of that or grows to a different height than its neighbours. The
   //: grid keeps one class and the CSS does the rest, so both sub-tabs keep
   //: rendering through the one builder.
   if (grid) grid.classList.toggle("library-file-rows", libraryMediaKind === "files");
   //: **Hidden on Images, where it would do nothing.** Reported: "the one in
-  //: the image subtab doesnt do anything" — correct, and it never could. The
+  //: the image subtab doesnt do anything", correct, and it never could. The
   //: toggle chooses between a file's rendered first page and its type glyph,
   //: and an image tile is an `<img>` of the picture itself: it has no
   //: `.library-file-page` to hide and no glyph underneath to reveal. A control
@@ -2264,7 +2354,7 @@ const LIBRARY_MEDIA_COPY = {
 function setLibraryMediaKind(kind) {
   libraryMediaKind = kind === "files" ? "files" : "images";
   //: The view toggle only means something on Files, so it appears and
-  //: disappears with the sub-tab — see `applyLibraryMediaView`.
+  //: disappears with the sub-tab, see `applyLibraryMediaView`.
   applyLibraryMediaView();
   const copy = LIBRARY_MEDIA_COPY[libraryMediaKind];
   const title = $("library-media-title");
@@ -2280,11 +2370,11 @@ function setLibraryMediaKind(kind) {
   const noMatch = $("library-images-no-match");
   if (noMatch) noMatch.textContent = copy.noMatch;
   // The upload button offers what this sub-tab is *for*. It still accepts
-  // both — a person who picks a PDF on the Images tab gets the PDF, it just
-  // appears under Files — because refusing a file the app can store would be
+  // both: a person who picks a PDF on the Images tab gets the PDF, it just
+  // appears under Files: because refusing a file the app can store would be
   // worse than filing it somewhere they then have to look.
   //: The read filter is a Files idea. An image is not "unread" in any sense a
-  //: person means — dividing pictures by whether OCR happened to have run on
+  //: person means: dividing pictures by whether OCR happened to have run on
   //: them would be a control that answers a question nobody asked.
   const readFilter = $("library-media-read");
   if (readFilter) {
@@ -2345,12 +2435,12 @@ function mediaFileIcon(url) {
 //: other features."
 //:
 //: A tile could show a thumbnail, a name and a caption; everything else a
-//: person actually brings to a file list — how big is it, how many pages,
-//: when did it arrive, has it been read — was either absent or buried. These
+//: person actually brings to a file list, how big is it, how many pages,
+//: when did it arrive, has it been read, was either absent or buried. These
 //: are the ones the row can state in one line.
 function formatFileSize(bytes) {
   const size = Number(bytes) || 0;
-  if (size <= 0) return ""; // unknown, or the file is gone — say nothing
+  if (size <= 0) return ""; // unknown, or the file is gone, say nothing
   if (size < 1024) return `${size} B`;
   const units = ["KB", "MB", "GB"];
   let value = size / 1024;
@@ -2365,20 +2455,18 @@ function formatFileSize(bytes) {
 
 //: The muted "TYPE · SIZE · pages · added" strip under a file's name. Every
 //: part is omitted when it is not known rather than shown empty or as a zero,
-//: since "0 B" and "—" are both claims this list cannot make honestly.
-function fileMetaLine(image) {
+//: since "0 B" and ", " are both claims this list cannot make honestly.
+//: **One line of facts, dot separated, built once.** The Files rows had this
+//: shape inline; the Links rows now want the same one (the owner, 2026-09-13:
+//: "redesign the links cards/rows ... to make them look nicer and more
+//: modern"), and a second copy of a loop that inserts separators is how two
+//: lists end up disagreeing about what a separator is. `extraClass` because
+//: the two lines sit in different layouts and the row needs a handle of its
+//: own for the column it lives in.
+function metaLine(parts, extraClass = "") {
   const line = document.createElement("div");
-  line.className = "library-file-meta";
-  const parts = [];
-  parts.push(mediaFileKind(image.original_name || image.url || ""));
-  const size = formatFileSize(image.size_bytes);
-  if (size) parts.push(size);
-  if (image.page_count) parts.push(`${image.page_count} page${image.page_count === 1 ? "" : "s"}`);
-  if (image.created_at) {
-    const when = new Date(image.created_at);
-    if (!Number.isNaN(when.getTime())) parts.push(`added ${when.toLocaleDateString()}`);
-  }
-  for (const [index, part] of parts.entries()) {
+  line.className = extraClass ? `library-file-meta ${extraClass}` : "library-file-meta";
+  for (const [index, part] of parts.filter(Boolean).entries()) {
     if (index) {
       const dot = document.createElement("span");
       dot.className = "library-file-meta-sep";
@@ -2390,6 +2478,44 @@ function fileMetaLine(image) {
     line.appendChild(span);
   }
   return line;
+}
+
+function fileMetaLine(image) {
+  const parts = [];
+  parts.push(mediaFileKind(image.original_name || image.url || ""));
+  const size = formatFileSize(image.size_bytes);
+  if (size) parts.push(size);
+  if (image.page_count) parts.push(`${image.page_count} page${image.page_count === 1 ? "" : "s"}`);
+  if (image.created_at) {
+    const when = new Date(image.created_at);
+    if (!Number.isNaN(when.getTime())) parts.push(`added ${when.toLocaleDateString()}`);
+  }
+  return metaLine(parts);
+}
+
+//: What a person calls a link: the site it is on. A bookmark row showed the
+//: whole address under its title, which on a real bookmark
+//: ("…/a/very/long/path?with=a&query=string") is a line of machine text under
+//: a line of human text, at the same rank. The host is what identifies a link
+//: in every browser's own bookmark list, the rest of the address is still on
+//: the row's tooltip and is what the title opens.
+function bookmarkAddress(url) {
+  const raw = String(url || "").trim();
+  try {
+    //: A bookmark may have been saved without a scheme ("example.com"), which
+    //: `new URL` rejects rather than guesses at, so the guess is made here and
+    //: the raw string is the answer if even that fails.
+    const parsed = new URL(/^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : `https://${raw}`);
+    const rest = `${parsed.pathname}${parsed.search}`;
+    return {
+      host: parsed.host.replace(/^www\./, "") || raw,
+      //: "/" is not a fact about a link, it is what every address ends up with
+      //: when it names a site rather than a page.
+      rest: rest === "/" ? "" : rest,
+    };
+  } catch {
+    return { host: raw, rest: "" };
+  }
 }
 
 function mediaFileKind(url) {
@@ -2411,7 +2537,7 @@ function mediaFileKind(url) {
 //
 // Asked for with three screenshots of Baidu's Unlimited-OCR: "for the
 // document ocr I want smth like this". The reading this app already did was
-// a paragraph under a thumbnail — you could read it, but not *check* it:
+// a paragraph under a thumbnail, you could read it, but not *check* it:
 // nothing said which part of the page a line came from, and a wrong line was
 // a wall of text to re-type rather than a row to fix.
 //
@@ -2419,7 +2545,7 @@ function mediaFileKind(url) {
 // they are one selection: clicking a box scrolls to its text, clicking a row
 // highlights its box. Boxes are fractions of the image (core/ocr.py), so the
 // overlay is a percentage-positioned layer over the `<img>` and stays right
-// at any panel width — which is why nothing here reads `naturalWidth`.
+// at any panel width, which is why nothing here reads `naturalWidth`.
 let ocrWorkspaceImages = [];
 let ocrWorkspaceCurrent = null;
 let ocrWorkspaceRegions = [];
@@ -2427,6 +2553,11 @@ let ocrWorkspaceRegions = [];
 //: are. 0/1 for an image, which is a one-page document with no rail.
 let ocrWorkspacePage = 0;
 let ocrWorkspacePages = 1;
+//: page index -> `{caption, caption_model}` for the document on the stage.
+//: Filled from the `page-reads` response (which carries a page's description
+//: on the same row as its reading), cleared and refilled on every page load so
+//: it can never describe the previous document's page 3.
+const ocrPageCaptions = new Map();
 
 function ocrIsPdf(image) {
   return Boolean(image) && /\.pdf$/i.test(image.original_name || image.filename || "");
@@ -2439,7 +2570,7 @@ function ocrRegionsUrl(image, page = 0) {
   return `${base}?page=${page}`;
 }
 
-//: The rendered picture of one page — an image is itself the page, a PDF has
+//: The rendered picture of one page, an image is itself the page, a PDF has
 //: to be rasterised, and the endpoints for that already exist for the file
 //: viewer and the Files tile.
 function ocrPageImageUrl(image, page = 0) {
@@ -2457,8 +2588,8 @@ function ocrPageImageUrl(image, page = 0) {
 //: the ocr workspace is gone and its back to what it was, it should have
 //: stayed open and should be openable if an active ocr reading is going on."*
 //:
-//: The request itself never stopped — a POST keeps going and writes its result
-//: whatever the browser does next — but the only evidence it existed lived
+//: The request itself never stopped, a POST keeps going and writes its result
+//: whatever the browser does next, but the only evidence it existed lived
 //: inside the window that started it. This is the piece that outlives that
 //: window: a map of file key → the read in flight, which the workspace reads
 //: on open (so reopening mid-read shows the read, not an empty page) and which
@@ -2470,7 +2601,7 @@ function trackOcrRead(image, label, promise, controller = null) {
   //: `controller` is what makes the read stoppable. Asked for directly:
   //: "also let the user be able to stop the readings." A page read is a
   //: blocking model call with nothing to interrupt server-side between
-  //: tokens, so Stop abandons the *request* — the person pressing it wants
+  //: tokens, so Stop abandons the *request*, the person pressing it wants
   //: their workspace back, not a guarantee about the model's own thread.
   const record = { label, started: Date.now(), promise, controller };
   ocrActiveReads.set(key, record);
@@ -2480,7 +2611,7 @@ function trackOcrRead(image, label, promise, controller = null) {
     ocrSyncStopButton();
     //: Re-render only if this file is still the one on the stage. The
     //: workspace may have been closed, reopened on another page, or never
-    //: opened at all — none of which should make a finished read throw.
+    //: opened at all: none of which should make a finished read throw.
     if (ocrWorkspaceCurrent && ocrRailKey(ocrWorkspaceCurrent) === key) {
       const overlay = $("ocr-workspace");
       if (overlay && !overlay.classList.contains("hidden")) {
@@ -2537,15 +2668,15 @@ function ocrRenderRegions(body) {
   boxes.replaceChildren();
   list.replaceChildren();
   ocrWorkspaceRegions = body.regions || [];
-  //: **A control that cannot act must not sit there looking live** — the same
+  //: **A control that cannot act must not sit there looking live**, the same
   //: rule the Stop-reading button and the box-overlay toggle already follow.
   //: Shown only once there is something on screen to remove.
   //: Reported: "the delete this reading button doesnt work". It was gated on
-  //: *regions*, which only Tesseract produces — a vision-model reading (the
+  //: *regions*, which only Tesseract produces, a vision-model reading (the
   //: only kind this project actually uses) has text and no boxes, so the
   //: button never appeared for it. Gated on there being a reading at all.
   //: `body.pages` is a page *count* on the regions response and a list of
-  //: readings on a stored-range response — `.some` on the number threw and
+  //: readings on a stored-range response, `.some` on the number threw and
   //: took the whole page load down with it ("(body.pages || []).some is not
   //: a function" in the reader's status line, found by measurement).
   const hasReading = body.source !== "text-file" && (ocrWorkspaceRegions.length > 0
@@ -2555,19 +2686,19 @@ function ocrRenderRegions(body) {
   //: **Redo, made discoverable rather than merely possible.** Reported
   //: directly: "there's also no way to delete or redo ocr text extractions."
   //: Clicking "Read this page"/"Read this image" always re-reads and replaces
-  //: the stored answer — `PageRead`'s own docstring: "re-reading a page
-  //: replaces its row rather than appending" — but nothing on the button said
+  //: the stored answer: `PageRead`'s own docstring: "re-reading a page
+  //: replaces its row rather than appending", but nothing on the button said
   //: so, and a control that behaves differently from what it looks like it
   //: does is not discoverable just because it technically works. The label
   //: stays put (tests and habit both key off it); only the tooltip changes,
   //: once there is something on screen for it to describe replacing. Set
   //: here rather than in `ocrLoadPage` because that function calls this one
-  //: to actually paint the page — reading `ocrWorkspaceRegions` before this
+  //: to actually paint the page, reading `ocrWorkspaceRegions` before this
   //: line runs would still hold the *previous* page's count.
   const readBtn = $("ocr-read-page");
   if (readBtn) {
     readBtn.title = ocrWorkspaceRegions.length
-      ? "Read again — replaces the reading shown here"
+      ? "Read again: replaces the reading shown here"
       : "Transcribe what you are looking at";
   }
 
@@ -2579,8 +2710,8 @@ function ocrRenderRegions(body) {
     //: **"reading" is not a fallback badge any more, and it must not read as
     //: one.** It used to be "stored-text": one region covering the whole page,
     //: which really was a stand-in. Now the reading is split into its own
-    //: typed blocks in order (`ocr.regions_from_reading`) — real sections,
-    //: real structure, just no rectangles — so the badge says what is true of
+    //: typed blocks in order (`ocr.regions_from_reading`), real sections,
+    //: real structure, just no rectangles, so the badge says what is true of
     //: it rather than apologising for what it lacks. The missing half is in
     //: the message underneath, where the offer to install Tesseract lives.
     reading: "ph:list-bullets Sections from the reading",
@@ -2592,13 +2723,13 @@ function ocrRenderRegions(body) {
     none: "ph:warning Nothing read yet",
   };
   setLabel(source, labels[body.source] || labels.none);
-  //: Which model did it — the one Settings chose, named on the result so a
+  //: Which model did it, the one Settings chose, named on the result so a
   //: wrong or missing model is visible here rather than only in Settings
   //: (asked for: readings "need to use the right models that are set in
   //: settings… properly manageable").
   if (body.source === "reading" || body.source === "vision") {
     source.appendChild(document.createTextNode(` · ${ocrReaderName()}`));
-    source.title = `Read with ${ocrReaderName()} — change the reader above, or the model in Settings`;
+    source.title = `Read with ${ocrReaderName()}, change the reader above, or the model in Settings`;
   }
   source.hidden = false;
   source.classList.toggle("ocr-source-weak", body.source !== "tesseract");
@@ -2606,7 +2737,7 @@ function ocrRenderRegions(body) {
   message.classList.toggle("hidden", !body.message);
 
   const positioned = body.source === "tesseract";
-  //: **"I dont think that the regions works."** It did — there was simply
+  //: **"I dont think that the regions works."** It did: there was simply
   //: nothing for it to show. Boxes are the positions the reader returned, and
   //: only Tesseract returns any: a vision model gives back the words on the
   //: page and nothing about where they sit (`ocr-page-read` renders its answer
@@ -2616,7 +2747,7 @@ function ocrRenderRegions(body) {
   //:
   //: A control that cannot do anything must say so rather than sit there
   //: looking live. Disabled, with the reason in its tooltip and the reader
-  //: that *would* produce them named — which is also the honest argument for
+  //: that *would* produce them named, which is also the honest argument for
   //: Tesseract still existing here.
   const boxToggle = $("ocr-show-boxes");
   const boxLabel = boxToggle?.closest("label");
@@ -2627,7 +2758,7 @@ function ocrRenderRegions(body) {
       boxLabel.title = positioned
         ? "Draw a box around each block the reader found"
         : "This reading has no page positions. Only Tesseract returns where each "
-          + "block sits — a vision model gives back the words and not the places.";
+          + "block sits: a vision model gives back the words and not the places.";
     }
     //: The layer follows the checkbox even after a re-read, or a page read
     //: with boxes turned off would come back with them on.
@@ -2635,7 +2766,7 @@ function ocrRenderRegions(body) {
   }
   for (const region of ocrWorkspaceRegions) {
     //: `positioned` says the *reading* has boxes; `region.box` says this block
-    //: does. They are the same thing today and were not always — a payload
+    //: does. They are the same thing today and were not always, a payload
     //: from before `box` became nullable, or a future reader that boxes some
     //: blocks and not others, would crash on `region.box.x` here. One extra
     //: check, and the list rows below still render for every block either way.
@@ -2671,8 +2802,8 @@ function ocrRenderRegions(body) {
     head.className = "row ocr-region-head";
     //: **Where this block came from, on the row itself.** Asked for: "make it
     //: so extracted text is visually linked to the page or section it was
-    //: extracted from". Two halves — *which section* is the number, and
-    //: *which page* is the badge — and both are true whether or not anything
+    //: extracted from". Two halves: *which section* is the number, and
+    //: *which page* is the badge, and both are true whether or not anything
     //: measured a rectangle, which is the whole reason the reading-derived
     //: regions are worth having.
     const where = document.createElement("span");
@@ -2724,7 +2855,7 @@ function ocrRenderRegions(body) {
     const copy = document.createElement("button");
     copy.type = "button";
     //: **Top right, always.** Asked for: "move the copy text button to the top
-    //: right in the text box". It looked like it already was — but the thing
+    //: right in the text box". It looked like it already was, but the thing
     //: pushing it right was `.ocr-region-conf`'s own `margin-left: auto`, and
     //: only Tesseract returns a confidence. Every vision and stored-text
     //: reading therefore had no confidence row, nothing claimed the free
@@ -2743,7 +2874,7 @@ function ocrRenderRegions(body) {
     //: each extracted text panel as the delete this reading button doesn't
     //: do anything." That button deletes the reading of the page on
     //: *screen*, and with the panels for every stored page listed together
-    //: the one you are looking at is usually not that page — so the delete
+    //: the one you are looking at is usually not that page, so the delete
     //: landed on a page with nothing to delete and nothing changed. Each
     //: stored panel now removes its own page's reading.
     //: An image's reading is one panel; its delete is the header's delete.
@@ -2790,32 +2921,71 @@ function ocrRenderRegions(body) {
     }
     const text = document.createElement("p");
     text.className = "ocr-region-text";
-    text.textContent = region.text;
+    //: **A page can now have a description and no reading** (Phase 7.3), which
+    //: is a state this paragraph had never had to render: an empty
+    //: `contenteditable` box under a filled description reads as a reading that
+    //: was lost rather than one that was never asked for. Said plainly, and not
+    //: editable: typing into it would file invented text as a transcription,
+    //: which is the failure `VisionOcrBody.text` exists to let people *undo*.
+    const hasText = Boolean((region.text || "").trim());
+    text.textContent = hasText ? region.text : "Not transcribed yet.";
+    text.classList.toggle("ocr-region-text-empty", !hasText);
     //: **A misread line is fixable where you can see it.** Every reader gets
-    //: words wrong — Tesseract on a bad scan, a vision model inventing a line
+    //: words wrong: Tesseract on a bad scan, a vision model inventing a line
     //: that was not there (the failure `VisionOcrBody.text` already exists to
     //: let you correct on a *whole* image). Until now the workspace's answer
     //: to a wrong line was "copy it all out and fix it somewhere else".
     //:
     //: `contenteditable` on the one element holding that region's words, and
-    //: the edit is written back into `ocrWorkspaceRegions` — which is what
+    //: the edit is written back into `ocrWorkspaceRegions`, which is what
     //: "Copy all", "Save as note" and "Ask about this" all read from, so a
     //: correction reaches every one of them without any of them knowing.
     //: Not persisted to the file's stored reading, and it must not silently
     //: be: this is a working copy of one page, and quietly overwriting the
     //: file's own transcription from a click in a preview would be the app
     //: deciding something it was not asked to decide.
-    text.contentEditable = "plaintext-only";
+    text.contentEditable = hasText ? "plaintext-only" : "false";
     text.spellcheck = false;
-    text.title = "Click to correct what was read";
+    text.title = hasText
+      ? "Click to correct what was read"
+      : "Nothing has been transcribed from this page yet, use Read this page";
     text.addEventListener("input", () => {
       const found = ocrWorkspaceRegions.find((item) => item.index === region.index);
       if (found) found.text = text.textContent;
     });
-    //: A click in the text is a caret, not a region selection — without this
+    //: A click in the text is a caret, not a region selection, without this
     //: the row's own handler steals the click and the caret never lands.
     text.addEventListener("click", (event) => event.stopPropagation());
     row.append(head, text);
+    //: **The page's description, under the page's reading** (Phase 7.3, "a
+    //: place to show it… per page, not one line under a thumbnail"). What the
+    //: figures on this page *show* is a different claim from what the page
+    //: *says*, so it is a separate, labelled block rather than more text
+    //: appended to the transcription, the exact confusion the Library tile's
+    //: own labelled fields were built to fix ("I feel the image captions and
+    //: ocr extractions should be separated and labeled").
+    //:
+    //: Not editable, unlike the reading above it: a transcription can be
+    //: *wrong* about what the page says and a person can fix it, while a
+    //: description is one model's reading of a figure, re-describing it is
+    //: the correction, and `Describe this page` is one click away.
+    if ((region.caption || "").trim()) {
+      const figures = document.createElement("p");
+      figures.className = "ocr-region-caption";
+      const label = document.createElement("span");
+      label.className = "chip ocr-region-caption-label";
+      const who = shortModelName(region.caption_model || "");
+      label.textContent = who ? `Figures · ${who}` : "Figures";
+      label.title = region.caption_model
+        ? `Described by ${region.caption_model}`
+        : "What this page's figures, charts and diagrams show";
+      //: `sentence`, not `body`, `body` is this function's own parameter, and
+      //: shadowing it here would silently rebind it for everything below.
+      const sentence = document.createElement("span");
+      sentence.textContent = region.caption;
+      figures.append(label, sentence);
+      row.appendChild(figures);
+    }
     row.addEventListener("click", () => ocrSelectRegion(region.index));
     ocrWireRegionJump(row);
     list.appendChild(row);
@@ -2826,13 +2996,304 @@ function ocrRenderRegions(body) {
   }
   //: A find that survives a re-read: the rows were just rebuilt, so the filter
   //: has to be re-applied or a typed query silently stops filtering the moment
-  //: a page is re-read — which is precisely when a reader is looking for it.
+  //: a page is re-read, which is precisely when a reader is looking for it.
   ocrApplyFind();
+}
+
+// --- outline a region, read just that (UI_MODERNISATION_PLAN Phase 7.4) -----
+//
+// Asked as a question, and it is a good one: *"can there be a way for the user
+// to manually outline and single out regions on a pdf or similar document and
+// then the ai will read what is in those regions?? like maybe the user can
+// outline a graph or diagram on a pdf slide and then the user cna get the
+// image or ocr model to analyse and caption that thing."*
+//
+// The pieces were all already here, a page raster on screen, a percentage-
+// positioned overlay measured against it, two readers and a describe prompt.
+// What was missing is the gesture: drag on the page, and the rectangle you
+// drew becomes the thing that gets read.
+//
+// **The rectangle is kept in fractions of the stage, not in pixels**, exactly
+// as `.ocr-box` positions are (core/ocr.py returns fractions for the same
+// reason): the pane resizes, the zoom changes, and a pixel rectangle would
+// drift off the thing it was drawn around. Fractions also convert to *source*
+// pixels for the crop with one multiplication by `naturalWidth`.
+
+//: The rectangle currently drawn, in fractions of the page, or null.
+let ocrRegionRect = null;
+//: The pointer drag in progress: where it started (fractions) and which
+//: element captured the pointer, so a drag that leaves the stage still ends.
+let ocrRegionDrag = null;
+
+//: **How small is a mis-click.** Measured against the running app: a plain
+//: click on the page reports a 0-2px "drag", and treating that as a region
+//: would pop the offer open every time somebody clicked the page to focus it.
+//: In fractions rather than pixels so it means the same thing at every zoom.
+const OCR_REGION_MIN = 0.01;
+
+//: The stage the select layer is currently inside, the single stage in
+//: one-page mode, or the current page's own stage in continuous mode. The page
+//: picture is its `<img>`, which is what the crop is taken from.
+function ocrSelectStage() {
+  return $("ocr-select")?.parentElement || null;
+}
+
+function ocrSelectImage() {
+  return ocrSelectStage()?.querySelector("img") || null;
+}
+
+//: Keep the two overlays together. `#ocr-boxes` is moved into the current
+//: page's stage in continuous mode (see `ocrLoadPage`); the select layer has
+//: to follow it or a drag would be measured against a stage that is not on
+//: screen: and `ocrTearDownScroll` has to bring both home again.
+function ocrMoveOverlays(target) {
+  if (!target) return;
+  const boxes = $("ocr-boxes");
+  const select = $("ocr-select");
+  if (select && select.parentElement !== target) target.appendChild(select);
+  if (boxes && boxes.parentElement !== target) target.appendChild(boxes);
+}
+
+function ocrClearRegionSelection() {
+  ocrRegionRect = null;
+  ocrRegionDrag = null;
+  $("ocr-select")?.replaceChildren();
+  $("ocr-region-popover")?.classList.add("hidden");
+}
+
+//: Draw (or redraw) the marquee for `ocrRegionRect`. Percentages against the
+//: select layer, which is `inset: 0` on the stage: the same geometry every
+//: region box already uses, so the two cannot disagree about where the page is.
+function ocrPaintRegionRect() {
+  const layer = $("ocr-select");
+  if (!layer) return;
+  layer.replaceChildren();
+  if (!ocrRegionRect) return;
+  const marquee = document.createElement("div");
+  marquee.className = "ocr-marquee";
+  marquee.style.left = `${ocrRegionRect.x * 100}%`;
+  marquee.style.top = `${ocrRegionRect.y * 100}%`;
+  marquee.style.width = `${ocrRegionRect.w * 100}%`;
+  marquee.style.height = `${ocrRegionRect.h * 100}%`;
+  layer.appendChild(marquee);
+}
+
+//: Where the offer sits: under the rectangle when there is room below it,
+//: above it when there is not. Measured against `#ocr-page-pane`, which is the
+//: popover's positioned parent, so this stays right as the pane scrolls.
+function ocrPlaceRegionPopover() {
+  const popover = $("ocr-region-popover");
+  const pane = $("ocr-page-pane");
+  const layer = $("ocr-select");
+  if (!popover || !pane || !layer || !ocrRegionRect) return;
+  popover.classList.remove("hidden");
+  const stage = layer.getBoundingClientRect();
+  const box = pane.getBoundingClientRect();
+  const size = popover.getBoundingClientRect();
+  const bottom = stage.top + (ocrRegionRect.y + ocrRegionRect.h) * stage.height;
+  const top = stage.top + ocrRegionRect.y * stage.height;
+  //: `+ 8` is one gap between the rectangle and the offer; `--space-*` cannot
+  //: be read from here, and a bare number in a *measurement* is not a token
+  //: the design lint is about (it lints declarations in CSS, and this is a
+  //: computed pixel offset, not a style rule).
+  const gap = 8;
+  const wantBelow = bottom + gap + size.height <= box.bottom;
+  const y = wantBelow ? bottom + gap : Math.max(box.top + gap, top - gap - size.height);
+  const centre = stage.left + (ocrRegionRect.x + ocrRegionRect.w / 2) * stage.width;
+  //: Clamped the "pin to the margin" way round rather than the "hang off the
+  //: edge" way: the same fix the selection kebab's own comment in app.js
+  //: records, and for the same reason: when the panel is wider than the pane,
+  //: `Math.min(Math.max(...))` puts it at a negative offset.
+  const x = Math.max(
+    box.left + gap,
+    Math.min(centre - size.width / 2, box.right - size.width - gap)
+  );
+  //: `+ scrollLeft/scrollTop` because the offer is absolutely positioned inside
+  //: `#ocr-page-pane`, which is itself a scroll container: `x`/`y` are viewport
+  //: coordinates, and an absolute offset is measured from the pane's padding
+  //: box *before* scrolling. Without these two terms the offer lands correctly
+  //: only while the pane happens to be scrolled to the top.
+  popover.style.left = `${Math.round(x - box.left + pane.scrollLeft)}px`;
+  popover.style.top = `${Math.round(y - box.top + pane.scrollTop)}px`;
+  const label = $("ocr-region-size");
+  if (label) {
+    //: What was outlined, in the page's own terms. A rectangle with no size
+    //: on it is the same offer whether you grabbed one chart or the whole
+    //: page, and the answer that comes back would not say which.
+    label.textContent = `${Math.round(ocrRegionRect.w * 100)}% × ${Math.round(
+      ocrRegionRect.h * 100
+    )}% of page ${ocrWorkspacePage + 1}`;
+  }
+}
+
+//: Pointer position as a fraction of the stage, clamped to it: a drag that
+//: leaves the page still ends on the page's edge rather than describing a
+//: rectangle that is partly off it.
+function ocrRegionPoint(event) {
+  const layer = $("ocr-select");
+  if (!layer) return null;
+  const box = layer.getBoundingClientRect();
+  if (!box.width || !box.height) return null;
+  return {
+    x: Math.min(1, Math.max(0, (event.clientX - box.left) / box.width)),
+    y: Math.min(1, Math.max(0, (event.clientY - box.top) / box.height)),
+  };
+}
+
+//: The crop, as a PNG blob, taken from the page raster at its own resolution.
+//: `naturalWidth`, not the rendered width: the page is rasterised at 2x
+//: (`pdfpages.RENDER_SCALE`) precisely so small type is legible to a model,
+//: and cropping from the displayed size would throw that away before the model
+//: ever saw it. Same-origin image, so the canvas is not tainted.
+async function ocrRegionCrop() {
+  const img = ocrSelectImage();
+  if (!img || !ocrRegionRect || !img.naturalWidth) return null;
+  const sx = Math.round(ocrRegionRect.x * img.naturalWidth);
+  const sy = Math.round(ocrRegionRect.y * img.naturalHeight);
+  const sw = Math.max(1, Math.round(ocrRegionRect.w * img.naturalWidth));
+  const sh = Math.max(1, Math.round(ocrRegionRect.h * img.naturalHeight));
+  const canvas = document.createElement("canvas");
+  canvas.width = sw;
+  canvas.height = sh;
+  const context = canvas.getContext("2d");
+  if (!context) return null;
+  context.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+  return new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+}
+
+//: One answer about one rectangle, in the pane where the reading already is.
+//: Focused as it arrives, the request takes seconds and the reader has
+//: usually looked away, so an answer that appears silently below the fold is
+//: an answer nobody reads. `tabIndex = -1` rather than 0: it is a destination
+//: for focus, not another stop on the way through the pane.
+function ocrShowRegionResult({ mode, page, rect, text, model, message }) {
+  const holder = $("ocr-region-results");
+  if (!holder) return;
+  holder.classList.remove("hidden");
+  const card = document.createElement("article");
+  card.className = "ocr-region-result";
+  card.tabIndex = -1;
+  const head = document.createElement("div");
+  head.className = "row ocr-region-head";
+  const where = document.createElement("span");
+  where.className = "chip ocr-region-where";
+  where.textContent = `Page ${page + 1} · region`;
+  where.title = `A ${Math.round(rect.w * 100)}% × ${Math.round(
+    rect.h * 100
+  )}% rectangle you outlined on page ${page + 1}`;
+  const kind = document.createElement("span");
+  kind.className = "chip ocr-region-kind";
+  kind.textContent = mode === "describe" ? "Description" : "Text";
+  head.append(where, kind);
+  if (model) {
+    const who = document.createElement("span");
+    who.className = "muted text-sm";
+    who.textContent = shortModelName(model);
+    who.title = model;
+    head.appendChild(who);
+  }
+  const copy = document.createElement("button");
+  copy.type = "button";
+  copy.className = "ghost small icon-button ocr-region-copy";
+  setLabel(copy, "ph:copy");
+  copy.title = "Copy this answer";
+  copy.setAttribute("aria-label", copy.title);
+  copy.addEventListener("click", (event) => {
+    event.stopPropagation();
+    copyToClipboard(text || message || "", event.currentTarget);
+  });
+  head.appendChild(copy);
+  const remove = document.createElement("button");
+  remove.type = "button";
+  remove.className = "ghost small icon-button danger ocr-region-delete";
+  setLabel(remove, "ph:x");
+  remove.title = "Dismiss this answer";
+  remove.setAttribute("aria-label", remove.title);
+  remove.addEventListener("click", (event) => {
+    event.stopPropagation();
+    card.remove();
+    holder.classList.toggle("hidden", !holder.childElementCount);
+  });
+  head.appendChild(remove);
+  const body = document.createElement("p");
+  body.className = "ocr-region-text";
+  //: Nothing found is a real answer and is said as one, an empty card would
+  //: read as a request that silently failed.
+  body.textContent = text || message || "Nothing came back for that region.";
+  body.classList.toggle("ocr-region-text-empty", !text);
+  card.append(head, body);
+  //: Newest first: the previous answers are still worth keeping (that is the
+  //: point of outlining several things), but the one just asked for is the one
+  //: being waited on.
+  holder.prepend(card);
+  card.focus();
+}
+
+//: Read or describe whatever is outlined. Everything about *what* to run lives
+//: server-side (`_read_region`, routes_files.py); this decides which file, and
+//: hands over exactly the pixels that were outlined.
+async function ocrRunRegion(mode) {
+  const image = ocrWorkspaceCurrent;
+  if (!image || !ocrRegionRect) return;
+  const rect = { ...ocrRegionRect };
+  const page = ocrWorkspacePage;
+  const buttons = [$("ocr-region-read"), $("ocr-region-describe")];
+  buttons.forEach((b) => b && (b.disabled = true));
+  const blob = await ocrRegionCrop();
+  if (!blob) {
+    buttons.forEach((b) => b && (b.disabled = false));
+    toast("That region couldn't be cut out of the page.", true);
+    return;
+  }
+  const form = new FormData();
+  form.append("crop", blob, "region.png");
+  form.append("page", String(page));
+  form.append("mode", mode);
+  form.append("reader", ocrReader());
+  const base = image._isAttachment ? `/files/${image.id}` : `/media/${image.id}`;
+  const label = mode === "describe" ? "Describing that region…" : "Reading that region…";
+  $("ocr-message").textContent = label;
+  $("ocr-message").classList.remove("hidden");
+  //: The rectangle goes as soon as the request is away. Asked for: "the
+  //: rectangle is cleared after", and it is also what makes a second region
+  //: drawable while the first is still being read.
+  ocrClearRegionSelection();
+  try {
+    //: **The headers are replaced, not merged, and that is deliberate.**
+    //: `api()` sends `Content-Type: application/json` by default, and a
+    //: FormData body with that header has no multipart boundary, measured
+    //: against the running app, the server answered 405 before any of this
+    //: request's fields were ever looked at. Overriding `headers` drops that
+    //: default so the browser writes its own boundary; the two headers the
+    //: server actually needs are put back by hand. Same handling as every
+    //: other FormData post in this app (`attachImageFiles` in app.js says so
+    //: in its own comment).
+    const answer = await apiJson(`${base}/region-read`, {
+      method: "POST",
+      headers: { "X-Auth-Token": authToken(), "X-Workspace-ID": activeSpaceId() },
+      body: form,
+    });
+    ocrShowRegionResult({
+      mode: answer.mode || mode,
+      page: Number.isInteger(answer.page) ? answer.page : page,
+      rect,
+      text: (answer.text || "").trim(),
+      model: answer.model || "",
+      message: answer.message || "",
+    });
+    $("ocr-message").classList.add("hidden");
+  } catch (error) {
+    $("ocr-message").textContent = error.message || "That region couldn't be read.";
+    $("ocr-message").classList.remove("hidden");
+    toast(error.message || "That region couldn't be read.", true);
+  } finally {
+    buttons.forEach((b) => b && (b.disabled = false));
+  }
 }
 
 //: Everything this document has already had read off it, from the store the
 //: read endpoints write to. Never throws: a document with no readings and a
-//: backend that cannot answer are the same thing here — nothing to show.
+//: backend that cannot answer are the same thing here, nothing to show.
 async function ocrStoredPageReads(image) {
   if (!image) return null;
   const base = image._isAttachment ? `/files/${image.id}` : `/media/${image.id}`;
@@ -2842,6 +3303,15 @@ async function ocrStoredPageReads(image) {
 async function ocrLoadPage(image, page = 0, opts = {}) {
   ocrWorkspaceCurrent = image;
   ocrWorkspacePage = Math.max(0, page);
+  //: Whatever page descriptions are on screen belong to the *previous* load.
+  //: Cleared here rather than where they are filled, because the two early
+  //: returns below (a text file, a failed request) never reach that point and
+  //: would leave another document's figures described under this one's page.
+  ocrPageCaptions.clear();
+  //: A rectangle is drawn on *a page*, so changing page has to take it with
+  //: it: the fractions would otherwise be reinterpreted against a different
+  //: picture and the offer would read a part of the wrong page.
+  ocrClearRegionSelection();
   //: What to reopen, if this window is closed while a read is still running.
   ocrLastOpened = { image, page: ocrWorkspacePage };
   //: Which file this is. Four surfaces can open this dialog, and a header
@@ -2863,14 +3333,24 @@ async function ocrLoadPage(image, page = 0, opts = {}) {
     ocrViewMode === "scroll" && !$("ocr-scroll")?.classList.contains("hidden");
   if (continuous) {
     //: The pictures are all already on screen in this mode, so the only thing
-    //: a page change moves is the region overlay — which must live inside the
+    //: a page change moves is the region overlay, which must live inside the
     //: stage it is measured against, or every box lands on the wrong page.
     const target = document.querySelector(
       `#ocr-scroll .ocr-stage[data-page="${ocrWorkspacePage}"]`
     );
-    if (target && $("ocr-boxes")) target.appendChild($("ocr-boxes"));
+    //: Both overlays, not just the boxes: the region-select layer is measured
+    //: against the stage it sits in, so leaving it behind would have a drag on
+    //: page 6 outlining part of page 1.
+    ocrMoveOverlays(target);
     if (!opts.fromScroll) ocrScrollToPage(ocrWorkspacePage);
-  } else {
+  } else if (!ocrIsTextFile(image)) {
+    //: **A text file has no picture of a page, so none is asked for.** The
+    //: branch further down renders a .md, a .txt or a .docx as text and hides
+    //: this `<img>`, but the `src` was set first, to the file's own url, and a
+    //: browser handed markdown to decode as an image raises `error`: which is
+    //: how a text file used to delete `#ocr-image` from the document (see
+    //: `replaceMissingMedia` in app.js, which no longer lets it). Skipping the
+    //: assignment removes the request as well as the error.
     img.src = ocrPageImageUrl(image, ocrWorkspacePage);
     img.alt = ocrIsPdf(image)
       ? `Page ${ocrWorkspacePage + 1} of ${image.original_name}`
@@ -2883,12 +3363,12 @@ async function ocrLoadPage(image, page = 0, opts = {}) {
     thumb.setAttribute("aria-current", active ? "true" : "false");
   }
   //: A read started elsewhere and still running is the *first* thing this
-  //: window has to say — otherwise reopening mid-read shows an empty page and
+  //: window has to say, otherwise reopening mid-read shows an empty page and
   //: reads as "it stopped when I closed the window", which is exactly what
   //: was reported.
   const running = ocrReadInFlight(image);
   $("ocr-message").textContent = running
-    ? `${running.label} — this keeps running if you close this window.`
+    ? `${running.label}: this keeps running if you close this window.`
     : "Reading the page…";
   $("ocr-message").classList.remove("hidden");
   $("ocr-boxes").replaceChildren();
@@ -2897,17 +3377,17 @@ async function ocrLoadPage(image, page = 0, opts = {}) {
   //: just reading text on the page but truly ... an all encompassing text and
   //: image ocr workspace, dont limit the feature."* It was hidden outright for
   //: an image, so the one surface in the app built for reading a picture had no
-  //: way to read the picture — you had to close it, find the tile in the
+  //: way to read the picture, you had to close it, find the tile in the
   //: gallery and use that row's own menu.
   $("ocr-read-page")?.classList.remove("hidden");
   const readLabel = $("ocr-read-page-label");
   if (readLabel) readLabel.textContent = ocrIsPdf(image) ? "Read this page" : "Read this image";
-  //: The range box lives or dies with the per-page button — both are PDF-only,
+  //: The range box lives or dies with the per-page button, both are PDF-only,
   //: and a "read pages 1-5" control beside a photograph would be a lie.
   $("ocr-read-range-group")?.classList.toggle("hidden", !ocrIsPdf(image));
 
   //: **A text file needs no model at all.** Its words are already words, so
-  //: the reader shows them straight away — same panes, same Copy / Ask /
+  //: the reader shows them straight away, same panes, same Copy / Ask /
   //: Save as note, and the read controls hidden because there is nothing to
   //: transcribe. This is what makes the workspace a reader for *every* file
   //: rather than only the two kinds a vision model is needed for.
@@ -2925,14 +3405,14 @@ async function ocrLoadPage(image, page = 0, opts = {}) {
         })),
         source: "text-file",
         message: file.source === "converted"
-          ? "Converted to text — no model was needed."
-          : "Read straight from the file — no model was needed.",
+          ? "Converted to text: no model was needed."
+          : "Read straight from the file, no model was needed.",
         pages: 1,
         page: 0,
       });
       const stage = $("ocr-stage");
       if (stage) {
-        //: The page picture belongs to a scan, not to a text file — hidden
+        //: The page picture belongs to a scan, not to a text file, hidden
         //: by class on the stage so it stays hidden through a re-render.
         stage.querySelector("img")?.classList.add("hidden");
         let pre = stage.querySelector(".ocr-text-view");
@@ -2963,7 +3443,7 @@ async function ocrLoadPage(image, page = 0, opts = {}) {
     //: saying the pages were read but nothing happened after that."
     //:
     //: The second sentence was the diagnosis. A page read is announced as a
-    //: background task precisely so this window can be closed while it runs —
+    //: background task precisely so this window can be closed while it runs, 
     //: and the result only ever existed in the response and in the DOM that
     //: response painted. Reopening the document re-ran the *regions* request,
     //: which knows nothing about page reads, and painted an empty pane over a
@@ -2976,16 +3456,39 @@ async function ocrLoadPage(image, page = 0, opts = {}) {
     //: something: a Tesseract reading with real box positions is a better
     //: answer than stored text, and this must not overwrite it.
     const stored = ocrIsPdf(image) ? await ocrStoredPageReads(image) : null;
-    const storedPages = (stored?.pages || []).filter((p) => (p.text || "").trim());
+    //: **Per-page descriptions, from the same response** (Phase 7.3). A page's
+    //: reading and its description live on one `PageRead` row, so one request
+    //: carries both; keeping them in a map keyed by page is what lets the
+    //: caption line above name the page on screen while the panels below name
+    //: their own. (Cleared at the top of `ocrLoadPage`, not here: an image
+    //: never reaches this branch and would otherwise keep showing the last
+    //: document's page 3.)
+    for (const entry of stored?.pages || []) {
+      if ((entry.caption || "").trim()) {
+        ocrPageCaptions.set(Number(entry.page) || 0, {
+          caption: entry.caption.trim(),
+          caption_model: entry.caption_model || "",
+        });
+      }
+    }
+    const storedPages = (stored?.pages || []).filter(
+      //: A page that has only been *described* still belongs in this list, 
+      //: it is something the app knows about that page, and leaving it out
+      //: meant a described-but-unread page rendered as "nothing read yet"
+      //: with its description nowhere on screen.
+      (p) => (p.text || "").trim() || (p.caption || "").trim()
+    );
     if (storedPages.length && body.source !== "tesseract") {
       ocrRenderRegions({
         regions: storedPages.map((entry, index) => ({
           index,
           kind: "text",
-          text: entry.text.trim(),
+          text: (entry.text || "").trim(),
           confidence: 0,
           box: { x: 0, y: 0, w: 1, h: 1 },
-          //: Which page this reading is *of* — the row's own badge and its
+          caption: (entry.caption || "").trim(),
+          caption_model: entry.caption_model || "",
+          //: Which page this reading is *of*, the row's own badge and its
           //: delete button both need it, and `body.page` is only the page
           //: currently on screen.
           page: entry.page,
@@ -3002,16 +3505,41 @@ async function ocrLoadPage(image, page = 0, opts = {}) {
     //: managed side by side (reported: "a lot of disconnect between files and
     //: images regarding ocr and image captioning").
     const isImage = !ocrIsPdf(image);
-    $("ocr-describe")?.classList.toggle("hidden", !isImage);
+    //: **Describe works for a document too now** (Phase 7.3). It used to be
+    //: images-only, which is why a slide deck full of charts had no way to be
+    //: described at all: the file-level caption route refuses a PDF, and the
+    //: one surface built for reading documents hid the button.
+    $("ocr-describe")?.classList.remove("hidden");
+    const describeLabel = $("ocr-describe-label");
+    if (describeLabel) {
+      describeLabel.textContent = isImage ? "Describe" : "Describe this page";
+    }
+    const describeBtn = $("ocr-describe");
+    if (describeBtn) {
+      describeBtn.title = isImage
+        ? "Describe this image with the vision model (writes its caption)"
+        : "Describe the figures, charts and diagrams on this page";
+    }
     const captionEl = $("ocr-caption");
     if (captionEl) {
-      const cap = (image.caption || "").trim();
-      captionEl.textContent = cap ? `Description: ${cap}` : "";
-      captionEl.classList.toggle("hidden", !cap || !isImage);
+      //: A page's own description, not the file's: `image.caption` is one
+      //: sentence about a whole document, which describes none of its pages.
+      //: `ocrPageCaptions` is filled from the same `page-reads` response the
+      //: stored panels below are built from.
+      const cap = isImage
+        ? (image.caption || "").trim()
+        : (ocrPageCaptions.get(ocrWorkspacePage)?.caption || "").trim();
+      const who = isImage
+        ? ""
+        : shortModelName(ocrPageCaptions.get(ocrWorkspacePage)?.caption_model || "");
+      captionEl.textContent = cap
+        ? (who ? `Figures on this page (${who}): ${cap}` : `Description: ${cap}`)
+        : "";
+      captionEl.classList.toggle("hidden", !cap);
     }
     if (ocrIsPdf(image)) ocrBuildPageRail(image, body.pages || 1);
     ocrSyncPager(image);
-    //: The mode can only be honoured once the page count is known — a
+    //: The mode can only be honoured once the page count is known, a
     //: continuous view of a document whose length is still unknown would
     //: build one page and call it the document.
     if (ocrIsPdf(image) && ocrViewMode === "scroll" && !continuous) {
@@ -3020,7 +3548,7 @@ async function ocrLoadPage(image, page = 0, opts = {}) {
     //: The in-flight line wins over the "nothing read yet" message the
     //: backend sends: both are true, and only one of them is about to change.
     if (ocrReadInFlight(image)) {
-      $("ocr-message").textContent = `${ocrReadInFlight(image).label} — this keeps running if you close this window.`;
+      $("ocr-message").textContent = `${ocrReadInFlight(image).label}: this keeps running if you close this window.`;
       $("ocr-message").classList.remove("hidden");
     }
   } catch (error) {
@@ -3037,12 +3565,12 @@ function ocrBuildPageRail(image, pages) {
   const rail = $("ocr-rail");
   if (!rail) return;
   //: The switch above the rail gains its "Pages" segment only once the page
-  //: count is known, which is here — the region response is the one thing that
+  //: count is known, which is here, the region response is the one thing that
   //: carries it. Redrawn on every page load so the count is right.
   ocrRenderRailSwitch(image);
   //: **The rail belongs to whichever list is selected.** Without this, opening
   //: a page of a PDF while the switch says "Images" would silently replace the
-  //: sibling list with pages and leave the switch claiming otherwise — the
+  //: sibling list with pages and leave the switch claiming otherwise, the
   //: state and the control disagreeing, which is the shape that makes a
   //: feature feel broken rather than merely limited.
   if (ocrRailMode !== "pages") return;
@@ -3077,7 +3605,7 @@ function ocrBuildPageRail(image, pages) {
   rail.classList.toggle("hidden", ocrWorkspacePages < 2);
 }
 
-//: Two tables share one rail, and their ids collide — see `_touched_items`
+//: Two tables share one rail, and their ids collide, see `_touched_items`
 //: in ai/agent.py for the same hazard on the same two id spaces.
 function ocrRailKey(image) {
   return `${image._isAttachment ? "file" : "media"}:${image.id}`;
@@ -3087,14 +3615,14 @@ function ocrRailKey(image) {
 //:
 //: Reported twice: *"I start document ocr, but then I close the workspace and
 //: the ocr workspace goes as well so I cant access it again."* The read itself
-//: has survived since `trackOcrRead` shipped — a POST keeps going and writes
-//: its result whatever the browser does — but there was no door back in, which
+//: has survived since `trackOcrRead` shipped: a POST keeps going and writes
+//: its result whatever the browser does, but there was no door back in, which
 //: from the outside is the same thing as losing it.
 //:
 //: So the close is a function rather than a class toggle: it remembers what
 //: was open, and when a read is still running it leaves a notice on screen
 //: with the way back. `toastAction` rather than a plain toast for exactly that
-//: reason — a notice with no button is the thing that was already there.
+//: reason: a notice with no button is the thing that was already there.
 let ocrLastOpened = null;
 
 function closeOcrWorkspace() {
@@ -3104,7 +3632,7 @@ function closeOcrWorkspace() {
   const running = ocrReadInFlight(ocrWorkspaceCurrent);
   if (!running || !ocrLastOpened) return;
   const { image, page } = ocrLastOpened;
-  toastAction(`${running.label} — it keeps going.`, "Reopen", () => {
+  toastAction(`${running.label}: it keeps going.`, "Reopen", () => {
     openOcrWorkspace(image, []);
     if (page) setTimeout(() => ocrLoadPage(image, page), 150);
   });
@@ -3122,6 +3650,57 @@ function reopenOcrWorkspace() {
 }
 window.reopenOcrWorkspace = reopenOcrWorkspace;
 
+//: **The way in that does not start from a file.**
+//:
+//: Reported: *"I want an easier and more accessible way to access the ocr
+//: workspace as a proper and more central feature."* Every door the reader had
+//: (the Files row's own button, the image card's kebab, the lightbox's "Read
+//: text with AI" and its kebab) starts from a file you have already found, so
+//: there was no answer at all to "I want to read something". The decision, in
+//: UI_MODERNISATION_PLAN.md ("how the page reader is reached"), is the one the
+//: meeting recorder's identically worded report already produced: the command
+//: palette and the Tools & features browser, which are this app's two answers
+//: to "reachable from anywhere", and no fifth per-file door.
+//:
+//: It opens on a file rather than on a picker because the reader's own rail is
+//: already a list of every image and file in the notebook (`ocrLoadSiblings`),
+//: so a chooser in front of it would be a second copy of the list behind it.
+//: The order is the one that is right most often: what you were last reading,
+//: then the newest thing you could read, then an honest empty state.
+async function openPageReader() {
+  //: The file you last had open in the reader, if this session has had one.
+  //: `reopenOcrWorkspace` also restores the page you were on, which is the
+  //: whole reason to prefer it over re-picking the same file from the cache.
+  if (reopenOcrWorkspace()) return true;
+  const rows = await ocrLoadSiblings().catch(() => []);
+  //: The same extension test the lightbox's own menu row uses to decide
+  //: whether the reader can open a thing at all. A `.docx` in the notebook is
+  //: a file the reader has no raster for, and offering it here would be a door
+  //: onto an empty stage.
+  const readable = (rows || []).filter((row) =>
+    /\.(png|jpe?g|gif|webp|bmp|pdf)$/i.test(row.original_name || row.filename || "")
+  );
+  if (!readable.length) {
+    //: Not a dead end: the Files sub-tab is where a file gets into the
+    //: notebook, so the empty case ends where the next step is.
+    toast("Nothing to read yet. Add a PDF or a picture and it opens here.");
+    switchTab("library");
+    document.querySelector('#library-subtabs button[data-media-kind="files"]')?.click();
+    return false;
+  }
+  //: `ocrSiblingCache` keeps `/media` then `/files/gallery` in the order each
+  //: route returns them, which is the order the Library's own lists show:
+  //: newest first. So this is the newest document you have, and a picture only
+  //: if you have no documents at all: "read this for me" is asked about a scan
+  //: far more often than about a photograph, and whichever this picks, every
+  //: other file is one click away on the rail beside it.
+  const target = readable.find((row) => ocrIsPdf(row)) || readable[0];
+  openOcrWorkspace(target, readable);
+  return true;
+}
+
+window.openPageReader = openPageReader;
+
 //: **Which list the rail is showing.** "pages" is only reachable while a PDF
 //: is open; the other two are always available, which is the point.
 let ocrRailMode = "images";
@@ -3132,14 +3711,14 @@ let ocrRailMode = "images";
 //: **Why this exists.** Reported: *"I cant always switch between viewing
 //: files or images, and if I open it from the lightbox when viewing an image,
 //: no other files or images show."* The rail was built from an `images`
-//: argument, and three of `openOcrWorkspace`'s four call sites passed `[]` —
+//: argument, and three of `openOcrWorkspace`'s four call sites passed `[]`, 
 //: the lightbox, the reopen toast, and `reopenOcrWorkspace`. So the workspace
 //: was navigable only when it happened to be opened from the gallery grid,
 //: and everywhere else it was a dead end with no error and nothing to click.
 //: A view that can only be navigated when a particular caller remembers to
 //: hand it a list is a view whose navigation does not exist.
 //:
-//: Reuses `/media` and `/files/gallery` — the same two the Library's own
+//: Reuses `/media` and `/files/gallery`, the same two the Library's own
 //: gallery loads, with the same `_isImage`/`_isAttachment` flags set the same
 //: way, because a second shape for the same rows is how the two ended up
 //: disagreeing about what an attachment is once already.
@@ -3148,7 +3727,11 @@ let ocrSiblingCache = null;
 async function ocrLoadSiblings({ force = false } = {}) {
   if (ocrSiblingCache && !force) return ocrSiblingCache;
   const [images, attachments] = await Promise.all([
-    apiJson("/media", { silent: true }).catch(() => []),
+    //: Every upload, not the first page of them: the rail this builds is
+    //: the workspace's only navigation, and a file missing from it is a
+    //: file the reader cannot reach at all. `GET /media` is paged (INBOX
+    //: 117), so this asks until `X-Total-Count` is satisfied.
+    apiPagedList("/media", MEDIA_PAGE_SIZE, { silent: true }).catch(() => []),
     apiJson("/files/gallery", { silent: true }).catch(() => []),
   ]);
   for (const item of images || []) item._isImage = isImageUrl(item.url);
@@ -3164,13 +3747,13 @@ async function ocrLoadSiblings({ force = false } = {}) {
 }
 
 //: A file the workspace can actually open. Images always; otherwise only what
-//: `ocrIsPdf` recognises — the rail is a list of things to read, and a row
+//: `ocrIsPdf` recognises: the rail is a list of things to read, and a row
 //: that opens to an empty stage is worse than a shorter rail.
 //: Files whose text the app can read without a model: everything
 //: `GET /files/{id}/text` already handles (plain text, markdown, code, CSV,
 //: and a converted .docx), plus any text-ish upload. Asked for: "make sure
 //: all files are handled and viewable". A spreadsheet workbook (.xlsx) and
-//: other binary formats still cannot be shown — there is no parser for them
+//: other binary formats still cannot be shown, there is no parser for them
 //: in this app, and inventing one is not a UI change.
 const OCR_TEXT_SUFFIXES = /\.(txt|md|markdown|csv|tsv|json|ya?ml|log|py|js|ts|html?|css|sql|sh|ini|toml|docx|rtf)$/i;
 
@@ -3232,7 +3815,7 @@ function ocrRenderRailSwitch(current) {
   //: same reason the box-overlay toggle is disabled when there is nothing to
   //: show: a control that cannot do anything teaches that the feature is
   //: broken.
-  //: Always shown — the switch is how the reader moves between everything
+  //: Always shown: the switch is how the reader moves between everything
   //: in the space, so an empty side reads as "no files yet" (disabled, 0)
   //: rather than as a control that comes and goes.
   //: A one-page document offers no Pages segment, so "pages" mode would
@@ -3296,7 +3879,7 @@ function ocrRenderRail(current) {
       //: `<img>` in a rail reads as a missing file rather than as a document.
       const glyph = document.createElement("span");
       glyph.className = "ocr-rail-glyph";
-      //: The icon says what the file is — every non-image was a PDF glyph,
+      //: The icon says what the file is, every non-image was a PDF glyph,
       //: so a .csv and a .docx both claimed to be PDFs in the rail.
       setLabel(glyph, ocrIsPdf(row) ? "ph:file-pdf" : ocrIsTextFile(row) ? "ph:file-text" : "ph:file");
       item.appendChild(glyph);
@@ -3326,9 +3909,9 @@ function ocrOpenSibling(row) {
   }
   //: Reported: "when clicking on images, it doesn't even go onto them and
   //: just stays on the file I was on." Opening an image from a document that
-  //: was in continuous mode hit `ocrLoadPage`'s continuous branch — which
+  //: was in continuous mode hit `ocrLoadPage`'s continuous branch: which
   //: only moves the region overlay between the pages already on screen and
-  //: never sets the image — so the PDF's pages stayed put. An image is one
+  //: never sets the image, so the PDF's pages stayed put. An image is one
   //: page: leave the document's scroll stages and paging behind first.
   ocrTearDownScroll();
   ocrWorkspacePage = 0;
@@ -3337,23 +3920,43 @@ function ocrOpenSibling(row) {
   ocrRenderRail(row);
 }
 
-function openOcrWorkspace(image, images) {
+//: `page` is the page to open *at*, zero-based, Phase 7.1's "a way into the
+//: OCR Workspace at that page". It defaults to 0, which is what every caller
+//: that has no page in mind (a gallery row, the reopen toast) still passes by
+//: omitting it; the lightbox passes the page you were looking at, because
+//: opening a fifteen-page scan at page 1 from page 9 is navigation the reader
+//: then has to redo by hand.
+function openOcrWorkspace(image, images, page = 0) {
   const overlay = $("ocr-workspace");
   if (!overlay) return;
-  ocrWorkspacePage = 0;
+  //: Clamped at 0 here rather than trusted: a caller with a stale page number
+  //: (a document re-read since, a negative from an off-by-one) must land on a
+  //: real page, and `ocrLoadPage` clamps the upper end against the count it
+  //: learns from the region response.
+  const startPage = Math.max(0, Number(page) || 0);
+  ocrWorkspacePage = startPage;
   ocrWorkspacePages = 1;
+  //: Answers about regions belong to the file they were asked about. They are
+  //: not stored anywhere, so opening another document has to take them away
+  //: rather than leave them looking like something known about the new one.
+  const answers = $("ocr-region-results");
+  if (answers) {
+    answers.replaceChildren();
+    answers.classList.add("hidden");
+  }
+  ocrClearRegionSelection();
   //: The remembered mode is *wanted*, not yet applied: whether it can be
   //: honoured depends on the page count, which only the region response
   //: knows. `ocrLoadPage` turns it on once that comes back. The teardown here
-  //: deliberately does **not** go through `ocrSetViewMode("page")` — that
+  //: deliberately does **not** go through `ocrSetViewMode("page")`, that
   //: writes the preference, and opening a document would quietly forget that
   //: you read in continuous mode.
   ocrTearDownScroll();
   ocrViewMode = ocrStoredViewMode();
   ocrSyncViewButtons();
   ocrWatchPane();
-  //: Both answers change while the app runs — a model gets loaded, an extra
-  //: gets installed — so the picker is rebuilt on every open, not at boot.
+  //: Both answers change while the app runs, a model gets loaded, an extra
+  //: gets installed: so the picker is rebuilt on every open, not at boot.
   ocrLoadReaders();
   const find = $("ocr-find");
   if (find) find.value = "";
@@ -3364,12 +3967,12 @@ function openOcrWorkspace(image, images) {
   //: sibling rail is built here.
   //: **The rail no longer depends on the caller.** Whatever list was passed
   //: seeds the cache so a gallery open still paints instantly, but the
-  //: workspace then loads the rest itself — which is what makes it navigable
+  //: workspace then loads the rest itself, which is what makes it navigable
   //: when opened from the lightbox, from the reopen toast, or from a
   //: still-running read, all three of which passed nothing.
   //: Reported: "the images/pages selector disappears when on the images
   //: and only shows on files." The gallery seeded this cache with *its*
-  //: list — images only — and the loader below then treated the cache as
+  //: list, images only, and the loader below then treated the cache as
   //: complete, so the Files count was 0 and the switch hid itself. The
   //: seed still paints the rail instantly; the full list always follows.
   const seeded = Array.isArray(images) && images.length && !ocrSiblingCache;
@@ -3381,8 +3984,10 @@ function openOcrWorkspace(image, images) {
   overlay.classList.remove("hidden");
   if (ocrIsPdf(image)) {
     ocrWorkspaceImages = [];
-    ocrLoadPage(image, 0);
+    ocrLoadPage(image, startPage);
   } else {
+    //: An image is one page; a `startPage` for it would be a number with
+    //: nothing to point at.
     ocrLoadPage(image);
   }
   //: Fetched after the overlay is up and the first page is loading, so the
@@ -3425,7 +4030,7 @@ function ocrSizeStage(stage, img) {
   if (!naturalWidth || !naturalHeight) return;
   if (!pane.classList.contains("is-fit")) {
     //: Actual size means the page's own pixels. Left to CSS the stage
-    //: shrink-to-fits the pane instead — measured: an 800px-wide scan came
+    //: shrink-to-fits the pane instead, measured: an 800px-wide scan came
     //: back 757px wide, which is neither fit nor actual.
     stage.style.width = `${naturalWidth}px`;
     return;
@@ -3449,19 +4054,19 @@ function ocrSizeStage(stage, img) {
 //: bigger.
 //:
 //: Measured rather than reasoned about, because reading the code proved
-//: nothing — every line of `ocrSizeStage` is right. At the moment the `<img>`
+//: nothing: every line of `ocrSizeStage` is right. At the moment the `<img>`
 //: fires `load`, `#ocr-page-pane` measures **142px** wide; a beat later it
 //: measures **769px**, and re-running the very same sizing code then produces
 //: the correct 757px stage every time. The grid had not settled, and the fit
 //: was computed against a pane that was about to stop existing at that size.
-//: It was intermittent — four runs in a row wrong, two right — which is
+//: It was intermittent, four runs in a row wrong, two right, which is
 //: exactly why "it looks fine here" kept closing it.
 //:
 //: A ResizeObserver is the fix that does not depend on winning the race: fit
 //: is already a *mode* rather than a number in this file, so the honest
 //: implementation is to re-fit whenever the box being fitted into changes
 //: size. It covers the three other cases that had the same bug and were never
-//: reported — the rail appearing when a second page is found (which narrows
+//: reported: the rail appearing when a second page is found (which narrows
 //: this pane), the window resizing, and the dialog opening on a page whose
 //: picture was already in cache.
 let ocrPaneObserver = null;
@@ -3483,7 +4088,7 @@ function ocrWatchPane() {
 //:
 //: Reported: *"the document at 100% zoom is still zoomed in and I cant zoom
 //: out."* Both halves were true. A PDF page is rasterised at
-//: `pdfpages.RENDER_SCALE` (2.0 — ~144 DPI, picked so a vision model can read
+//: `pdfpages.RENDER_SCALE` (2.0: ~144 DPI, picked so a vision model can read
 //: small type), so the PNG's own pixels are twice the page's nominal size and
 //: "Actual size" was a 200% view wearing a 100% label. And the control was a
 //: two-state segment, so there was no way down from it.
@@ -3496,7 +4101,7 @@ const OCR_PDF_RENDER_SCALE = 2;
 //: 50% is a real thing to want, and fine at the top because the point of
 //: zooming into an OCR page is to check one word.
 const OCR_ZOOM_STEPS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3];
-//: `null` means Fit — the mode, not a number, so resizing the window keeps
+//: `null` means Fit: the mode, not a number, so resizing the window keeps
 //: fitting rather than freezing at whatever fit happened to be.
 let ocrZoom = null;
 
@@ -3632,9 +4237,7 @@ function ocrTearDownScroll() {
   $("ocr-page-pane")?.classList.remove("is-scroll");
   stage?.classList.remove("hidden");
   scroll?.classList.add("hidden");
-  if (stage && $("ocr-boxes") && $("ocr-boxes").parentElement !== stage) {
-    stage.appendChild($("ocr-boxes"));
-  }
+  ocrMoveOverlays(stage);
   if (scroll) {
     scroll.replaceChildren();
     scroll.dataset.pagesFor = "";
@@ -3678,7 +4281,7 @@ function ocrBuildScrollPages(image) {
 }
 
 //: Which page you are looking at, decided by what is actually on screen rather
-//: than by what was last clicked — the rail, the page counter and the regions
+//: than by what was last clicked, the rail, the page counter and the regions
 //: pane all follow the scroll.
 function ocrWatchScroll(image) {
   ocrScrollObserver?.disconnect();
@@ -3717,7 +4320,7 @@ function ocrScrollToPage(page) {
 }
 
 //: Where you are, in words, beside the two controls that change it. A page
-//: counter is not decoration in a document reader — without it "next page"
+//: counter is not decoration in a document reader, without it "next page"
 //: is a button with no idea how many times it can be pressed.
 function ocrSyncPager(image) {
   //: Every path that changes the page ends here -- the pager buttons, the
@@ -3747,7 +4350,7 @@ function ocrStepPage(delta) {
 //: **Which readers this machine actually has.** A picker whose second entry
 //: always fails is worse than no picker, so the option is disabled and says
 //: why rather than being offered and erroring. Refreshed on open because both
-//: answers change while the app is running — a model gets loaded, an extra
+//: answers change while the app is running, a model gets loaded, an extra
 //: gets installed.
 let ocrReaders = {
   vision: false,
@@ -3784,8 +4387,8 @@ async function ocrLoadReaders() {
     //: "document reader", not "vision model": this option is
     //: `resolve_ocr_model`, which prefers a model built to transcribe a page
     //: (GLM-OCR, DeepSeek-OCR, PaddleOCR-VL) and only falls back to a general
-    //: vision model. Calling it "vision model" is what produced the report —
-    //: "my ocr model shows as a vision model" — because the label named the
+    //: vision model. Calling it "vision model" is what produced the report, 
+    //: "my ocr model shows as a vision model", because the label named the
     //: wrong one of the two things it could be.
     vision.textContent = ocrReaders.vision_model
       ? `AI document reader (${ocrReaders.vision_model})`
@@ -3796,7 +4399,7 @@ async function ocrLoadReaders() {
   if (second) {
     //: **Hidden unless there is a genuine second choice.** The backend only
     //: fills `ocr_model` when `resolve_vision_model` returns something
-    //: *different* from the default reader — on the common machine with one
+    //: *different* from the default reader, on the common machine with one
     //: vision model installed, both resolvers return it, and offering the same
     //: model twice under two names is a worse picker than offering it once.
     const has = Boolean(ocrReaders.ocr && ocrReaders.ocr_model);
@@ -3817,7 +4420,7 @@ async function ocrLoadReaders() {
       ? "Tesseract (fast, on-page positions)"
       : "Tesseract (not installed)";
     tess.title = ocrReaders.tesseract
-      ? "No model needed — about a tenth of a second a page, and it says where each block sits."
+      ? "No model needed: about a tenth of a second a page, and it says where each block sits."
       : "Install the “OCR” extra in Settings → Optional extras.";
   }
   //: Fall to whichever one works rather than leaving a disabled option
@@ -3827,8 +4430,8 @@ async function ocrLoadReaders() {
   }
   //: No repaint call is needed: `enhanceSelect` (app.js) watches each select
   //: with `MutationObserver(rebuild, {childList: true, subtree: true})`, and
-  //: assigning `option.textContent` replaces the option's text node — a
-  //: childList mutation — so the app's own dropdown rebuilds itself. Written
+  //: assigning `option.textContent` replaces the option's text node: a
+  //: childList mutation: so the app's own dropdown rebuilds itself. Written
   //: down because `disabled` alone would *not* have been seen (no
   //: `attributes: true`), which is why every branch above sets the label too.
 }
@@ -3913,7 +4516,7 @@ function ocrApplyFind() {
   const count = $("ocr-find-count");
   if (count) count.textContent = query ? `${hits} of ${rows.length}` : "";
   //: The boxes on the picture follow the filter, so "find" answers *where* as
-  //: well as *what* — the one thing this workspace can do that a text search
+  //: well as *what*: the one thing this workspace can do that a text search
   //: over a transcription cannot.
   for (const box of document.querySelectorAll("#ocr-boxes .ocr-box")) {
     const row = document.querySelector(
@@ -3927,7 +4530,7 @@ function ocrApplyFind() {
 //: same two endpoints the Images gallery's own row menu uses
 //: (`analyseMediaRow`) rather than a third path: one place decides what a
 //: vision read and a Tesseract read of an image mean, and a reading started
-//: here has to appear on the gallery tile afterwards — which it does, because
+//: here has to appear on the gallery tile afterwards, which it does, because
 //: it is written to the same column.
 async function ocrReadImage(image, button) {
   const reader = ocrReader();
@@ -3947,7 +4550,7 @@ async function ocrReadImage(image, button) {
     //: a second renderer here would drift from it.
     await ocrLoadPage(image, 0);
     progress?.done(`Read ${image.original_name || "the image"}.`);
-    //: The gallery behind this dialog is now stale — the tile it was opened
+    //: The gallery behind this dialog is now stale, the tile it was opened
     //: from has a reading it is not showing. This is the same repaint the
     //: gallery's own row menu triggers after an analyse.
     renderLibraryImagesGallery();
@@ -3967,7 +4570,7 @@ function ocrAllText() {
 document.addEventListener("DOMContentLoaded", () => {
   $("ocr-close")?.addEventListener("click", () => closeOcrWorkspace());
   $("ocr-workspace")?.addEventListener("click", (event) => {
-    //: Click the backdrop to close, the card to keep working — the same rule
+    //: Click the backdrop to close, the card to keep working, the same rule
     //: every other overlay in this app follows.
     if (event.target === event.currentTarget) closeOcrWorkspace();
   });
@@ -3975,7 +4578,7 @@ document.addEventListener("DOMContentLoaded", () => {
   for (const button of document.querySelectorAll("#ocr-zoom button")) {
     button.addEventListener("click", () => {
       //: Fit is a *mode* (null) and 100% is a number, so both go through the
-      //: one state `ocrApplyZoom` paints from — the old handler toggled a
+      //: one state `ocrApplyZoom` paints from: the old handler toggled a
       //: class and called the fitter, which is why "Actual size" had no way
       //: back and no idea what percentage it was showing.
       ocrZoom = button.dataset.ocrZoom === "fit" ? null : 1;
@@ -3998,7 +4601,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!message) return;
     message.textContent =
       ocrReader() === "tesseract"
-        ? "Tesseract will read the page — no model needed, and it marks where each block sits."
+        ? "Tesseract will read the page, no model needed, and it marks where each block sits."
         : "The AI vision model will read the page.";
     message.classList.remove("hidden");
   });
@@ -4014,8 +4617,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const prompt = `Here is the text read from ${name}${page}:\n\n${quoted}\n\n`;
     //: The composer, not a sent message: the question is the user's to write,
     //: and asking one on their behalf is what the selection popup's own
-    //: "Ask the AI about this" was told not to do. Same two lines it uses —
-    //: `switchTab("chat")` then fill `#chat-input` — rather than a second way
+    //: "Ask the AI about this" was told not to do. Same two lines it uses, 
+    //: `switchTab("chat")` then fill `#chat-input`, rather than a second way
     //: of starting a chat that can drift from the first.
     const box = document.getElementById("chat-input");
     if (!box) return toast("The chat isn't available right now.", true);
@@ -4024,12 +4627,12 @@ document.addEventListener("DOMContentLoaded", () => {
     box.value = prompt;
     box.focus();
     //: The composer grows with its content (`.autogrow`), and that is driven
-    //: by `input` — a value set in script fires nothing, so without this the
+    //: by `input`, a value set in script fires nothing, so without this the
     //: box stays one line tall over four paragraphs of text.
     box.dispatchEvent(new Event("input", { bubbles: true }));
   });
   //: Arrow keys and Page Up/Down move between pages, which is what every
-  //: document reader on the machine already does — a page rail you can only
+  //: document reader on the machine already does, a page rail you can only
   //: click is a reader you have to use with a mouse.
   document.addEventListener("keydown", (event) => {
     const overlay = $("ocr-workspace");
@@ -4037,7 +4640,7 @@ document.addEventListener("DOMContentLoaded", () => {
     //: Never while typing: the range box and the find box are both text
     //: fields inside this dialog, and Left/Right belong to the caret there.
     const tag = document.activeElement?.tagName;
-    //: Escape closes the reader (measured: it did not) — unless a confirm
+    //: Escape closes the reader (measured: it did not): unless a confirm
     //: is up, which owns Escape, or a text field has focus, where Escape
     //: first drops out of the field. Ctrl+F goes to "Find in what was read"
     //: rather than the browser's own find, which cannot see this dialog's
@@ -4045,6 +4648,16 @@ document.addEventListener("DOMContentLoaded", () => {
     if (event.key === "Escape") {
       if (document.querySelector(".confirm-overlay")) return;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") { document.activeElement.blur(); return; }
+      //: **Escape cancels the rectangle before it closes the window.** Asked
+      //: for by name in Phase 7.4 ("Escape cancels"), and it is also the only
+      //: sane order: having outlined something by mistake, the key you reach
+      //: for must undo the mistake rather than throw away the whole reading
+      //: session it happened in.
+      if (ocrRegionRect) {
+        event.preventDefault();
+        ocrClearRegionSelection();
+        return;
+      }
       event.preventDefault();
       closeOcrWorkspace();
       return;
@@ -4069,6 +4682,58 @@ document.addEventListener("DOMContentLoaded", () => {
       if (ocrWorkspaceCurrent) ocrLoadPage(ocrWorkspaceCurrent, ocrWorkspacePages - 1);
     }
   });
+  //: **Drag on the page to outline a region** (Phase 7.4). Pointer events, not
+  //: mouse events: the same gesture then works with a stylus on a tablet,
+  //: which is the device somebody reading a scanned page is most likely to be
+  //: circling a chart on.
+  //:
+  //: `setPointerCapture` is what makes a drag that leaves the stage still end
+  //:, without it, releasing the button over the reading pane leaves the app
+  //: convinced a drag is still in progress.
+  $("ocr-select")?.addEventListener("pointerdown", (event) => {
+    //: Left button only, and never while a text file is showing, there is no
+    //: page raster to crop from, so the offer would lead nowhere.
+    if (event.button !== 0) return;
+    if (ocrWorkspaceCurrent && ocrIsTextFile(ocrWorkspaceCurrent)) return;
+    const start = ocrRegionPoint(event);
+    if (!start) return;
+    event.preventDefault();
+    ocrClearRegionSelection();
+    ocrRegionDrag = start;
+    event.currentTarget.setPointerCapture(event.pointerId);
+  });
+  $("ocr-select")?.addEventListener("pointermove", (event) => {
+    if (!ocrRegionDrag) return;
+    const now = ocrRegionPoint(event);
+    if (!now) return;
+    ocrRegionRect = {
+      x: Math.min(ocrRegionDrag.x, now.x),
+      y: Math.min(ocrRegionDrag.y, now.y),
+      w: Math.abs(now.x - ocrRegionDrag.x),
+      h: Math.abs(now.y - ocrRegionDrag.y),
+    };
+    ocrPaintRegionRect();
+  });
+  $("ocr-select")?.addEventListener("pointerup", (event) => {
+    if (!ocrRegionDrag) return;
+    ocrRegionDrag = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    //: A click is a drag of nearly nothing, and offering to read a 2px
+    //: rectangle would make clicking the page feel broken.
+    if (!ocrRegionRect || ocrRegionRect.w < OCR_REGION_MIN || ocrRegionRect.h < OCR_REGION_MIN) {
+      ocrClearRegionSelection();
+      return;
+    }
+    ocrPlaceRegionPopover();
+  });
+  //: A cancelled pointer (the browser taking over for a scroll gesture, the
+  //: window losing focus) has to leave no half-drawn rectangle behind.
+  $("ocr-select")?.addEventListener("pointercancel", () => ocrClearRegionSelection());
+  $("ocr-region-read")?.addEventListener("click", () => ocrRunRegion("read"));
+  $("ocr-region-describe")?.addEventListener("click", () => ocrRunRegion("describe"));
+  $("ocr-region-cancel")?.addEventListener("click", () => ocrClearRegionSelection());
   $("ocr-zoom-in")?.addEventListener("click", () => ocrStepZoom(1));
   $("ocr-zoom-out")?.addEventListener("click", () => ocrStepZoom(-1));
   $("ocr-image")?.addEventListener("load", () => {
@@ -4087,29 +4752,61 @@ document.addEventListener("DOMContentLoaded", () => {
     copyToClipboard(text, event.currentTarget);
   });
   //: **Delete, the half of "delete or redo" that redo did not already have.**
-  //: Redo is just clicking "Read this page"/"Read this image" again — the
-  //: backend replaces the stored reading rather than appending to it — but
+  //: Redo is just clicking "Read this page"/"Read this image" again: the
+  //: backend replaces the stored reading rather than appending to it, but
   //: there was no way to remove a wrong reading without covering it with a
   //: better one. This removes it outright: the current PDF page's own stored
   //: reading (`PageRead`, via the new DELETE route), or a plain image's
   //: `ocr_text`/`vision_ocr_text` field, cleared through the same `analyse`
-  //: endpoint the reader already uses to write it — sending `""` is the
+  //: endpoint the reader already uses to write it, sending `""` is the
   //: documented way to clear either field, not a new code path.
   $("ocr-describe")?.addEventListener("click", async (event) => {
     const image = ocrWorkspaceCurrent;
-    if (!image || ocrIsPdf(image)) return;
+    if (!image) return;
     const button = event.currentTarget;
     button.disabled = true;
-    $("ocr-message").textContent = `Describing with ${ocrReaders.vision_model || "the vision model"}…`;
+    $("ocr-message").textContent = ocrIsPdf(image)
+      ? `Describing page ${ocrWorkspacePage + 1} with ${ocrReaders.vision_model || "the vision model"}…`
+      : `Describing with ${ocrReaders.vision_model || "the vision model"}…`;
     $("ocr-message").classList.remove("hidden");
     try {
+      //: **A document is described a page at a time** (Phase 7.3). Reported:
+      //: "image captioning, how it is done and displayed needs to be refined
+      //: for pdf documents and other similar documents. with graphs, images
+      //: and diagrams in them." One caption on the file is the right shape for
+      //: a photograph and describes none of a slide deck's twenty pages; the
+      //: page-caption route writes `PageRead.caption` for the page on screen,
+      //: with a prompt that asks about *figures* rather than "what does this
+      //: image show" (ai/captioning.py's `PAGE_CAPTION_PROMPT`).
+      if (ocrIsPdf(image)) {
+        const base = image._isAttachment ? `/files/${image.id}` : `/media/${image.id}`;
+        const described = await apiJson(
+          `${base}/page-caption?page=${ocrWorkspacePage}`,
+          { method: "POST" }
+        );
+        await ocrLoadPage(image, ocrWorkspacePage);
+        //: The model can be reached, run, and still have nothing to say, 
+        //: `message` carries that, and a "Description written." toast over it
+        //: would be the app claiming work it did not do.
+        toast(described?.caption ? `Page ${ocrWorkspacePage + 1} described.` : described?.message
+          || "Nothing was written for that page.", !described?.caption);
+        return;
+      }
       const updated = await analyseMediaRow(image, "caption", { force: true });
       if (updated && typeof updated.caption === "string") image.caption = updated.caption;
       renderLibraryImagesGallery();
       await ocrLoadPage(image, ocrWorkspacePage);
       toast("Description written.");
     } catch (error) {
-      toast(error.message || "Couldn't describe that image.", true);
+      //: **The status line has to stop claiming work that failed.** Measured
+      //: against the running app with no vision model installed: the toast said
+      //: "The AI model isn't running" while the pane underneath still read
+      //: "Describing page 1 with the vision model…", which is the app saying
+      //: two different things about the same click. (The image path had the
+      //: same gap; one `catch` now covers both.)
+      $("ocr-message").textContent = error.message || "Couldn't describe that.";
+      $("ocr-message").classList.remove("hidden");
+      toast(error.message || "Couldn't describe that.", true);
     } finally {
       button.disabled = false;
     }
@@ -4135,7 +4832,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const kind = ocrReader() === "tesseract" ? "ocr" : "vision-ocr";
         await analyseMediaRow(image, kind, { text: "" });
         //: The gallery tile behind this dialog now claims a reading that is
-        //: gone — same repaint `ocrReadImage` triggers after writing one.
+        //: gone: same repaint `ocrReadImage` triggers after writing one.
         renderLibraryImagesGallery();
       }
       toast("Reading deleted.");
@@ -4148,7 +4845,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   //: **The document reader.** Tesseract cannot open a PDF at all
   //: (`core/ocr.py`'s OCR_SUFFIXES), and this project was told directly not to
-  //: depend on it — *"I basically dont want to download tesseract and only
+  //: depend on it: *"I basically dont want to download tesseract and only
   //: want to use an ai vision learning and ocr model for images and scanned
   //: documents."* So the page you are looking at is rasterised server-side and
   //: handed to the local vision model, one page at a time: a reader who wants
@@ -4186,7 +4883,7 @@ document.addEventListener("DOMContentLoaded", () => {
       );
       const text = (body.text || "").trim();
       if (text) {
-        //: Rendered like a `stored-text` reading — one region, no boxes —
+        //: Rendered like a `stored-text` reading, one region, no boxes , 
         //: because that is honestly what it is: a vision model returns the
         //: words on the page, not where they sit on it.
         ocrRenderRegions({
@@ -4194,7 +4891,7 @@ document.addEventListener("DOMContentLoaded", () => {
             { index: 0, kind: "text", text, confidence: 0, box: { x: 0, y: 0, w: 1, h: 1 } },
           ],
           source: "stored-text",
-          message: `Read by ${shortModelName(body.model || ocrReaderName())} — text only, no page positions.`,
+          message: `Read by ${shortModelName(body.model || ocrReaderName())}, text only, no page positions.`,
           pages: ocrWorkspacePages,
           page,
         });
@@ -4205,7 +4902,7 @@ document.addEventListener("DOMContentLoaded", () => {
       progress?.done(text ? `Read page ${page + 1} of ${image.original_name}.` : body.message || "Nothing was read.");
     } catch (error) {
       //: A read the user stopped is not a failure and must not be reported
-      //: as one — `ocrStopRead` has already written the "Stopped." line, and
+      //: as one: `ocrStopRead` has already written the "Stopped." line, and
       //: a red toast on top of it says the app broke when it obeyed.
       if (error?.name === "AbortError") {
         progress?.done("Reading stopped.");
@@ -4253,7 +4950,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const withText = (body.pages || []).filter((page) => (page.text || "").trim());
       if (withText.length) {
         ocrRenderRegions({
-          //: `kind: "heading"` on nothing here — these are pages, not layout
+          //: `kind: "heading"` on nothing here: these are pages, not layout
           //: blocks, and the label carries the page number because a reader
           //: scrolling twelve transcriptions needs to know which is which.
           regions: withText.map((page, index) => ({
@@ -4264,7 +4961,7 @@ document.addEventListener("DOMContentLoaded", () => {
             box: { x: 0, y: 0, w: 1, h: 1 },
           })),
           source: "stored-text",
-          message: body.message || `Read ${withText.length} page(s) — text only, no page positions.`,
+          message: body.message || `Read ${withText.length} page(s): text only, no page positions.`,
           pages: ocrWorkspacePages,
           page: ocrWorkspacePage,
         });
@@ -4280,7 +4977,7 @@ document.addEventListener("DOMContentLoaded", () => {
       );
     } catch (error) {
       //: A read the user stopped is not a failure and must not be reported
-      //: as one — `ocrStopRead` has already written the "Stopped." line, and
+      //: as one: `ocrStopRead` has already written the "Stopped." line, and
       //: a red toast on top of it says the app broke when it obeyed.
       if (error?.name === "AbortError") {
         progress?.done("Reading stopped.");
@@ -4304,12 +5001,12 @@ document.addEventListener("DOMContentLoaded", () => {
       //: **The token must not go in the note.** A caller that opened the
       //: workspace from the lightbox hands over an already-tokened `_src`
       //: (see `ocrLoadPage`), and writing that into a note's markdown would
-      //: store this session's auth token in the notebook — and hand it to
+      //: store this session's auth token in the notebook, and hand it to
       //: anyone the note is later exported or shared with. The query string
       //: is dropped; `mediaSrc` re-adds a live token whenever the note is
       //: rendered.
-      //: A PDF page has no stored url of its own — the picture is rendered on
-      //: request — so the note points at the page endpoint instead, which
+      //: A PDF page has no stored url of its own, the picture is rendered on
+      //: request: so the note points at the page endpoint instead, which
       //: renders the same page again whenever the note is opened.
       const raw = ocrIsPdf(ocrWorkspaceCurrent)
         ? (ocrWorkspaceCurrent._isAttachment
@@ -4349,7 +5046,7 @@ async function analyseMediaRow(image, kind, payload = {}) {
 
 //: Which gallery tiles are ticked. Media, attachments and sketches live in
 //: three different tables, so a selection is keyed by the row's own kind as
-//: well as its id — `media:12` and `attachment:12` are different files.
+//: well as its id, `media:12` and `attachment:12` are different files.
 const libraryMediaSelection = new Map();
 
 //: **What the workspace has already read out of a file.**
@@ -4368,7 +5065,7 @@ function mediaHasBeenRead(row) {
 
 //: The badge on a file tile. Two states, and the read one carries a number:
 //: "Read" alone says a job finished, while "Read · 1,240 words" says what came
-//: out of it — which is the thing you are deciding on when you are looking for
+//: out of it: which is the thing you are deciding on when you are looking for
 //: the scan that actually had the text in it.
 function mediaReadingBadge(row) {
   const badge = document.createElement("span");
@@ -4384,6 +5081,199 @@ function mediaReadingBadge(row) {
   badge.textContent = `Read · ${words.toLocaleString()} words`;
   badge.title = "Open the reader to see it beside the page";
   return badge;
+}
+
+//: **A document's reading, said in one line** (UI_MODERNISATION_PLAN Phase
+//: 7.5). Asked for directly, twice: "the card format is difficult with files as
+//: they can be quite long and large, a single image or ocr caption doesnt fit
+//: them", and then "the files sub-tab has to show more than a row can hold."
+//:
+//: The row used to render the whole transcription and clamp it, measured on a
+//: three-page reading at 1440, the paragraph was cut mid-glyph two lines in,
+//: with a "Show more" that turned one row into a wall. A clamped paragraph is
+//: the worst of both: too little to read, too much to skim.
+//:
+//: So: the first sentence, and then the two numbers a person is actually
+//: deciding on when they scan this list, how much of the document has been
+//: read, and how much text came out of it.
+function mediaReadingSummary(row) {
+  const reading = mediaReading(row);
+  if (!reading) return null;
+  const words = reading.split(/\s+/).filter(Boolean).length;
+  //: First sentence, or the first line if the reading has no sentence in it, 
+  //: a table of figures, a slide title, a scan of a form. Capped, because a
+  //: "sentence" in a bad transcription can run for a paragraph, and the cap is
+  //: what keeps this to one line at every width.
+  const firstLine = reading.split("\n").map((line) => line.trim()).find(Boolean) || reading;
+  //: Deliberately not a `[…]+` run anchored at the end, that is the
+  //: polynomial-backtracking shape CodeQL has already caught in this repo. A
+  //: plain search for the first sentence end, then a slice.
+  const stop = firstLine.search(/[.!?](\s|$)/);
+  let sentence = stop > 0 ? firstLine.slice(0, stop + 1) : firstLine;
+  if (sentence.length > 120) sentence = `${sentence.slice(0, 119).trimEnd()}…`;
+  const facts = [];
+  //: `pages_read` comes from the server (`_page_read_count_map`), so a
+  //: document read page by page can say so. 0 for an image and for a file
+  //: whose reading is one whole-file blob, where "pages read" would be a
+  //: number about nothing.
+  const pages = Number(row?.pages_read) || 0;
+  if (pages) facts.push(`${pages} page${pages === 1 ? "" : "s"} read`);
+  facts.push(`${words.toLocaleString()} word${words === 1 ? "" : "s"}`);
+  return { sentence, facts, words, pages };
+}
+
+//: The gallery's rows in the shape `openLightbox` wants.
+//:
+//: Extracted from the tile's own click handler when Phase 7.5 gave the Files
+//: row a second way in ("Open reading"). Two copies of this mapping would be
+//: two chances for the two doors to open subtly different dialogs, and the
+//: comments below are precisely the kind of hard-won detail that gets copied
+//: once and then diverges.
+function libraryLightboxItems(images) {
+  return images.map((i) => ({
+    filename: i.original_name,
+    getUrl: () => mediaSrc(i.url),
+    // The one caller with a real *MediaUpload* row, so the lightbox's
+    // id-gated actions (rename/describe/OCR/delete) only ever appear
+    // here: every other caller has a url and nothing else, and a
+    // button guaranteed to 404 is worse than no button. `i._isAttachment`
+    // (Attachment rows this gallery also lists now, see
+    // renderLibraryImagesGallery) is the same case: `i.id` is real,
+    // but it names a row in a different table with none of those
+    // actions, so it must stay unset here for exactly the reason this
+    // comment already gives.
+    id: i._isAttachment ? undefined : i.id,
+    // Asked for directly: "if clicking on an image to view expand it in
+    // the lightbox…can the captions and ocr accompany it somehow??"
+    // The tile is the one place these are too small to read.
+    caption: i.caption || "",
+    text: (i.vision_ocr_text || i.ocr_text || "").trim(),
+    byline: i.vision_ocr_text
+      ? `Text read by ${shortModelName(i.vision_ocr_model) || "a model"}`
+      : i.ocr_text
+        ? "Text read with Tesseract OCR"
+        : "",
+    addedAt: i.created_at || "",
+  }));
+}
+
+//: The Files row's reading block: one line of it, and the way to the rest.
+//: See `mediaReadingSummary` for why a clamped paragraph was the wrong answer.
+//: Rows whose whole reading is open; survives the gallery poll re-render.
+const openReadings = new Set();
+
+//: **And the fold above it, which had no such memory.** Reported again on
+//: 2026-09-09, against both media sub-tabs, after the poll's own signature
+//: check had already landed: "the text extracted from this file disclosure
+//: closes itself when the reader scrolls to the bottom of the text", and the
+//: same for "text in this image" on the Images tab.
+//:
+//: Measured rather than reasoned. With the disclosure and the reading inside
+//: it both open and the list scrolled to 240, a caption written in the
+//: background (which is what the six-second poll exists to notice) rebuilt
+//: every tile: 9 rebuilds, the inner <details> still open because
+//: `openReadings` above remembers it, and the outer one *closed*, because
+//: nothing remembered that one at all. The signature check only ever covered
+//: the case where nothing changed; a poll that finds a real change still
+//: rebuilds, and then the fold a reader is holding open is gone. Six seconds
+//: is also about how long it takes to reach the bottom of a page of text,
+//: which is why the report reads as "when I scroll to the bottom".
+//:
+//: Keyed by `mediaRowKey`, not by `image.id`: an `Attachment` and a
+//: `MediaUpload` have separate id sequences and both kinds are rendered into
+//: this one grid, so `id` alone names two different rows.
+const openRowReadings = new Set();
+
+//: How far down its own text each open reading was scrolled. Restoring the
+//: fold without this puts the reader back at line 1 of sixty, which is the
+//: same complaint one step further in ("it keeps ... scrolling me back to the
+//: top"). Written on the reading's own scroll, read back on the next build.
+const readingScrollTops = new Map();
+
+function buildFileReadingSummary(image, summary, images) {
+  const holder = document.createElement("div");
+  holder.className = "library-file-reading";
+  if (!summary) {
+    //: Not read yet is a state, not an absence, and the offer that goes with
+    //: it is "read it", which the row's own strip already carries, so this
+    //: says the state and stops.
+    const empty = document.createElement("p");
+    empty.className = "library-file-summary muted text-sm library-image-ocr-empty";
+    empty.textContent = "Nothing has been read from this file yet";
+    holder.appendChild(empty);
+    return holder;
+  }
+  const line = document.createElement("p");
+  line.className = "library-file-summary";
+  line.textContent = summary.sentence;
+  //: The whole first line in the tooltip: the summary is clipped to one line
+  //: by CSS, and a title is the cheapest way to see the rest without turning
+  //: the row into a paragraph again.
+  line.title = summary.sentence;
+  const meta = document.createElement("p");
+  meta.className = "muted text-sm library-file-summary-meta";
+  meta.textContent = summary.facts.join("  ·  ");
+  const open = document.createElement("button");
+  open.type = "button";
+  open.className = "ghost small library-file-open-reading";
+  setLabel(open, "ph:book-open-text Open reading");
+  //: Distinct from the strip's "Open reader" beside it, and the titles have to
+  //: say how: this opens the *document* with its reading under it (the
+  //: lightbox), that opens the workspace where a page is read, corrected and
+  //: re-read. Both were asked for; neither replaces the other.
+  open.title = "Open the file with its reading, page by page";
+  open.addEventListener("click", (event) => {
+    event.stopPropagation();
+    //: The same items the tile's own click builds, so both doors open the same
+    //: dialog: and `focusReading`, which scrolls the panel under the page
+    //: into view and starts on the first page that has a reading. Without it
+    //: the reading is below the fold on a tall document, which is the whole
+    //: complaint this item is answering.
+    openLightbox(libraryLightboxItems(images), images.indexOf(image), { focusReading: true });
+  });
+  //: The whole reading, in place. Reported directly: "the text extracted
+  //: from this file area and dropdown in the library files subtab is
+  //: broken, it only shows the first line on the first page extracted". It
+  //: was the Phase 7.5 one-line summary working as designed, and the design
+  //: was wrong: a person who opens a "Text extracted from this file" field
+  //: expects to read the text there, not to be sent to a dialog. The line
+  //: stays as the collapsed state; opening it shows every page's reading in
+  //: a scrolling box, and "Open reading" still opens the page-by-page view.
+  const full = document.createElement("details");
+  full.className = "library-file-reading-full";
+  // The gallery re-renders on a poll (libraryImagesPollTimer), which rebuilt
+  // this element closed while a person was reading it (reported: "it keeps
+  // on randomly collapsing, maybe when I scroll to the bottom"). The open
+  // state lives outside the element, keyed by the row, so a re-render puts
+  // it back exactly as it was.
+  full.open = openReadings.has(mediaRowKey(image));
+  const fullSummary = document.createElement("summary");
+  fullSummary.className = "library-file-reading-more";
+  setLabel(fullSummary, "ph:caret-down Show the whole reading");
+  const fullText = document.createElement("pre");
+  fullText.className = "library-file-reading-text";
+  fullText.textContent = mediaReading(image);
+  full.append(fullSummary, fullText);
+  const syncReadingLabel = () =>
+    setLabel(fullSummary, full.open ? "ph:caret-up Hide the reading" : "ph:caret-down Show the whole reading");
+  syncReadingLabel();
+  full.addEventListener("toggle", () => {
+    if (full.open) openReadings.add(mediaRowKey(image));
+    else openReadings.delete(mediaRowKey(image));
+    syncReadingLabel();
+  });
+  fullText.addEventListener("scroll", () => {
+    readingScrollTops.set(mediaRowKey(image), fullText.scrollTop);
+  });
+  //: After layout, not now: this element is built before it is in the
+  //: document, so it has no scroll height yet and `scrollTop` would be
+  //: dropped on the floor. One frame is enough, the tile is appended
+  //: synchronously in the same task.
+  const savedScroll = readingScrollTops.get(mediaRowKey(image)) || 0;
+  if (savedScroll > 0) requestAnimationFrame(() => { fullText.scrollTop = savedScroll; });
+  full.addEventListener("click", (event) => event.stopPropagation());
+  holder.append(line, meta, full, open);
+  return holder;
 }
 
 function mediaRowKey(image) {
@@ -4442,46 +5332,55 @@ async function bulkDeleteLibraryMedia() {
   if (answer.checked) loadEntries().catch(() => {});
 }
 
-async function renderLibraryImagesGallery() {
+//: `ifUnchanged: "skip"` is the poll's call. Every other caller (a sub-tab
+//: click, an upload, a delete, the search box) means "draw this now" and must
+//: not be silently skipped: a delete that leaves the tile on screen because
+//: the fingerprint had not been refreshed yet would be a far worse bug than
+//: the one this fixes.
+async function renderLibraryImagesGallery({ ifUnchanged = "render" } = {}) {
   const grid = $("library-images-grid");
   const empty = $("library-images-empty");
   if (!grid) return;
   //: The grid is rebuilt from scratch on every render, so the view class has
-  //: to be re-applied with it — the toggle is a property of the list, not of
+  //: to be re-applied with it, the toggle is a property of the list, not of
   //: the tiles that happen to be in it right now.
   applyLibraryMediaView();
-  const images = await apiJson("/media", { silent: true }).catch(() => null);
+  //: The whole gallery, paged out of the server a page at a time (INBOX
+  //: 117): the grid's own search filters `libraryImagesCache` in the
+  //: browser, so a picture missing from that cache is a picture the search
+  //: box can never find, and the tile count would quietly stop at one page.
+  const images = await apiPagedList("/media", MEDIA_PAGE_SIZE, { silent: true }).catch(() => null);
   // A note's own attached file (`Attachment`, not `MediaUpload`) never came
-  // from `/media` at all — reported directly, twice: "a pdf I uplaoded to a
+  // from `/media` at all: reported directly, twice: "a pdf I uplaoded to a
   // note doesnt show in the libary" and "my uploaded pdf file isnt shown in
   // the library files subtab". `GET /files/gallery` (routes_files.py) is the
   // same rows the note editor's own attachment list already shows, reshaped
-  // for this gallery — see its own docstring for why it's a separate,
+  // for this gallery: see its own docstring for why it's a separate,
   // smaller shape rather than pretending an attachment has OCR/captions.
   //
   // `_isImage`/`_isAttachment` are set here, once, rather than making every
   // later call site re-derive them: an attachment's `.url` is `/files/{id}`
   // with no extension (served by id, not by stored filename), so the
-  // extension-sniffing `isImageUrl()` below — which is exactly right for a
-  // `/media/{name}.ext` row — would silently call every attachment a "file"
+  // extension-sniffing `isImageUrl()` below: which is exactly right for a
+  // `/media/{name}.ext` row: would silently call every attachment a "file"
   // regardless of its real mime.
   const attachments = await apiJson("/files/gallery", { silent: true }).catch(() => []);
   // **These two loops are load-bearing and were once silently lost.**
   // Reported: "none of the images and sketches are in the images library
-  // subtab at all and all the files are in the files subtab" — and that is
+  // subtab at all and all the files are in the files subtab", and that is
   // exactly what an unset `_isImage` produces, because the kind filter below
   // reads `!i._isImage` for Files: `undefined` is falsy, so every single row
   // in the notebook satisfied "is a file" and none satisfied "is an image".
   // Nothing threw and nothing logged; the Images tab just rendered its empty
   // state on a notebook full of pictures. The comment above survived the edit
   // that dropped the code it describes, which is the only reason this was
-  // findable by reading — so if this ever needs changing again, change both.
+  // findable by reading: so if this ever needs changing again, change both.
   for (const item of images || []) item._isImage = isImageUrl(item.url);
   for (const item of attachments || []) {
     item._isImage = (item.mime || "").startsWith("image/");
     item._isAttachment = true;
     // Never OCR'd, captioned or read by a vision model unless the analyse
-    // step has run — explicit empty strings, the same never-null convention
+    // step has run: explicit empty strings, the same never-null convention
     // `MediaUploadOut` uses, so the search filter and the lightbox can read
     // these without a branch for which kind of row they have.
     item.ocr_text = item.ocr_text || "";
@@ -4489,6 +5388,10 @@ async function renderLibraryImagesGallery() {
     item.vision_ocr_text = item.vision_ocr_text || "";
   }
   libraryImagesCache = [...(images || []), ...(attachments || [])];
+  const fingerprint = libraryImagesFingerprint(libraryImagesCache);
+  const unchanged = fingerprint === libraryImagesSignature;
+  libraryImagesSignature = fingerprint;
+  if (unchanged && ifUnchanged === "skip") return;
   if (!images && !attachments?.length) {
     grid.replaceChildren();
     empty?.classList.remove("hidden");
@@ -4497,19 +5400,19 @@ async function renderLibraryImagesGallery() {
   filterLibraryImagesGallery();
 }
 
-// Filters `libraryImagesCache` against the search box's own value — the
+// Filters `libraryImagesCache` against the search box's own value: the
 // filename *and* any OCR text found on the image (ROADMAP.md item 30d), so
 // "what was on that whiteboard photo from March" is answerable by typing
 // a word that was written on it, not just what it happened to be named.
 //: **How the media sub-tabs are ordered.** Reported: "the library subtabs are
-//: missing sorting and filtering options" — and measured, none of the six had
+//: missing sorting and filtering options", and measured, none of the six had
 //: a sort control; only the Library's own "All" view did.
 //:
 //: The comparators live here rather than on the server because the gallery is
 //: already fully in memory (`libraryImagesCache`), so sorting is a local
 //: reorder with no round-trip and no new endpoint. `created_at` is the field
-//: both row shapes carry — a `MediaUpload` and an `Attachment` agree on it
-//: even though they agree on very little else — which is why "newest" is the
+//: both row shapes carry, a `MediaUpload` and an `Attachment` agree on it
+//: even though they agree on very little else, which is why "newest" is the
 //: default here as it is everywhere else in the app.
 const LIBRARY_MEDIA_SORTS = {
   newest: (a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")),
@@ -4532,8 +5435,8 @@ function libraryMediaSort() {
   return LIBRARY_MEDIA_SORTS[stored] ? stored : "newest";
 }
 
-//: The read filter is *not* stored, unlike the sort. A sort is a preference —
-//: how you like lists arranged — but "show me only what I have not read" is a
+//: The read filter is *not* stored, unlike the sort. A sort is a preference, 
+//: how you like lists arranged, but "show me only what I have not read" is a
 //: task you are in the middle of, and a filter that silently persisted across
 //: sessions is how a Library comes back next week apparently missing half its
 //: files. Same reasoning the notes list uses for its own transient filters.
@@ -4559,7 +5462,7 @@ function filterLibraryImagesGallery() {
   const query = ($("library-images-search")?.value || "").trim().toLowerCase();
   // Kind first, then the search box. Both the "nothing here" and the "nothing
   // matches" states below are about *this* sub-tab, so the count they test
-  // has to be the kind-filtered one — otherwise a notebook holding only PDFs
+  // has to be the kind-filtered one, otherwise a notebook holding only PDFs
   // would show the Images tab as "no match for your search" with an empty
   // search box.
   const readState = libraryMediaKind === "files" ? $("library-media-read")?.value || "all" : "all";
@@ -4584,7 +5487,7 @@ function filterLibraryImagesGallery() {
     : ofKind;
   //: Sorted last, on a copy. A copy because `ofKind` can *be*
   //: `libraryImagesCache` when nothing is filtered, and sorting in place would
-  //: silently reorder the cache every other reader shares — including the
+  //: silently reorder the cache every other reader shares, including the
   //: lightbox's own "N of M" and its prev/next, which index into the array
   //: this function hands them.
   const images = [...matched].sort(LIBRARY_MEDIA_SORTS[libraryMediaSort()]);
@@ -4603,7 +5506,7 @@ function filterLibraryImagesGallery() {
     // "dont appear anywhere".** Reported directly, and this is the whole
     // mechanism: every `/media/upload` row was rendered into an `<img
     // src="/media/…">` regardless of type, so a PDF failed to decode, the
-    // `error` handler below fired, and the tile *deleted itself* — silently,
+    // `error` handler below fired, and the tile *deleted itself*, silently,
     // with no message, from the only screen that lists uploads at all. The
     // file was on disk and in the database the entire time.
     //
@@ -4612,8 +5515,8 @@ function filterLibraryImagesGallery() {
     // tile was missing, so this gives a non-image its own tile instead of an
     // image that cannot exist.
     // `image._isImage` (set in renderLibraryImagesGallery), not
-    // `isImageUrl(image.url)`: an Attachment row's url is `/files/{id}` —
-    // served by id, no file extension at all — so the url-sniffing test
+    // `isImageUrl(image.url)`: an Attachment row's url is `/files/{id}`, 
+    // served by id, no file extension at all, so the url-sniffing test
     // that works for a `/media/{name}.ext` row would call every attached
     // PDF a "file" with no icon or label. `mediaFileIcon`/`mediaFileKind`
     // below read `original_name` for the same reason: it carries the real
@@ -4627,7 +5530,7 @@ function filterLibraryImagesGallery() {
     } else {
       img.className = "library-file-thumb";
       // **A PDF shows its first page.** Reported: "in the files tab, there
-      // is no preview" — every non-image tile was a glyph and an extension,
+      // is no preview", every non-image tile was a glyph and an extension,
       // which tells you nothing you could not read from the filename. The
       // page renderer already exists for the viewer (`/files/{id}/pdf-page`,
       // `/media/pdf-page/{name}`); this is the same call at thumbnail size.
@@ -4654,13 +5557,13 @@ function filterLibraryImagesGallery() {
       kind.textContent = mediaFileKind(image.original_name);
       img.append(glyph, kind);
       img.setAttribute("role", "img");
-      img.setAttribute("aria-label", `${mediaFileKind(image.original_name)} — ${image.original_name}`);
+      img.setAttribute("aria-label", `${mediaFileKind(image.original_name)}: ${image.original_name}`);
     }
     img.addEventListener("error", () => {
       fig.remove();
       // Every tile's click handler closes over this same `images` array by
       // reference and re-reads it at click time, not a snapshot taken here
-      // — so removing the broken entry from it is what every *other* tile's
+      //, so removing the broken entry from it is what every *other* tile's
       // "N of M" and prev/next actually see. Without this, a gallery whose
       // underlying file was deleted from disk (but not from the DB) would
       // hide the broken tile yet still count it: reported live as "it says
@@ -4669,39 +5572,21 @@ function filterLibraryImagesGallery() {
       const idx = images.indexOf(image);
       if (idx !== -1) images.splice(idx, 1);
     });
-    img.addEventListener("click", () => {
-      // A sketch's "full size" is the board it lives on — there is no file
-      // to open in a lightbox, and the board is where it can actually be
-      // edited, moved or deleted in context.
-      openLightbox(
-        images.map((i) => ({
-          filename: i.original_name,
-          getUrl: () => mediaSrc(i.url),
-          // The one caller with a real *MediaUpload* row, so the lightbox's
-          // id-gated actions (rename/describe/OCR/delete) only ever appear
-          // here — every other caller has a url and nothing else, and a
-          // button guaranteed to 404 is worse than no button. `i._isAttachment`
-          // (Attachment rows this gallery also lists now, see
-          // renderLibraryImagesGallery) is the same case: `i.id` is real,
-          // but it names a row in a different table with none of those
-          // actions, so it must stay unset here for exactly the reason this
-          // comment already gives.
-          id: i._isAttachment ? undefined : i.id,
-          // Asked for directly: "if clicking on an image to view expand it in
-          // the lightbox…can the captions and ocr accompany it somehow??"
-          // The tile is the one place these are too small to read.
-          caption: i.caption || "",
-          text: (i.vision_ocr_text || i.ocr_text || "").trim(),
-          byline: i.vision_ocr_text
-            ? `Text read by ${shortModelName(i.vision_ocr_model) || "a model"}`
-            : i.ocr_text
-              ? "Text read with Tesseract OCR"
-              : "",
-          addedAt: i.created_at || "",
-        })),
-        images.indexOf(image)
-      );
-    });
+    //: **What a click on a row opens**, asked for on 2026-09-09: "I want the
+    //: file to be opened in the ocr workspace if I click on the main top part
+    //: of the panel and not an element and when I click the file title".
+    //:
+    //: A picture opens in the lightbox, which is the view that answers "what
+    //: is this": a document opens in the OCR workspace, which is the view
+    //: that answers the same question about a document, page beside text. A
+    //: PDF in a lightbox was always the compromise, and the workspace
+    //: rasterises its pages server-side (`_pdf_regions_for`), so there is no
+    //: longer a reason to send a document to the image viewer.
+    const openThisRow = () => {
+      if (image._isImage) openLightbox(libraryLightboxItems(images), images.indexOf(image));
+      else openOcrWorkspace(image, images);
+    };
+    img.addEventListener("click", openThisRow);
     // The tick. Same control the Documents list already uses, so selecting
     // works the same way wherever you are in the Library.
     const tick = document.createElement("input");
@@ -4725,7 +5610,7 @@ function filterLibraryImagesGallery() {
     del.addEventListener("click", async (e) => {
       e.stopPropagation();
       //: **The second question, asked once, in the same dialog.** Reported:
-      //: "notes still mention removed images" — deleting the file left every
+      //: "notes still mention removed images", deleting the file left every
       //: `![](…)` behind, so those notes rendered a "this image was removed"
       //: placeholder for the rest of their lives. Ticked by default because
       //: a reference to a file that no longer exists is not something anyone
@@ -4742,7 +5627,7 @@ function filterLibraryImagesGallery() {
       );
       if (!answer.ok) return;
       // An Attachment row (image._isAttachment) lives at a completely
-      // different id space from MediaUpload — `DELETE /media/{id}` here
+      // different id space from MediaUpload, `DELETE /media/{id}` here
       // would either 404 or, worse, delete an unrelated MediaUpload row
       // that happened to share the same numeric id.
       const endpoint = `${mediaRowDeleteEndpoint(image)}${answer.checked ? "?strip_references=true" : ""}`;
@@ -4761,7 +5646,7 @@ function filterLibraryImagesGallery() {
     });
     // Rename. Reported as simply missing: there was no way to rename an image
     // in the Library at all. The stylesheet already had `.library-image-edit`
-    // from an earlier attempt — the CSS shipped and the button that would have
+    // from an earlier attempt, the CSS shipped and the button that would have
     // used it never did, so the rule sat there styling nothing.
     //
     // Renamed in place rather than through a dialog: a gallery is a wall of
@@ -4776,7 +5661,18 @@ function filterLibraryImagesGallery() {
 
     const cap = document.createElement("figcaption");
     cap.textContent = image.original_name;
-    cap.title = image.original_name;
+    cap.title = image._isImage
+      ? image.original_name
+      : `${image.original_name}\n\nClick to open it page by page, beside the text.`;
+    //: The title is the row's name, so it opens the row, the same click the
+    //: thumbnail takes. Not while it is being renamed: `rename` replaces the
+    //: caption's contents with an `<input>`, and a click into a text field
+    //: you are typing in must never navigate away from it.
+    cap.addEventListener("click", (event) => {
+      if (cap.querySelector("input")) return;
+      event.stopPropagation();
+      openThisRow();
+    });
 
     rename.addEventListener("click", (event) => {
       event.stopPropagation();
@@ -4814,7 +5710,7 @@ function filterLibraryImagesGallery() {
           //: overrules it: a file shown in the Library is a file you expect to
           //: manage in the Library.
           //:
-          //: Two tables, two routes, and they take different field names —
+          //: Two tables, two routes, and they take different field names, 
           //: `PUT /files/{id}` wants `filename`, `PUT /media/{id}` wants
           //: `original_name`. Both already existed and both already enforce
           //: the workspace and private-note checks; nothing new was needed on
@@ -4859,82 +5755,136 @@ function filterLibraryImagesGallery() {
     });
 
     // A vision model's own description of the image, distinct from `cap`
-    // above (that's the filename — HTML's own <figcaption> naming just
+    // above (that's the filename: HTML's own <figcaption> naming just
     // collides with what this app calls a "caption"). Asked for directly:
     // written automatically in the background when a vision model is
     // available (routes_files.py's upload trigger), regenerated here only
-    // on an explicit click — never silently overwritten.
+    // on an explicit click, never silently overwritten.
     const captionBtn = document.createElement("button");
     captionBtn.type = "button";
     captionBtn.className = "ghost small icon-button library-image-caption-btn";
     setLabel(captionBtn, "ph:sparkle");
-    // Always visible, even empty — asked for directly ("allow for manual
+    // Always visible, even empty, asked for directly ("allow for manual
     // input of image captions"): a click-to-edit field, the same pattern
     // `cap`'s inline rename above already uses, rather than a caption only
     // ever being reachable through the AI-generate button.
     const captionText = document.createElement("p");
-    captionText.className = "library-image-caption muted text-sm";
+    //: No `text-sm`: the size is in `.library-image-caption` now, one rank
+    //: rather than three (see that rule). The class was the only thing setting
+    //: it, and a utility on the element would beat the rule that has to hold
+    //: the card's two sizes together.
+    captionText.className = "library-image-caption muted";
     captionText.tabIndex = 0;
     captionText.setAttribute("role", "button");
-    // Roughly two lines' worth of this tile's narrow column at text-sm —
+    // Roughly three lines' worth of this tile's narrow column at text-sm,
     // approximate on purpose, the same way LONG_NOTE_CHARS is: the tile is
     // still `display: none` inside a hidden sub-tab at render time for most
     // gallery loads, so a measured height would read 0 (the trap the Notes
     // list's own long-note comment already names).
-    const CAPTION_CLAMP_CHARS = 90;
-    const captionToggle = document.createElement("button");
-    captionToggle.type = "button";
-    captionToggle.className = "entry-more library-image-caption-more hidden";
-    const captionClamped = () =>
-      !libraryExpandedCaptions.has(image.id) &&
-      (image.caption || "").length > CAPTION_CLAMP_CHARS;
+    //: Two lines became three when the "Description" heading above it went
+    //: (INBOX 56): the label was one of the six ranks of information the card
+    //: stacked at one weight, and the paragraph it labelled is the only prose
+    //: on the card, so it does not need naming.
+    //: **The description has no More button of its own** (INBOX 115: "the
+    //: bottom of the image cards ... needs a desperate redesign"). Under one
+    //: picture the card stacked four controls at one rank: a More, a "Text in
+    //: this image" fold, a chip row and a byline, and a reader cannot tell
+    //: which of four affordances holds the thing they are after.
+    //:
+    //: **And the clamp is unconditional now** (INBOX 118: "still poorly
+    //: designed and look unprofessional"). It used to apply past a character
+    //: count, 140, which is a guess at a line count and was wrong at every
+    //: width: measured on six seeded cards at 1440, the descriptions ran
+    //: 1.44, 2.44, 3, 3, 3.44 and 0 lines, and only two of the six were
+    //: clamped at all, so no two cards had their text ending in the same
+    //: place. A clamp that only sometimes applies is not a clamp; two lines,
+    //: always, is a caption. The whole description is one hover away in the
+    //: element's own title, one click away in the editor it opens, and in the
+    //: lightbox, which has shown the full caption all along.
     const syncCaptionClamp = () => {
-      captionText.classList.toggle("library-image-caption-clamped", captionClamped());
-      const needsToggle = (image.caption || "").length > CAPTION_CLAMP_CHARS;
-      captionToggle.classList.toggle("hidden", !needsToggle);
-      captionToggle.textContent = libraryExpandedCaptions.has(image.id)
-        ? "Show less"
-        : "Show more";
+      //: Never while it is being edited: the clamp treats its child as flowed
+      //: text cut to two lines, and a <textarea> squashed into that box is
+      //: what "the caption collapses when I click it" was.
+      captionText.classList.toggle(
+        "library-image-caption-clamped",
+        !captionText.querySelector("textarea"),
+      );
     };
-    captionToggle.addEventListener("click", (event) => {
-      event.stopPropagation();
-      if (libraryExpandedCaptions.has(image.id)) libraryExpandedCaptions.delete(image.id);
-      else libraryExpandedCaptions.add(image.id);
-      syncCaptionClamp();
-    });
-    // Which model wrote the caption, and whether a person has since edited
-    // it — asked for directly ("AI generated image captions should be
-    // tagged on the ui and list what model generated it and if it has been
-    // manually modified"). Quiet by design: a byline under a sentence of
-    // metadata, not another chip competing with the caption for attention.
-    const captionBadge = document.createElement("span");
-    captionBadge.className = "library-image-caption-badge muted text-sm hidden";
-    const syncCaptionBadge = () => {
+    //: **Provenance is one muted line at the foot of the card, not chips.**
+    //: Reported (INBOX 56): "chips for provenance that read as actions". Who
+    //: described the picture and who read the text out of it were two pills
+    //: in the middle of the card, at the same weight and with the same
+    //: bordered shape as the "Used in" chips beside them, which *are*
+    //: buttons. They are a byline: the smallest type on the card, plain
+    //: text, last, where a byline goes. (The ask they came from is still
+    //: met: "AI generated image captions should be tagged on the ui and list
+    //: what model generated it and if it has been manually modified.")
+    //:
+    //: Built from `image.*` rather than from arguments, because both setters
+    //: write the row first and then call this, and the tile's two readings
+    //: change independently.
+    const provenance = document.createElement("p");
+    provenance.className = "library-image-provenance muted";
+    const syncProvenance = () => {
       const parts = [];
-      if (image.caption_model) parts.push(shortModelName(image.caption_model));
-      if (image.caption_edited) parts.push(image.caption_model ? "edited" : "typed by hand");
-      captionBadge.textContent = parts.join(" · ");
-      captionBadge.classList.toggle("hidden", !image.caption || parts.length === 0);
+      if (image.caption_model) {
+        parts.push(
+          `Described by ${shortModelName(image.caption_model)}${image.caption_edited ? ", edited by hand" : ""}`
+        );
+      } else if (image.caption && image.caption_edited) {
+        parts.push("Described by hand");
+      }
+      if (image.vision_ocr_model) parts.push(`read by ${shortModelName(image.vision_ocr_model)}`);
+      provenance.textContent = parts.join(" · ");
+      provenance.title = [image.caption_model, image.vision_ocr_model].filter(Boolean).join(" · ");
+      provenance.classList.toggle("hidden", parts.length === 0);
     };
+    //: The section the description lives in, declared here and built further
+    //: down with the rest of the card's blocks. `let`, not `const` at the
+    //: build site: `setCaptionState` runs long before that point and has to
+    //: be able to ask whether there is a section to hide yet, and reading a
+    //: `const` before its own line throws rather than answering `undefined`.
+    let captionField = null;
+    function syncCaptionVisibility() {
+      if (!captionField) return;
+      captionField.classList.toggle(
+        "hidden",
+        !(image.caption || "") && !captionText.querySelector("textarea"),
+      );
+    }
     const setCaptionState = (text, meta = {}) => {
       image.caption = text || "";
       if ("caption_model" in meta) image.caption_model = meta.caption_model || "";
       if ("caption_edited" in meta) image.caption_edited = Boolean(meta.caption_edited);
-      captionText.textContent = text || "Add a caption…";
+      captionText.textContent = text || "Add a description";
       captionText.classList.toggle("library-image-caption-empty", !text);
+      //: **An empty description is not a row of the card.** Measured before
+      //: this (INBOX 115): a card with nothing filled in carried "Not used
+      //: yet", an italic "Add a description" and a grey "Text in this image"
+      //: fold, three rows that all say nothing is here, inside a tile the
+      //: grid stretched to 371.8px whatever it held. The placeholder is not
+      //: lost with the row: "Write a description" is a row of the card's
+      //: menu, and it opens this field and puts the caret in it.
+      syncCaptionVisibility();
+      //: The clamp cuts at two lines, so the title is where the rest of it
+      //: is, and it is the cheapest place: no control, no row, no height.
       captionText.title = text
-        ? "Click to edit this caption"
-        : "Click to add a caption";
-      captionBtn.title = text
-        ? `Regenerate the AI caption for “${image.original_name}”`
-        : `Generate an AI caption for “${image.original_name}”`;
+        ? `${text}\n\nClick to edit this description`
+        : "Click to add a description";
+      captionBtn.title = image._isImage
+        ? `Describe “${image.original_name}” ${text ? "again " : ""}with AI`
+        : `Summarise “${image.original_name}” ${text ? "again " : ""}from its text`;
       captionBtn.setAttribute("aria-label", captionBtn.title);
       syncCaptionClamp();
-      syncCaptionBadge();
+      syncProvenance();
     };
     setCaptionState(image.caption);
     const startEditingCaption = () => {
       if (captionText.querySelector("textarea")) return; // already editing
+      //: Reached from the menu on a card whose description is empty, where
+      //: the field is not rendered at all: showing it has to come before
+      //: focusing it, or the caret lands in a `display: none` box.
+      captionField?.classList.remove("hidden");
       // Reported: the caption visibly collapsed the moment you clicked to
       // edit it. The clamp (-webkit-line-clamp, still on captionText from
       // whatever it was displaying a moment ago) treats its child as flowed
@@ -4950,7 +5900,7 @@ function filterLibraryImagesGallery() {
       captionText.replaceChildren(box);
       box.focus();
       box.select();
-      // A plain textarea doesn't grow with its content — min-height:3rem
+      // A plain textarea doesn't grow with its content, min-height:3rem
       // is a floor, not the whole box, so anything past ~2 lines scrolled
       // inside a tiny window instead of showing (reported: "collapses when
       // I try to edit it"). autoGrow (app.js) is the app's existing fix for
@@ -5004,13 +5954,12 @@ function filterLibraryImagesGallery() {
       captionBtn.disabled = true;
       // A synchronous route (caption_media runs the model call inline, not
       // in the background), so with nothing shown here the caption text
-      // just sat unchanged for however long the model took — asked for
+      // just sat unchanged for however long the model took, asked for
       // directly, a visible "generating" state while one is in flight.
       const previousCaptionText = captionText.textContent;
-      captionText.replaceChildren(typingDots("Generating caption…"));
-      captionBadge.classList.add("hidden");
+      captionText.replaceChildren(typingDots("Generating a description…"));
       try {
-        // force: true — a manual click is exactly "the user pressed the
+        // force: true: a manual click is exactly "the user pressed the
         // button to rewrite it", the one case the write-once default
         // (caption_and_store) is meant to defer to.
         const updated = await analyseMediaRow(image, "caption", { force: true });
@@ -5018,21 +5967,39 @@ function filterLibraryImagesGallery() {
           caption_model: updated.caption_model,
           caption_edited: updated.caption_edited,
         });
+        //: Reported: "image captioning just straight up didn't work with no
+        //: notification, log or anything". The route answers 200 with an
+        //: empty caption when no vision model answers, and silence here read
+        //: as a dead button. Say so, once, with the likely cause.
+        if (!updated.caption) {
+          //: Two different missing models, so two different sentences: a
+          //: picture is described by the vision model, a document by the
+          //: utility model reading its extracted text, and sending someone to
+          //: install a vision model for a .docx would be a wrong answer
+          //: delivered confidently.
+          toast(
+            updated.message ||
+              (image._isImage
+                ? "No description was written. Is a vision model running in Settings > Models?"
+                : "No description was written. Check a model is running in Settings > Models."),
+            true,
+          );
+        }
       } catch (error) {
         captionText.textContent = previousCaptionText;
-        syncCaptionBadge();
+        syncProvenance();
         toast(error.message || "Couldn't generate a caption.", true);
       } finally {
         captionBtn.disabled = false;
       }
     });
 
-    // Tesseract's own reading of any text in the image (core/ocr.py) —
+    // Tesseract's own reading of any text in the image (core/ocr.py): 
     // local, exact, and (unlike the caption above) not AI-generated, so no
     // model badge. Asked for directly: "allow for manual OCR extraction or
     // retries. allow the user to access, view, and edit OCR extracted
     // text." Same always-visible, click-to-edit shape as captionText above
-    // — `POST /media/{id}/ocr` has no write-once guard, so the retry
+    //, `POST /media/{id}/ocr` has no write-once guard, so the retry
     // button always re-reads rather than needing a force flag.
     const ocrBtn = document.createElement("button");
     ocrBtn.type = "button";
@@ -5050,23 +6017,23 @@ function filterLibraryImagesGallery() {
     ocrToggle.type = "button";
     ocrToggle.className = "entry-more library-image-ocr-more hidden";
     const ocrClamped = () =>
-      !libraryExpandedOcr.has(image.id) && (image.ocr_text || "").length > OCR_CLAMP_CHARS;
+      !libraryExpandedOcr.has(mediaRowKey(image)) && (image.ocr_text || "").length > OCR_CLAMP_CHARS;
     const syncOcrClamp = () => {
       ocrText.classList.toggle("library-image-ocr-clamped", ocrClamped());
       const needsToggle = (image.ocr_text || "").length > OCR_CLAMP_CHARS;
       ocrToggle.classList.toggle("hidden", !needsToggle);
-      ocrToggle.textContent = libraryExpandedOcr.has(image.id) ? "Show less" : "Show more";
+      ocrToggle.textContent = libraryExpandedOcr.has(mediaRowKey(image)) ? "Show less" : "Show more";
     };
     ocrToggle.addEventListener("click", (event) => {
       event.stopPropagation();
-      if (libraryExpandedOcr.has(image.id)) libraryExpandedOcr.delete(image.id);
-      else libraryExpandedOcr.add(image.id);
+      if (libraryExpandedOcr.has(mediaRowKey(image))) libraryExpandedOcr.delete(mediaRowKey(image));
+      else libraryExpandedOcr.add(mediaRowKey(image));
       syncOcrClamp();
     });
 
     const setOcrState = (text) => {
       image.ocr_text = text || "";
-      ocrText.textContent = text || "No text found — click to add";
+      ocrText.textContent = text || "No text found: click to add";
       ocrText.classList.toggle("library-image-ocr-empty", !text);
       ocrText.title = text ? "Click to edit this text" : "Click to add text";
       ocrBtn.title = `Re-read the text in “${image.original_name}” without AI`;
@@ -5075,7 +6042,7 @@ function filterLibraryImagesGallery() {
       // The section around this paragraph decides whether to show itself from
       // the same value. Announced rather than called directly because the
       // wrapper is built further down, after every handler here is closed
-      // over — a plain call would be a forward reference to a `const`.
+      // over: a plain call would be a forward reference to a `const`.
       ocrText.dispatchEvent(new CustomEvent("mm:changed"));
     };
     setOcrState(image.ocr_text);
@@ -5135,14 +6102,14 @@ function filterLibraryImagesGallery() {
     });
 
     // Reported directly: this button was always enabled, even on a machine
-    // without the `tesseract` binary — the one dependency this app never
-    // installs on its own (INSTALL.md) — so pressing it just silently found
+    // without the `tesseract` binary: the one dependency this app never
+    // installs on its own (INSTALL.md): so pressing it just silently found
     // nothing, indistinguishable from "read the image and there was no
     // text". `/models/status`'s `tesseract_available` (routes_models.py, a
     // plain `shutil.which` check) is what makes that distinguishable.
     if (modelStatus && modelStatus.tesseract_available === false) {
       ocrBtn.disabled = true;
-      ocrBtn.title = "Unavailable — the Tesseract OCR program isn't installed. See INSTALL.md.";
+      ocrBtn.title = "Unavailable: the Tesseract OCR program isn't installed. See INSTALL.md.";
       ocrBtn.setAttribute("aria-label", ocrBtn.title);
     }
     ocrBtn.addEventListener("click", async (event) => {
@@ -5179,11 +6146,11 @@ function filterLibraryImagesGallery() {
       openOcrWorkspace(image, images);
     });
 
-    // A vision model's verbatim transcription of any text in the image —
+    // A vision model's verbatim transcription of any text in the image, 
     // the "extractor mode" asked for directly, distinct from `ocr_text`
     // (Tesseract, automatic on upload, shown just above) and from
     // `captionText` above (a description, not a transcription). Runs
-    // automatically on upload too (ai/vision_ocr.py, same as captioning) —
+    // automatically on upload too (ai/vision_ocr.py, same as captioning), 
     // this button is the manual re-read. Unlike the caption there is
     // nothing to prompt someone to type by hand here, so it stays hidden
     // until a read has actually happened (automatic or manual).
@@ -5197,11 +6164,11 @@ function filterLibraryImagesGallery() {
     // the toggle: `setVisionOcrState` stopped hiding this paragraph when the
     // field became always-editable, but the element was still *born* hidden,
     // so a tile for an image nothing had read rendered the label with nothing
-    // under it. Measured, not reasoned about — the field came back 17px tall.
+    // under it. Measured, not reasoned about, the field came back 17px tall.
     visionOcrText.className = "library-image-vision-ocr muted text-sm";
     // Editable for the same reason `ocrText` is, and it took a user report to
     // notice this one was not: a vision model transcribing a picture with no
-    // text in it does not return nothing, it returns its best guess — the
+    // text in it does not return nothing, it returns its best guess, the
     // report was four hallucinated Pokémon names under a picture of one, with
     // "no text in it and I cant remove or edit the text??". A *reading* the
     // app cannot correct is worse than no reading, because it is then filed
@@ -5209,8 +6176,6 @@ function filterLibraryImagesGallery() {
     visionOcrText.tabIndex = 0;
     visionOcrText.setAttribute("role", "button");
 
-    const visionOcrBadge = document.createElement("span");
-    visionOcrBadge.className = "library-image-vision-ocr-badge muted text-xs hidden";
 
     // Same clamp/toggle shape as captionText's/ocrText's above.
     const VISION_OCR_CLAMP_CHARS = 90;
@@ -5218,20 +6183,20 @@ function filterLibraryImagesGallery() {
     visionOcrToggle.type = "button";
     visionOcrToggle.className = "entry-more library-image-vision-ocr-more hidden";
     const visionOcrClamped = () =>
-      !libraryExpandedVisionOcr.has(image.id) &&
+      !libraryExpandedVisionOcr.has(mediaRowKey(image)) &&
       (image.vision_ocr_text || "").length > VISION_OCR_CLAMP_CHARS;
     const syncVisionOcrClamp = () => {
       visionOcrText.classList.toggle("library-image-vision-ocr-clamped", visionOcrClamped());
       const needsToggle = (image.vision_ocr_text || "").length > VISION_OCR_CLAMP_CHARS;
       visionOcrToggle.classList.toggle("hidden", !needsToggle);
-      visionOcrToggle.textContent = libraryExpandedVisionOcr.has(image.id)
+      visionOcrToggle.textContent = libraryExpandedVisionOcr.has(mediaRowKey(image))
         ? "Show less"
         : "Show more";
     };
     visionOcrToggle.addEventListener("click", (event) => {
       event.stopPropagation();
-      if (libraryExpandedVisionOcr.has(image.id)) libraryExpandedVisionOcr.delete(image.id);
-      else libraryExpandedVisionOcr.add(image.id);
+      if (libraryExpandedVisionOcr.has(mediaRowKey(image))) libraryExpandedVisionOcr.delete(mediaRowKey(image));
+      else libraryExpandedVisionOcr.add(mediaRowKey(image));
       syncVisionOcrClamp();
     });
 
@@ -5243,19 +6208,24 @@ function filterLibraryImagesGallery() {
       // tile that can be typed into for an image no model has read, and a
       // field you cannot see is a field you cannot use. (It used to hide
       // itself until a read had happened, which left the *offline* OCR
-      // empty-state as the only visible "text" box — the mix-up above.)
+      // empty-state as the only visible "text" box: the mix-up above.)
       visionOcrText.textContent =
-        text || (hasRun ? "No legible text found — click to edit" : "No text yet — click to add");
+        text || (hasRun ? "No legible text found, click to edit" : "No text yet, click to add");
       visionOcrText.classList.toggle("library-image-ocr-empty", !text);
       visionOcrText.title = text ? "Click to edit or clear this reading" : "Click to add text";
-      visionOcrBadge.textContent = hasRun ? `Read by ${shortModelName(model)}` : "";
-      visionOcrBadge.title = hasRun ? `Read by ${model}` : "";
-      visionOcrBadge.classList.toggle("hidden", !hasRun);
       visionOcrBtn.title = hasRun
         ? `Read the text in “${image.original_name}” again`
         : `Read any text in “${image.original_name}” with AI`;
       visionOcrBtn.setAttribute("aria-label", visionOcrBtn.title);
       syncVisionOcrClamp();
+      //: "Read by X" used to be a pill of its own here; it is half of the
+      //: card's one provenance line now.
+      syncProvenance();
+      //: The fold's summary line says whether this picture has any text in
+      //: it at all, and that line is built further down, after every handler
+      //: here has closed over its own state. Announced rather than called,
+      //: for the reason `setOcrState`'s own `mm:changed` records.
+      visionOcrText.dispatchEvent(new CustomEvent("mm:changed"));
     };
     setVisionOcrState(image.vision_ocr_text, image.vision_ocr_model);
 
@@ -5321,16 +6291,17 @@ function filterLibraryImagesGallery() {
 
     visionOcrBtn.addEventListener("click", async (event) => {
       event.stopPropagation();
+      //: Same reason as `ocrBtn`'s: the spinner has to be somewhere visible.
+      revealReading();
       visionOcrBtn.disabled = true;
       visionOcrText.replaceChildren(typingDots("Reading text…"));
-      visionOcrBadge.classList.add("hidden");
       try {
-        // force: true — a manual click always re-reads, the same "the user
+        // force: true: a manual click always re-reads, the same "the user
         // pressed the button" reasoning captionBtn's own force:true uses.
         const updated = await analyseMediaRow(image, "vision-ocr", { force: true });
         setVisionOcrState(updated.vision_ocr_text, updated.vision_ocr_model);
       } catch (error) {
-        // Restores whatever was there before this click — including
+        // Restores whatever was there before this click, including
         // re-hiding the box if this was the first-ever attempt and it
         // failed, rather than leaving an empty line visible forever.
         setVisionOcrState(image.vision_ocr_text, image.vision_ocr_model);
@@ -5342,7 +6313,7 @@ function filterLibraryImagesGallery() {
 
     // **One kebab, not five icons.** Reported directly: "it also seems like
     // there are two popup buttons on the images in the image library which do
-    // the same thing??" — and they nearly did. `ocrBtn` (ph:scan) and
+    // the same thing??", and they nearly did. `ocrBtn` (ph:scan) and
     // `visionOcrBtn` (ph:text-aa) are both "read the text in this image",
     // differing only in *which* reader, which an icon cannot say and a
     // tooltip only says once you have hovered both. A menu row has room for
@@ -5351,7 +6322,7 @@ function filterLibraryImagesGallery() {
     //: **And it is the app's own kebab now, not a second implementation of
     //: one.** Reported three times, most recently with two screenshots side
     //: by side: "the images subtab dropdown menus are still different from the
-    //: ones in the documents and all subtabs". They were — this menu was a
+    //: ones in the documents and all subtabs". They were: this menu was a
     //: `<details>` with its own list class, its own outside-click listener,
     //: its own reparent-to-body escape and its own 40-line placement
     //: function, while every other menu in the app is `kebabMenu()`. Two
@@ -5359,11 +6330,146 @@ function filterLibraryImagesGallery() {
     //: looking different, and no amount of matching the CSS by hand fixes the
     //: next difference. All of that is deleted; the five buttons keep their
     //: handlers and are driven from the shared menu's rows.
+    //: **A copy of the file itself.** Asked for as "better function" on the
+    //: Files rows (INBOX 115), and it was the one verb a file list has to
+    //: have that this one did not: nothing in the Library could get a file
+    //: back out of the notebook. The row already knows how to *read* a
+    //: document and where it is *used*; it could not hand you the bytes.
+    //:
+    //: An `<a download>` clicked from script rather than a fetch: the two
+    //: routes that serve these bytes already exist and already carry the
+    //: right filename (`/files/{id}` answers with
+    //: `Content-Disposition: attachment`), and `mediaSrc` puts the token on
+    //: the url, which is how every other direct link to media in this app is
+    //: authorised. `download` is what makes a `/media/{name}` row (served
+    //: `inline`) save rather than open, and it is same-origin, so it is
+    //: honoured.
+    const save = document.createElement("button");
+    save.type = "button";
+    save.className = "ghost small icon-button library-image-download";
+    save.title = `Save a copy of “${image.original_name}”`;
+    save.setAttribute("aria-label", save.title);
+    setLabel(save, "ph:download-simple");
+    save.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const link = document.createElement("a");
+      link.href = mediaSrc(image._isAttachment ? `/files/${image.id}` : image.url);
+      link.download = image.original_name || "file";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    });
+
+    //: **The card's own way into the picture at full size.** Reported as the
+    //: function half of INBOX 115: the tile opened the lightbox only by a
+    //: click on the thumbnail itself, which is a target nobody is told about
+    //: and the one target a card full of controls teaches you not to trust.
+    //: `openThisRow` is the same call that click makes, so there is still one
+    //: decision about what opening this row means.
+    //: Where a use goes, and what it looks like, said once. The card's menu
+    //: rows and the Files row's chips are two shapes for the same navigation
+    //: and they were two copies of this switch.
+    const useIcon = (use) =>
+      ({ note: "ph:note", document: "ph:file-text", board: "ph:squares-four" })[use.kind] ||
+      "ph:link";
+    const openUse = (use) => {
+      if (use.kind === "note") {
+        switchTab("notes");
+        flashEntry(use.id);
+      } else if (use.kind === "document") {
+        switchTab("documents");
+        openDocument(use.id);
+      } else if (use.kind === "board") {
+        openWhiteboardBoard(use.id ?? null);
+      }
+    };
+
+    const openBtn = document.createElement("button");
+    openBtn.type = "button";
+    openBtn.className = "ghost small library-image-open";
+    openBtn.title = image._isImage
+      ? `Open “${image.original_name}” at full size`
+      : `Open “${image.original_name}” page by page, beside the text`;
+    openBtn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      openThisRow();
+    });
+
+    //: **The reference, not the file.** The other half of "reuse a picture
+    //: you already have": the Library could hand you the bytes (Save a copy)
+    //: but not the one string that puts the picture into a note, which is
+    //: what the notebook actually runs on. Exactly the markdown the editor's
+    //: own upload writes (`![name](url)`, app.js), so a pasted reference and
+    //: an uploaded one are the same line.
+    //:
+    //: `MediaUpload` rows only. An `Attachment` is served at `/files/{id}`
+    //: and belongs to the note that holds it; handing out a reference to it
+    //: would be handing out a link that reads as an embed and is not one.
+    const copyRef = document.createElement("button");
+    copyRef.type = "button";
+    copyRef.className = "ghost small library-image-copy-ref";
+    copyRef.title = `Copy the markdown that puts “${image.original_name}” in a note`;
+    copyRef.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      const markdown = `![${image.original_name}](${image.url})`;
+      if (await copyToClipboard(markdown)) toast("Markdown reference copied.");
+    });
+
+    //: The description's own placeholder used to be a permanent row of every
+    //: card (see `syncCaptionVisibility`). This is where that row went: the
+    //: capability is the same click-to-edit field, reached by naming it.
+    //: **The reading is a row of the card only when there is a reading.** It
+    //: used to be a permanent grey "Text in this image" fold on every tile
+    //: including the ones nothing had ever read, which is the third of the
+    //: three rows INBOX 118 counted as saying nothing. This puts it back when
+    //: something is about to land in it, which is the one moment it is
+    //: needed. A function declaration, so the click handlers registered above
+    //: `fields` can call it once the card is built.
+    function revealReading() {
+      if (!visionField.isConnected) fields.append(visionField);
+      visionField.open = true;
+    }
+
+    //: Typing a reading by hand on a picture no reader has touched. The
+    //: always-visible empty box this replaces was itself the answer to a
+    //: report ("no text in it and I cant remove or edit the text??"), so the
+    //: capability is kept exactly and only its permanent row is spent.
+    const writeReading = document.createElement("button");
+    writeReading.type = "button";
+    writeReading.className = "ghost small library-image-write-reading";
+    writeReading.title = `Type the text that is in “${image.original_name}” yourself`;
+    writeReading.addEventListener("click", (event) => {
+      event.stopPropagation();
+      revealReading();
+      startEditingVisionOcr();
+    });
+
+    const writeCaption = document.createElement("button");
+    writeCaption.type = "button";
+    writeCaption.className = "ghost small library-image-write-caption";
+    writeCaption.title = `Type a description of “${image.original_name}” yourself`;
+    writeCaption.addEventListener("click", (event) => {
+      event.stopPropagation();
+      startEditingCaption();
+    });
+
     const menuActions = [
+      {
+        button: openBtn,
+        label: image._isImage ? "ph:arrows-out Open full size" : "ph:book-open-text Open reader",
+      },
+      ...(image._isAttachment
+        ? []
+        : [{ button: copyRef, label: "ph:code Copy markdown reference" }]),
+      { button: writeCaption, label: "ph:pencil-line Write a description" },
+      ...(image._isImage
+        ? [{ button: writeReading, label: "ph:keyboard Type the text in this picture" }]
+        : []),
       { button: rename, label: "ph:pencil-simple Rename" },
+      { button: save, label: "ph:download-simple Save a copy" },
       { button: captionBtn, label: "ph:sparkle Describe with AI" },
       { button: visionOcrBtn, label: "ph:text-aa Read text with AI" },
-      //: Left out entirely, not greyed, when the binary is missing — the
+      //: Left out entirely, not greyed, when the binary is missing, the
       //: lightbox menu (app.js) does the same, for the same report: "make
       //: sure all the fila and document ocr worfs with ai ocr models, I dont
       //: use tesseract." This app never installs that binary (by
@@ -5378,6 +6484,24 @@ function filterLibraryImagesGallery() {
       ...(image._isImage || ocrIsPdf(image)
         ? [{ button: ocrOpenBtn, label: "ph:selection-all See text on the page" }]
         : []),
+      //: **Every place this picture is used, by name.** Reported as the gap
+      //: in INBOX 115 ("no way to see which notes use it beyond one chip")
+      //: and sharpened by 118: where a file is used is a count you read at a
+      //: glance, not a row of chips the card pays for. The count stays on the
+      //: card as one line of plain text; the places themselves are rows of
+      //: the menu the card already has, which costs the card nothing at rest
+      //: and lifts the old four-chip cap at the same time.
+      ...(Array.isArray(image.used_by) ? image.used_by : []).slice(0, 6).map((use) => {
+        const go = document.createElement("button");
+        go.type = "button";
+        go.className = "ghost small library-image-goto";
+        go.title = `Open the ${use.kind} this file is used in`;
+        go.addEventListener("click", (event) => {
+          event.stopPropagation();
+          openUse(use);
+        });
+        return { button: go, label: `${useIcon(use)} Go to “${use.label}”` };
+      }),
       { button: del, label: "ph:trash Delete", danger: true },
     ];
     //: The row of controls the kebab lives in. Declared here because the
@@ -5390,12 +6514,12 @@ function filterLibraryImagesGallery() {
         label,
         title: button.title,
         //: The button's own disabled state carries through as the menu row's
-        //: muted state — `ocrBtn` is disabled when Tesseract is missing, and a
+        //: muted state: `ocrBtn` is disabled when Tesseract is missing, and a
         //: row that looks live and does nothing is worse than one that says so.
         disabled: button.disabled,
         danger,
-        //: `run` clicks the original button, so its handler — rename's inline
-        //: field, the two readers' spinners, delete's confirm — is still the
+        //: `run` clicks the original button, so its handler, rename's inline
+        //: field, the two readers' spinners, delete's confirm: is still the
         //: one thing that decides what happens.
         run: () => button.click(),
       })),
@@ -5406,7 +6530,7 @@ function filterLibraryImagesGallery() {
     // **Labelled, and separated.** Reported directly: "I feel the image
     // captions and ocr extractions should be separated and labeled, for the
     // ocr, it says 'No text found - click to add' but the extracted text is
-    // below that selectable box and not editable??" — which is exactly what
+    // below that selectable box and not editable??", which is exactly what
     // an unlabelled stack of three paragraphs produces. What the reader saw
     // was one field's empty-state sitting directly above another field's
     // filled value, with nothing to say they were different fields at all.
@@ -5425,29 +6549,90 @@ function filterLibraryImagesGallery() {
       return section;
     };
 
-    const captionField = field(
-      "Description",
-      captionText,
-      captionToggle,
-      captionBadge
-    );
+    //: **The description is the card's paragraph, not a labelled field.**
+    //: It keeps the section box (the click-to-edit paragraph and its More
+    //: toggle belong together) and loses the "Description" heading: with the
+    //: filename now on the picture and the readings folded away, this is the
+    //: only prose left on the card and nothing else could be mistaken for it.
+    captionField = document.createElement("section");
+    captionField.className = "library-image-field library-image-describe";
+    captionField.append(captionText);
+    syncCaptionVisibility();
     //: A PDF is not an image, and the heading said so anyway. Reported: "in
     //: the files tab, the ocr heading still says 'text in this image' when it
     //: should probably say something like 'extracted text from file'".
     //: `_isImage` is already set for every row by the gallery loader.
-    const visionField = field(
-      image._isImage ? "Text in this image" : "Text extracted from this file",
-      visionOcrText,
-      visionOcrToggle,
-      visionOcrBadge
-    );
+    //: **A file's reading is a summary and a way in, not a clamped
+    //: paragraph** (UI_MODERNISATION_PLAN Phase 7.5). Asked for directly: "the
+    //: card format is difficult with files as they can be quite long and
+    //: large, a single image or ocr caption doesnt fit them."
+    //:
+    //: An image keeps the editable, always-visible box: a photo's reading is a
+    //: line or two, correcting it in place is the whole point, and there is no
+    //: "page 3" to open. A document gets the one-line summary
+    //: (`mediaReadingSummary`) and an action that opens it where the reading
+    //: can actually be read, the lightbox, page beside text. Correcting a
+    //: document's reading was never really possible in a two-line clamp
+    //: anyway; the workspace edits it per page, which is where it belongs.
+    const summary = image._isImage ? null : mediaReadingSummary(image);
+    //: **Folded away, under one disclosure.** A transcription is the thing
+    //: you go looking for, not the thing you are shown: two clamped
+    //: paragraphs of it, each with its own label and its own Show more,
+    //: were four of the card's six ranks of information (INBOX 56). Closed
+    //: by default, and the app's own <details> recipe (details.tool-chip,
+    //: 02-chat-graph.css) so the marker and the caret read the same here as
+    //: in the chat transcript.
+    const visionField = document.createElement("details");
+    visionField.className = "library-image-reading";
+    //: Open across a rebuild, for the reason at `openRowReadings`.
+    visionField.open = openRowReadings.has(mediaRowKey(image));
+    visionField.addEventListener("toggle", () => {
+      if (visionField.open) openRowReadings.add(mediaRowKey(image));
+      else openRowReadings.delete(mediaRowKey(image));
+    });
+    const readingSummary = document.createElement("summary");
+    //: **One control, one question** (INBOX 118: the fold "puts two unrelated
+    //: facts in one control ... one of them is not a disclosure at all"). It
+    //: said "Used in 1 place · text found" for one revision, which is where
+    //: the file is *and* what is in it under a single caret. Where it is used
+    //: is a count, and a count is a line of text; this is the fold, and a
+    //: fold says what is folded.
+    //: **On a card the label is one word, because it has to fit beside the
+    //: count.** The two facts share a line now (`.library-image-meta`), and a
+    //: 180px tile leaves 161px for it: "Used in 2 places" is 85px of that and
+    //: "Text in this image" is a 128.8px chip, so the pair wrapped onto two
+    //: lines and the cards with a reading stood 38px taller inside than the
+    //: cards without, which is the unevenness the report is about. "Text" and
+    //: its caret are 58px, the pair is 149px, and every card in the gallery
+    //: then has the same two ranks whatever is in it. The full phrase is on the
+    //: control's own tooltip and is still the heading inside the fold, where
+    //: the reading it names is.
+    readingSummary.textContent = image._isImage ? "Text" : "Text extracted from this file";
+    if (image._isImage) {
+      visionField.classList.add("library-image-card-fold");
+      readingSummary.title = "Text found in this image";
+    }
+    const readingBody = document.createElement("div");
+    readingBody.className = "library-image-reading-body";
+    //: **The label moves inside the fold with the paragraph it names.** On an
+    //: image card the summary line above is now a line of facts about the
+    //: picture rather than the word "Text in this image", so the reading
+    //: needs its own name again once the fold is open, next to Tesseract's,
+    //: which has always had one. At rest neither label is on the card.
+    if (image._isImage) readingBody.append(field("Text in this image", visionOcrText, visionOcrToggle));
+    else readingBody.append(buildFileReadingSummary(image, summary, images));
+    visionField.append(readingSummary, readingBody);
     // The Tesseract reading is shown only when it actually found something.
     // Tesseract is a system binary this app never installs on its own (by
     // instruction, and `tesseract_available` in /models/status now says so
-    // up front rather than after a click) — so on most machines it is
+    // up front rather than after a click), so on most machines it is
     // permanently empty, and an empty second "no text found" box under a
     // filled one is the confusion this whole block exists to remove.
     // Reachable regardless from the kebab menu.
+    //: Tesseract's reading goes inside the same disclosure, under the vision
+    //: one: it is the same question ("what does this say"), answered by the
+    //: other reader, and a second top-level box asking it again is what made
+    //: the card read as a form.
     const ocrField = field("Also read with Tesseract OCR", ocrText, ocrToggle);
     const syncOcrFieldVisibility = () =>
       ocrField.classList.toggle("hidden", !(image.ocr_text || "").trim());
@@ -5455,14 +6640,22 @@ function filterLibraryImagesGallery() {
     ocrText.addEventListener("mm:changed", syncOcrFieldVisibility);
     // Running it from the menu reveals the field, so the result has somewhere
     // to appear even when the run finds nothing and says so.
-    ocrBtn.addEventListener("click", () => ocrField.classList.remove("hidden"));
+    ocrBtn.addEventListener("click", () => {
+      ocrField.classList.remove("hidden");
+      //: The field lives inside the fold now, so revealing it is not enough:
+      //: a result that lands in a closed <details> is a button that looks
+      //: like it did nothing. And on an image card the fold itself is only on
+      //: the card once there is a reading, so it has to be put back first.
+      revealReading();
+    });
 
+    readingBody.appendChild(ocrField);
     const fields = document.createElement("div");
     fields.className = "library-image-fields";
-    fields.append(captionField, visionField, ocrField);
+    fields.append(captionField, visionField);
 
     // **Where this file is actually used.** Asked for as the Files tab being
-    // "properly integrated" rather than just redesigned — and it was the one
+    // "properly integrated" rather than just redesigned, and it was the one
     // question the gallery could not answer. A card showed a thumbnail, a
     // filename and two empty prompts, so a wall of sixty uploads told you
     // nothing about what any of them were for, and getting from a file to the
@@ -5471,17 +6664,35 @@ function filterLibraryImagesGallery() {
     // Each chip opens the thing that references the file, so the gallery is a
     // way *into* the notebook rather than a dead end. Server-side
     // (`media_gc.usage_map`), built from the same `referenced_names` the
-    // orphan collector uses — if the two disagreed, a file this called "used"
+    // orphan collector uses: if the two disagreed, a file this called "used"
     // could be one the collector deletes.
     const usage = document.createElement("div");
     usage.className = "library-image-usage";
     const links = Array.isArray(image.used_by) ? image.used_by : [];
+    //: **The same fact, said once per layout.** A Files row reads left to
+    //: right and says "Used in" before its chips. An image card says the
+    //: count in its fold's own summary line and keeps the chips inside the
+    //: fold, so repeating the lead-in there would be the card saying the same
+    //: thing twice, which is the shape INBOX 115 is about.
+    //:
+    //: The cap goes with it: four chips is what one line of a Files row can
+    //: hold, and an image card's chips are behind a disclosure, where the
+    //: length costs nothing at rest. Reported as the gap: "no way to see
+    //: which notes use it beyond one chip".
+    const usageShown = image._isImage ? links : links.slice(0, 4);
+    const usageFact = links.length
+      ? (links.length === 1 ? "Used in 1 place" : `Used in ${links.length} places`)
+      : image.usage_incomplete
+        ? "Usage unknown"
+        : "Not used yet";
     if (links.length) {
-      const lead = document.createElement("span");
-      lead.className = "muted text-sm library-image-usage-lead";
-      lead.textContent = links.length === 1 ? "Used in" : `Used in ${links.length} places`;
-      usage.appendChild(lead);
-      for (const use of links.slice(0, 4)) {
+      if (!image._isImage) {
+        const lead = document.createElement("span");
+        lead.className = "muted text-sm library-image-usage-lead";
+        lead.textContent = links.length === 1 ? "Used in" : `Used in ${links.length} places`;
+        usage.appendChild(lead);
+      }
+      for (const use of usageShown) {
         const chip = document.createElement("button");
         chip.type = "button";
         chip.className = "chip chip-interactive library-image-usage-chip";
@@ -5502,34 +6713,39 @@ function filterLibraryImagesGallery() {
         });
         usage.appendChild(chip);
       }
-      if (links.length > 4) {
+      if (links.length > usageShown.length) {
         const more = document.createElement("span");
         more.className = "muted text-sm";
-        more.textContent = `+${links.length - 4} more`;
+        more.textContent = `+${links.length - usageShown.length} more`;
         usage.appendChild(more);
       }
     } else if (image.usage_incomplete) {
       // Not the same claim as "unused", and the difference matters: a locked
       // private note could not be read, so this file may well be in use.
       // Saying "not used anywhere" here would invite deleting something live.
+      //: The image card says "Usage unknown" in its summary line and spells
+      //: out why here, where there is room for the sentence.
       const note = document.createElement("span");
       note.className = "muted text-sm";
-      note.textContent = "Usage unknown — a locked private note could not be checked";
+      note.textContent = "Usage unknown: a locked private note could not be checked";
       usage.appendChild(note);
-    } else {
+    } else if (!image._isImage) {
       const note = document.createElement("span");
       note.className = "muted text-sm";
-      note.textContent = "Not used in any note, document or board yet";
+      //: One line, and the shortest true one: the card says where the file is
+      //: used or that it is not, and "in any note, document or board" spent a
+      //: whole line of a 180px card restating the three places it looked.
+      note.textContent = "Not used yet";
       usage.appendChild(note);
     }
 
     // `fields` (caption/vision-OCR/Tesseract-OCR boxes) is skipped entirely
-    // for an attachment tile, not just emptied — each of those is a
+    // for an attachment tile, not just emptied, each of those is a
     // click-to-edit control that saves through `/media/{id}/...` (see the
     // menuList comment above for why that id doesn't belong to this row),
     // and a caption box that looks editable but silently 404s on save is
     // worse than a tile with no caption box at all.
-    //: **The reading strip — the Files sub-tab's whole reason to look
+    //: **The reading strip: the Files sub-tab's whole reason to look
     //: different from the Images one.** Asked for directly: "because the ocr
     //: worspace exists, redesign the files library subtab and its
     //: capabilities." The workspace is where a document gets read; this list
@@ -5557,24 +6773,128 @@ function filterLibraryImagesGallery() {
         : "Open the reader and transcribe it";
       //: A *primary* control on the tile rather than a row in the kebab. The
       //: workspace only became worth putting a front door on once it could
-      //: find its own siblings — before that, opening it from here was a dead
+      //: find its own siblings, before that, opening it from here was a dead
       //: end you had to close to get anywhere.
       read.addEventListener("click", (event) => {
         event.stopPropagation();
         openOcrWorkspace(image, libraryImagesCache);
       });
       strip.appendChild(read);
-      fig.append(img, actions, cap, fileMetaLine(image), strip, usage, fields);
+      //: **One line of facts, not three stacked blocks** (INBOX 115: "the
+      //: files rows in files still needs some ui improvement and redesign").
+      //: Measured at 1440 before this: the text column is 1218px wide and
+      //: held five full-width blocks each carrying one short string, so a
+      //: single row stood 257px tall and four files filled the window. The
+      //: three muted ones, what the file is, whether it has been read, and
+      //: where it is used, are all short statements of fact about the same
+      //: file and read as one line; only the name above them and the
+      //: description below are their own rank. Wrapping, so a narrow window
+      //: gets the old stack back rather than a clipped row.
+      const facts = document.createElement("div");
+      facts.className = "library-file-facts";
+      facts.append(fileMetaLine(image), strip, usage);
+      fig.append(img, actions, cap, facts, fields, provenance);
       grid.appendChild(fig);
       continue;
     }
-    fig.append(img, actions, cap, usage, fields);
+    //: **The filename sits on the picture, not under it.** An image card is
+    //: a picture and what is known about it; the name is what the picture is
+    //: called, so it belongs to the picture (INBOX 56). A scrim behind it
+    //: keeps it legible over a light photograph without a second surface.
+    //: Files (the rows layout above) keep the name as a sibling: that layout
+    //: puts the thumbnail out of flow and lays the text out beside it.
+    const frame = document.createElement("div");
+    frame.className = "library-image-frame";
+    frame.append(img, cap);
+
+    //: **The bottom of an image card is a caption, not a form** (INBOX 115:
+    //: "the bottom of the image cards in the library images subsaection needs
+    //: a desperate redesign and funection").
+    //:
+    //: Measured before this at 1440x900, three cards seeded full, half and
+    //: empty: every card was 371.8px tall whatever it held, the picture was
+    //: 144px of that (38.7%) and 226.8px sat under it in four stacked blocks,
+    //: three of which said nothing at all on the empty card ("Not used yet",
+    //: "Add a description", "Text in this image"). A gallery of twenty cards
+    //: carried around two hundred controls.
+    //:
+    //: What the card says at rest is now what the card is: the picture, its
+    //: name on the picture, and the description of what is in it. Everything
+    //: else, where the file is used, what text is in it, and who wrote both,
+    //: is behind the one disclosure whose summary line is itself the answer
+    //: to "should I care about this one": how many places use it, and whether
+    //: there is any text in it.
+    //: **The count, as a line of text, only where there is a count.** Not a
+    //: control: nothing opens, nothing toggles, so nothing invites a click
+    //: that would do nothing. Where the places themselves are is in the
+    //: card's menu, a row each. A picture nothing uses says nothing, which is
+    //: the difference between a short card and a padded one: "Not used yet"
+    //: was a permanent row on the emptiest card in the gallery.
+    const uses = document.createElement("p");
+    //: `text-xs`, because a fact about a picture is not the picture's words:
+    //: unstyled, this paragraph rendered at 16px with 16px of user-agent
+    //: margin either side of it, over a 12px description. It is the smallest
+    //: type on the card now, which is the rank it holds.
+    uses.className = "library-image-uses muted text-xs";
+    uses.textContent = usageFact;
+    uses.title =
+      links.length
+        ? "Open the card's menu to go to any of them"
+        : "This picture is not in any note, document or board";
+
+    //: The byline goes with the reading, inside the fold. "Described by X,
+    //: read by Y" is a claim about where the card's words came from, not one
+    //: of the card's words, and it was two lines of model names on the
+    //: outside of every tile (INBOX 56, and again in the second design batch,
+    //: both times called noise). When there is no reading there is no fold,
+    //: and then the card does not carry it at all: the lightbox has shown
+    //: both bylines under the picture since long before this.
+    readingBody.append(provenance);
+
+    //: **What the bottom of the card is: the prose, then one line of facts.**
+    //: Reported a third time, 2026-09-13: "redesign the bottom text area of the
+    //: image cards in the library images subtab again", with the block reading
+    //: as "four unrelated rows of different weights". It was four: the filename
+    //: on the picture, the description, the count on its own row, and the fold
+    //: on a third. Measured at 1440 dark on the six seeded cards, the three
+    //: rows under the picture stood 38.4px, 16.8px and 31.6px tall at three
+    //: type sizes two pixels apart (13.6 / 12 / 11.2), and the number of rows
+    //: differed from card to card, so the foot ran 9.6px to 115.5px across one
+    //: gallery row.
+    //:
+    //: Two ranks now, and the decision the plan records ("a fact is a line of
+    //: text, a disclosure is a control, and neither is the other") is kept:
+    //: they are still two objects, one you read and one you press, they simply
+    //: share a line, the way the Files rows' own facts line already puts the
+    //: kind, the reading and the usage on one (`.library-file-meta`). One
+    //: control holding both facts is what INBOX 118 called unprofessional, and
+    //: that is not what this is.
+    //:
+    //: `fields` was built above for the Files rows, which stack the same two
+    //: blocks unconditionally; an image card composes its own.
+    fields.replaceChildren(captionField);
+    const metaRow = document.createElement("div");
+    //: The shared class plus a handle of its own, which is how all three of
+    //: the Library's facts lines are built (`metaLine` above does the same for
+    //: the Files rows and the saved links): the rank comes from the one rule,
+    //: the handle carries only what this layout needs.
+    metaRow.className = "library-file-meta library-image-meta";
+    if (links.length || image.usage_incomplete) metaRow.append(uses);
+    if ((image.vision_ocr_text || "").trim() || (image.ocr_text || "").trim()) {
+      metaRow.append(visionField);
+    }
+    //: Nothing to say, no line: a picture nobody has used and nothing has read
+    //: keeps the short foot it has now rather than an empty row holding the
+    //: rhythm open.
+    if (metaRow.children.length) fields.append(metaRow);
+
+    fig.append(frame, actions, fields);
     grid.appendChild(fig);
   }
 }
 
 // The Library's own sub-tab switcher, plus the Documents/Media sub-tabs'
-// refresh, search and upload controls — moved here from whiteboard.js's
+// refresh, search and upload controls, moved here from whiteboard.js's
 // DOMContentLoaded listener (see this file's header). Still wrapped in its
 // own DOMContentLoaded, matching where it came from; every other file in
 // this split registers its top-level listeners as bare statements instead
@@ -5584,7 +6904,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const librarySubtabs = document.getElementById("library-subtabs");
   if (librarySubtabs) {
     const buttons = librarySubtabs.querySelectorAll("button");
-    // "library-view-documents" is the *All* view — it kept its id when it was
+    // "library-view-documents" is the *All* view, it kept its id when it was
     // renamed, because the id is referenced from several places and a rename
     // buys nothing. "library-view-docs" is the new documents-only section.
     // "library-view-drafts" is gone: drafts became a chip in the All view's
@@ -5606,7 +6926,7 @@ document.addEventListener("DOMContentLoaded", () => {
         btn.setAttribute("aria-selected", "true");
 
         const targetId = btn.getAttribute("data-target");
-        // Same {tab, section} shape showNotesSection already records —
+        // Same {tab, section} shape showNotesSection already records, 
         // ROADMAP.md §88.1 item 7 / live-list item 13: Library's own
         // sub-tabs were the one gap in "back/forward handles sub-tabs too"
         // that was already scoped and located, not newly discovered here.
@@ -5629,7 +6949,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
           stopLibraryImagesPoll();
           if (targetId === "library-view-whiteboard") {
-            // Lands on the boards gallery, not straight onto a canvas — one
+            // Lands on the boards gallery, not straight onto a canvas, one
             // door onto the whiteboard, asked for directly, replacing the
             // old always-opens-the-last-board behaviour.
             wbShowBoardsLanding();
@@ -5657,7 +6977,7 @@ document.addEventListener("DOMContentLoaded", () => {
   $("library-docs-refresh")?.addEventListener("click", renderLibraryDocuments);
   $("library-docs-new")?.addEventListener("click", async () => {
     const doc = await createDocumentNamed();
-    // switchTab first, then open — the same fix openDoc() above needed
+    // switchTab first, then open, the same fix openDoc() above needed
     // ("the documents subtab document cards don't even do anything"): the
     // document was created and loaded into the editor correctly, but the
     // Documents page stayed hidden behind the Library tab, so nothing
@@ -5724,19 +7044,29 @@ document.addEventListener("DOMContentLoaded", () => {
       form.append("file", file);
       // Asked for directly: OCR/captioning/vision-OCR must not run on a
       // staged upload that never gets saved into a note, document or sent
-      // chat message — but the Library's own "Upload images" button has no
+      // chat message: but the Library's own "Upload images" button has no
       // separate staging step at all, so this upload IS the commit
       // (routes_files.py's upload_media, and core/media_process.py's own
       // docstring, name this exact case).
       form.append("direct", "true");
       try {
-        // A bare headers override, not apiJson's default — a FormData body
+        // A bare headers override, not apiJson's default: a FormData body
         // needs the browser to set its own multipart boundary in
         // Content-Type; apiJson's own "application/json" default would
         // fight it (the same fix handleFileUpload's upload already needed).
+        //: **X-Workspace-ID alongside the token, and it is not decoration.**
+        //: A new row takes its space from `session.info["workspace_id"]`
+        //: (core/database.py's before-flush hook), which is set from this
+        //: header, so an upload sent without it is written with the model
+        //: default, "default". Measured: the same upload lands in `space-b`
+        //: with the header and in `default` without it, which means a picture
+        //: added while working in a space vanished from that space's Library
+        //: the moment it was uploaded. `apiJson` adds this header to every
+        //: call it makes; a hand-rolled fetch has to add it itself, and the
+        //: lint that was supposed to catch that only read app.js.
         const response = await fetch("/media/upload", {
           method: "POST",
-          headers: { "X-Auth-Token": authToken() },
+          headers: { "X-Auth-Token": authToken(), "X-Workspace-ID": activeSpaceId() },
           body: form,
         });
         const body = await response.json();
@@ -5770,7 +7100,7 @@ document.addEventListener("DOMContentLoaded", () => {
       groupInput.value = "";
       urlInput.focus();
       if (created.duplicate_of) {
-        toast(`Saved — you already had this link (${created.title || created.url}).`);
+        toast(`Saved: you already had this link (${created.title || created.url}).`);
       }
       renderBookmarks();
     } catch (error) {
@@ -5806,7 +7136,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!outline) return;
     //: Reads the sections rather than a flag of its own: the button's job is
     //: "make them all the same", and whether that means folding or unfolding
-    //: depends on what is on screen right now — which the user may have
+    //: depends on what is on screen right now, which the user may have
     //: changed one section at a time since the last press.
     const anyOpen = [...outline.querySelectorAll(".contents-heading")].some(
       (h) => h.getAttribute("aria-expanded") === "true",
@@ -5814,21 +7144,27 @@ document.addEventListener("DOMContentLoaded", () => {
     for (const heading of outline.querySelectorAll(".contents-heading")) {
       if ((heading.getAttribute("aria-expanded") === "true") === anyOpen) heading.click();
     }
-    event.currentTarget.textContent = anyOpen ? "Expand all" : "Collapse all";
+    //: The words only, not the whole button. This control now lives in the
+    //: dock's `...` menu, where it carries an icon beside its label, and
+    //: writing `textContent` on the button replaced that icon with a bare
+    //: string on the first press. The span is the label; the button is the
+    //: fallback for anywhere this markup is simpler.
+    const label = event.currentTarget.querySelector("[data-collapse-label]") || event.currentTarget;
+    label.textContent = anyOpen ? "Expand all" : "Collapse all";
   });
 });
 
 // --- Multi-select for Boards, Links and Contents (asked for directly: "in
 // many of the library subtabs… there is no way to multi select") ----------
 //
-// The Documents and Files/Images sub-tabs already had this — a tick per
-// item, a count, a bulk Delete — because it shipped with them, bar and all,
+// The Documents and Files/Images sub-tabs already had this, a tick per
+// item, a count, a bulk Delete, because it shipped with them, bar and all,
 // in index.html. These three sub-tabs did not, so the bar itself (same
 // markup, same `.library-contextbar` class those two already use) is built
 // here at runtime instead of pasting three more near-identical copies into
 // index.html.
 //
-// One shared count/visibility sync, reused by all three selections below —
+// One shared count/visibility sync, reused by all three selections below, 
 // syncLibraryMediaSelectbar/syncLibraryDocsSelectbar above are this same
 // six-line shape typed out twice already; a third and fourth copy is what
 // this generalises instead of repeating again.
@@ -5840,8 +7176,8 @@ function syncSelectbarCount(idPrefix, n) {
   count.textContent = `${n} selected`;
 }
 
-//: Builds one `.library-contextbar` — the same element `#library-docs-selectbar`
-//: and `#library-media-selectbar` already are in index.html — so a sub-tab
+//: Builds one `.library-contextbar`, the same element `#library-docs-selectbar`
+//: and `#library-media-selectbar` already are in index.html, so a sub-tab
 //: that never had one gets the identical bar rather than a fourth visual
 //: treatment for "items are selected".
 function createLibrarySelectbar(idPrefix, ariaLabel) {
@@ -5872,12 +7208,12 @@ function createLibrarySelectbar(idPrefix, ariaLabel) {
 
 // --- Boards & maps: the one sub-tab of the three whose gallery is built by
 // whiteboard.js (renderLibraryBoardsGallery), which this file does not own
-// and does not edit. Its cards carry no id in the DOM — nothing needed one
-// until now — so the tick is grafted on from here via a MutationObserver on
+// and does not edit. Its cards carry no id in the DOM, nothing needed one
+// until now: so the tick is grafted on from here via a MutationObserver on
 // the grid whiteboard.js already tears down and rebuilds on every render,
 // rather than by changing what that function builds. -----------------------
 
-//: Keyed by board id (never `null` — the default scratch board is not a real
+//: Keyed by board id (never `null`, the default scratch board is not a real
 //: Entry and cannot be deleted; see attachBoardTick).
 const libraryBoardsSelection = new Map();
 
@@ -5885,8 +7221,8 @@ const libraryBoardsSelection = new Map();
 //: the exact same filter (the search box's current value, the same
 //: `wbLastCreatedBoard` patch-in that function does) so the *n*th tick lines
 //: up with the *n*th card the observer below just saw appended. If the
-//: counts don't match — the grid mutated again while this fetch was in
-//: flight — this bails rather than tick the wrong board; the next mutation
+//: counts don't match: the grid mutated again while this fetch was in
+//: flight: this bails rather than tick the wrong board; the next mutation
 //: (the very next render) retries it.
 async function syncLibraryBoardsTicks() {
   const grid = document.getElementById("library-boards-grid");
@@ -5898,7 +7234,10 @@ async function syncLibraryBoardsTicks() {
   }
   let boards;
   try {
-    boards = await apiJson("/whiteboard/boards", { silent: true });
+    // The same full read the gallery itself does (`wbRenderBoardGallery`):
+    // this matches rows against the cards already on screen, so a first page
+    // would leave every card past it unmatched.
+    boards = await apiPagedList("/whiteboard/boards", 200, { silent: true });
   } catch {
     return;
   }
@@ -5906,7 +7245,7 @@ async function syncLibraryBoardsTicks() {
   const created = window.wbLastCreatedBoard;
   if (created && !boards.some((b) => b.id === created.id)) boards.push({ ...created });
   const needle = (document.getElementById("library-boards-search")?.value || "").trim().toLowerCase();
-  //: The gallery's own filter *and* sort, not a second copy of the filter —
+  //: The gallery's own filter *and* sort, not a second copy of the filter, 
   //: see `wbVisibleBoards` (whiteboard.js). Ordering is part of "the exact
   //: same filter" this function's comment above requires: the counts still
   //: match under a reorder, so a private copy would silently tick the wrong
@@ -5928,7 +7267,7 @@ function attachBoardTick(card, board) {
   if (!top) return;
   const existing = top.querySelector(".library-card-tick");
   // The default board (id === null) isn't a note and can't be renamed or
-  // deleted — renderLibraryBoardsGallery's own comment says so, right where
+  // deleted: renderLibraryBoardsGallery's own comment says so, right where
   // it skips giving it a ⋯ menu at all. No tick for the same reason an
   // activity row gets no tick in the "All" library view: a Delete that can
   // never do anything is worse than no checkbox.
@@ -5966,7 +7305,7 @@ async function bulkDeleteLibraryBoards() {
   const boards = [...libraryBoardsSelection.values()];
   if (!boards.length) return;
   // Same wording renderLibraryBoardsGallery's own per-board Delete already
-  // uses (whiteboard.js) — a board goes through `DELETE /entries/{id}` same
+  // uses (whiteboard.js): a board goes through `DELETE /entries/{id}` same
   // as that single-item menu action, so the two must not promise different
   // things about whether it comes back.
   if (
@@ -6003,7 +7342,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("library-boards-clear-selection").addEventListener("click", clearLibraryBoardsSelection);
     // whiteboard.js calls `grid.replaceChildren()` then re-appends every
     // card on each render (a fresh board, a rename, the search box, "+ New
-    // board") — this is the one hook available from outside that file that
+    // board"), this is the one hook available from outside that file that
     // fires exactly then, without this file calling into or duplicating
     // renderLibraryBoardsGallery's own logic.
     new MutationObserver(() => { syncLibraryBoardsTicks(); }).observe(boardsGrid, { childList: true });
@@ -6017,7 +7356,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("library-links-clear-selection").addEventListener("click", clearLibraryLinksSelection);
   }
 
-  //: The Contents outline had a selection bar here. It went with its ticks —
+  //: The Contents outline had a selection bar here. It went with its ticks, 
   //: see the note in the outline builder: a table of contents is for finding
   //: your place, not for bulk-editing. Nothing could reach the bar any more,
   //: and a set of actions for a selection that can never be made is worse
@@ -6030,7 +7369,7 @@ document.addEventListener("DOMContentLoaded", () => {
 let bookmarksCache = [];
 let bookmarkGroupFilter = null; // null = all groups
 
-//: Which links are ticked, keyed by bookmark id — its own Map so a selection
+//: Which links are ticked, keyed by bookmark id, its own Map so a selection
 //: here can never leak into another sub-tab's bulk delete, the same reasoning
 //: mediaRowKey's own comment gives for libraryMediaSelection.
 const libraryLinksSelection = new Map();
@@ -6046,7 +7385,7 @@ async function renderBookmarks() {
     return;
   }
   // A reload can drop a link that was ticked (deleted from its own ⋯, or by
-  // the bulk action just below) — same prune renderLibraryDocuments does for
+  // the bulk action just below), same prune renderLibraryDocuments does for
   // libraryDocsSelection, and for the same reason: otherwise the bar's count
   // goes on including a row that no longer exists.
   const liveLinkIds = new Set(bookmarksCache.map((b) => b.id));
@@ -6089,7 +7428,7 @@ async function bulkDeleteLibraryLinks() {
 }
 
 //: **A group is a name on a bookmark, not a row in a table.** There is no
-//: group entity anywhere in the backend — `routes_bookmarks.py` stores
+//: group entity anywhere in the backend, `routes_bookmarks.py` stores
 //: `group_name` as a plain string field on each link, and the chips are
 //: derived from whatever names the current links happen to carry. That is a
 //: good model (nothing to garbage-collect, no join to keep honest), but it
@@ -6110,7 +7449,7 @@ function emptyBookmarkGroups() {
     return Array.isArray(parsed) ? parsed.filter((g) => typeof g === "string" && g) : [];
   } catch {
     // A hand-edited or half-written value must not take the whole sub-tab
-    // down with it — an unreadable preference is the same as none.
+    // down with it: an unreadable preference is the same as none.
     return [];
   }
 }
@@ -6135,7 +7474,7 @@ function allBookmarkGroups() {
 }
 
 //: Rename a group across every link carrying it. One PUT per link, because
-//: that is the only endpoint there is — there is no bulk update and no group
+//: that is the only endpoint there is, there is no bulk update and no group
 //: row to rename instead. Sequential rather than Promise.all so a notebook
 //: with a hundred links in one group does not open a hundred sockets at once;
 //: a rename is rare and a moment of latency is cheaper than a thundering herd.
@@ -6159,7 +7498,7 @@ async function renameBookmarkGroup(from, to) {
   return moved;
 }
 
-//: Deleting a group deletes the *grouping*, never the links — clearing the
+//: Deleting a group deletes the *grouping*, never the links, clearing the
 //: name on each one drops them back into the ungrouped pile. Deleting the
 //: links themselves is what the row ticks and the bulk bar are for, and
 //: conflating the two here would make a tidy-up destructive by surprise.
@@ -6177,8 +7516,8 @@ async function newBookmarkGroup() {
     return;
   }
   setEmptyBookmarkGroups([...emptyBookmarkGroups(), name]);
-  // Pre-fill the Add form so the obvious next move — saving a link into the
-  // group you just made — needs no second trip to the group field.
+  // Pre-fill the Add form so the obvious next move, saving a link into the
+  // group you just made, needs no second trip to the group field.
   const groupInput = $("bookmark-group-input");
   if (groupInput) groupInput.value = name;
   bookmarkGroupFilter = name;
@@ -6188,7 +7527,7 @@ async function newBookmarkGroup() {
 
 //: The manage dialog. Built by hand rather than reusing confirmDialog because
 //: it is a list with two actions per row, and it re-renders itself in place
-//: after each one — reopening it after every rename would lose your place.
+//: after each one: reopening it after every rename would lose your place.
 function manageBookmarkGroups() {
   const overlay = document.createElement("div");
   overlay.className = "modal-overlay confirm-overlay";
@@ -6263,7 +7602,7 @@ function manageBookmarkGroups() {
           const ok = await confirmDialog(
             count === 0
               ? `Delete the empty group "${group}"?`
-              : `Delete the group "${group}"? Its ${count} link${count === 1 ? "" : "s"} stay — they just stop being grouped.`
+              : `Delete the group "${group}"? Its ${count} link${count === 1 ? "" : "s"} stay: they just stop being grouped.`
           );
           if (!ok) return;
           await deleteBookmarkGroup(group);
@@ -6318,7 +7657,7 @@ function renderBookmarkGroupChips() {
     const chipEl = document.createElement("button");
     chipEl.type = "button";
     chipEl.className = `library-chip${bookmarkGroupFilter === group ? " active" : ""}`;
-    // "Work/Reading" renders as "Work / Reading" — the "/" is a grouping
+    // "Work/Reading" renders as "Work / Reading", the "/" is a grouping
     // convention for the user to type, not meant to display as a raw slash.
     chipEl.textContent = group.split("/").join(" / ");
     chipEl.addEventListener("click", () => { bookmarkGroupFilter = group; renderBookmarkGroupChips(); filterBookmarks(); });
@@ -6326,7 +7665,7 @@ function renderBookmarkGroupChips() {
   }
 }
 
-//: Sorting for the Links sub-tab — the Library's sub-tabs were reported as
+//: Sorting for the Links sub-tab, the Library's sub-tabs were reported as
 //: "missing sorting and filtering options", and this is the same local,
 //: no-round-trip approach the media gallery uses: the list is already in
 //: memory, so ordering it is a reorder rather than a request.
@@ -6418,29 +7757,52 @@ function bookmarkRow(bookmark) {
   });
   row.appendChild(tick);
 
+  //: **A mark, so a list of links reads as a list of links.** The Timeline's
+  //: rows carry one for the same reason: a column of rows with nothing at
+  //: their left edge but a tick box is a table, and the owner's ask here was
+  //: for these to look less like one. A glyph rather than a favicon, because
+  //: this app fetches nothing from the internet: a favicon is a request to
+  //: every site you have ever saved, which is the one thing an offline
+  //: notebook must not do.
+  const mark = document.createElement("span");
+  mark.className = "bookmark-mark";
+  mark.setAttribute("aria-hidden", "true");
+  setLabel(mark, bookmark.pinned ? "ph:push-pin" : "ph:link-simple");
+  row.appendChild(mark);
+
   const main = document.createElement("div");
   main.className = "bookmark-main";
+  //: **Two ranks, not four lines.** Before this the row stacked the title, the
+  //: whole address, the group and the note, each its own full-width line at
+  //: its own weight: measured at 1440, a row with a group stood 89.2px against
+  //: 67.2px for one without, so no two rows in the list were the same height,
+  //: and five type sizes met inside one of them (16px title over 12px address
+  //: over two more 12px lines with an icon at 13.8px). The title is the row;
+  //: the site, the group and the note are facts about it and share one line at
+  //: one size, the same `.library-file-meta` the Files rows use.
+  const address = bookmarkAddress(bookmark.url);
   const link = document.createElement("a");
+  link.className = "bookmark-title";
   link.href = bookmark.url;
   link.target = "_blank";
   link.rel = "noopener noreferrer";
-  link.textContent = bookmark.title || bookmark.url;
-  const urlLine = document.createElement("div");
-  urlLine.className = "muted text-sm bookmark-url";
-  urlLine.textContent = bookmark.url;
-  main.append(link, urlLine);
-  if (bookmark.group_name) {
-    const groupLine = document.createElement("div");
-    groupLine.className = "muted text-sm bookmark-group-label";
-    setLabel(groupLine, `ph:folder-simple ${bookmark.group_name.split("/").join(" / ")}`);
-    main.appendChild(groupLine);
-  }
-  if (bookmark.note) {
-    const noteLine = document.createElement("div");
-    noteLine.className = "muted text-sm";
-    noteLine.textContent = bookmark.note;
-    main.appendChild(noteLine);
-  }
+  link.textContent = bookmark.title || address.host;
+  link.title = bookmark.url;
+  main.append(
+    link,
+    metaLine(
+      [
+        //: A link saved without a title is named by its site, and then the
+        //: facts line saying the site again is the row saying one thing twice:
+        //: it says which page on it instead, which is the part the title is
+        //: not carrying.
+        bookmark.title ? address.host : address.rest,
+        bookmark.group_name ? bookmark.group_name.split("/").join(" / ") : "",
+        bookmark.note,
+      ],
+      "bookmark-meta",
+    ),
+  );
 
   const actions = document.createElement("div");
   actions.className = "row bookmark-actions";
@@ -6451,10 +7813,11 @@ function bookmarkRow(bookmark) {
   pin.title = bookmark.pinned ? "Unpin" : "Pin to the top";
   pin.setAttribute("aria-label", pin.title);
   // No "-fill" pin glyph in this app's bundled Phosphor set (checked: the
-  // font only has push-pin/-slash/-simple/-simple-slash) — reported live as
+  // font only has push-pin/-slash/-simple/-simple-slash), reported live as
   // a blank icon before this went out. `-slash` for "already pinned, click
   // to undo" is the same pairing the pinned-chat button already uses.
   setLabel(pin, `ph:${bookmark.pinned ? "push-pin-slash" : "push-pin"}`);
+  pin.classList.toggle("bookmark-pinned", Boolean(bookmark.pinned));
   pin.addEventListener("click", async () => {
     await apiJson(`/bookmarks/${bookmark.id}`, {
       method: "PUT",
@@ -6463,12 +7826,6 @@ function bookmarkRow(bookmark) {
     renderBookmarks();
   });
 
-  const edit = document.createElement("button");
-  edit.type = "button";
-  edit.className = "ghost small icon-only";
-  edit.title = "Edit";
-  edit.setAttribute("aria-label", "Edit this link");
-  setLabel(edit, "ph:pencil-simple");
   // **An inline form, not a chain of prompts.** This was two sequential
   // `promptDialog` calls (title, then URL) and was reported as "I still
   // can't edit the link URLs" five separate times. The flow was driven
@@ -6485,7 +7842,11 @@ function bookmarkRow(bookmark) {
   // fields are visible at once, nothing is sequenced, nothing depends on
   // focus returning correctly between modals, and what you are editing
   // stays on screen next to the form.
-  edit.addEventListener("click", () => {
+  //
+  //: A named function rather than a listener on a button of its own: the four
+  //: verbs this row carried are a kebab now (see below), and a menu row runs a
+  //: function.
+  const startEditing = () => {
     if (row.querySelector(".bookmark-edit-form")) return; // already editing
     const form = document.createElement("form");
     form.className = "bookmark-edit-form";
@@ -6518,7 +7879,18 @@ function bookmarkRow(bookmark) {
     save.textContent = "Save";
     const cancel = document.createElement("button");
     cancel.type = "button";
-    cancel.className = "ghost small icon-only";
+    // Owner: "the links edit save and cancel buttons arent consistent."
+    // `icon-only` forces a square button (aspect-ratio: 1, see
+    // 00-tokens-shell.css), which is right for a button whose only content
+    // is a glyph and wrong here: this button's content is the word
+    // "Cancel". Measured before this fix: Save 62.6x28 against Cancel
+    // 56.2x56.2, a pill beside a near-square, not the "same radius, height
+    // and padding, only the fill differs" pair DESIGN.md's button ramp
+    // describes (filled `button` for the one action a surface is for, tonal
+    // `.ghost` beside it for everything else). Plain `.ghost.small` matches
+    // `.small` on both, the same pairing `.small`/`.ghost.small` already
+    // uses everywhere else an edit row offers Save next to Cancel.
+    cancel.className = "ghost small";
     cancel.textContent = "Cancel";
     buttons.append(save, cancel);
     form.appendChild(buttons);
@@ -6559,20 +7931,14 @@ function bookmarkRow(bookmark) {
     row.appendChild(form);
     urlInput.focus();
     urlInput.select();
-  });
+  };
 
-  const group = document.createElement("button");
-  group.type = "button";
-  group.className = "ghost small icon-only";
-  group.title = "Move to group";
-  group.setAttribute("aria-label", "Move this link to a group");
-  setLabel(group, "ph:folder-simple");
-  group.addEventListener("click", async () => {
+  const moveToGroup = async () => {
     const value = await promptDialog(
-      "Group (e.g. Work/Reading — blank clears it):", bookmark.group_name
+      "Group (e.g. Work/Reading: blank clears it):", bookmark.group_name
     );
     // Unlike the title prompt above, an intentionally blank group is a real,
-    // useful answer ("ungroup this link") — so only an actual Cancel/Escape
+    // useful answer ("ungroup this link"), so only an actual Cancel/Escape
     // is ignored here, not an emptied field. promptDialog resolves "" for
     // both, so there's genuinely no way to tell them apart from its return
     // value alone; this trades "can't ungroup via Escape" for "can ungroup
@@ -6583,32 +7949,50 @@ function bookmarkRow(bookmark) {
       body: JSON.stringify({ group_name: value }),
     });
     renderBookmarks();
-  });
+  };
 
-  const remove = document.createElement("button");
-  remove.type = "button";
-  remove.className = "ghost small icon-only";
-  remove.title = "Delete";
-  remove.setAttribute("aria-label", "Delete this link");
-  setLabel(remove, "ph:trash");
-  remove.addEventListener("click", async () => {
+  const removeBookmark = async () => {
     const ok = await confirmDialog(`Delete "${bookmark.title || bookmark.url}"?`);
     if (!ok) return;
     await apiJson(`/bookmarks/${bookmark.id}`, { method: "DELETE" });
     renderBookmarks();
-  });
+  };
 
-  actions.append(pin, edit, group, remove);
+  //: **Two controls on a row at rest, not four** (the owner, 2026-09-13:
+  //: "redesign the links cards/rows ... to make them look nicer and more
+  //: modern??"). Four icon buttons at the far end of every row is 32 buttons
+  //: in a list of eight, and it is the shape UI_MODERNISATION_PLAN settled for
+  //: the Files rows a pass ago ("the last three live in the kebab, which is
+  //: where every other list in this app puts them"). Pin stays out, because it
+  //: is a state you can see rather than a verb you go looking for: the row's
+  //: mark shows it too. Copy link is new and was the gap: nothing in the
+  //: Library could get a URL back out of the notebook.
+  const menu = kebabMenu(
+    [
+      makeMenuItem("ph:pencil-simple Edit this link", "Change the title, address or group", startEditing),
+      makeMenuItem("ph:folder-simple Move to group", "Move this link to a group", moveToGroup),
+      makeMenuItem("ph:copy Copy link", "Copy the address to the clipboard", async () => {
+        //: `copyToClipboard` flashes the button it is given, and a menu row is
+        //: gone by the time it would: it says so in a toast instead, the same
+        //: way every other copy in a menu does.
+        if (await copyToClipboard(bookmark.url)) toast("Link copied.");
+      }),
+      { ...makeMenuItem("ph:trash Delete", "Delete this link", removeBookmark), danger: true },
+    ],
+    `Actions for ${bookmark.title || bookmark.url}`,
+  );
+
+  actions.append(pin, menu);
   row.append(main, actions);
   return row;
 }
 
 // --- Contents (§30): a hyperlinked outline of the notebook's own
-// structure — categories and tags, each with what's filed under it. The
+// structure: categories and tags, each with what's filed under it. The
 // force-directed, spatial visualisation already lives in the Graph tab;
 // this is the fast, scannable list half of the same ask. Built entirely
 // from `allEntries` (already loaded for the Notes tab) rather than a new
-// endpoint — the same data, grouped differently client-side. -----------
+// endpoint: the same data, grouped differently client-side. -----------
 
 let contentsMode = "category";
 //: Which sections are folded, by their heading. Kept per grouping mode,
@@ -6626,7 +8010,7 @@ const contentsCollapsed = {
 const CONTENTS_GROUP_CAP = 200;
 
 //: **This is an index, not a set of cards.** It used to be a masonry of
-//: bordered boxes, each with its own 14rem scroller — asked for directly:
+//: bordered boxes, each with its own 14rem scroller, asked for directly:
 //: "I think cards are overly used and used too much… i want to redesign the
 //: contents subtab".
 //:
@@ -6634,7 +8018,7 @@ const CONTENTS_GROUP_CAP = 200;
 //: shape below rather than a restyle of the old one:
 //:
 //: 1. **A card is a claim that its contents are one object you can act on.**
-//:    A category is not — it is a heading. Boxes made twenty headings look
+//:    A category is not, it is a heading. Boxes made twenty headings look
 //:    like twenty things to click.
 //: 2. **Each box scrolled on its own.** A category of 25 notes showed five
 //:    rows and hid twenty behind a nested scrollbar inside an already
@@ -6643,7 +8027,7 @@ const CONTENTS_GROUP_CAP = 200;
 //:    way an index in a book works.
 //: 3. **There was no way to find anything.** An index of 400 rows without a
 //:    filter or a jump bar is a wall, so both are here now, plus grouping by
-//:    month — half of "where is that note" is *when* you wrote it.
+//:    month: half of "where is that note" is *when* you wrote it.
 function contentsGroups(entries) {
   const groups = new Map();
   const addTo = (key, entry) => {
@@ -6660,14 +8044,14 @@ function contentsGroups(entries) {
     //: and md file trees … is I think the largest gap that is missing right
     //: now." An imported note carries the path it came from
     //: (`Entry.source_path`); everything written in this app has none, and
-    //: those group under one heading rather than being hidden — a mode that
+    //: those group under one heading rather than being hidden, a mode that
     //: silently drops most of the notebook reads as broken.
     for (const entry of entries) {
       const path = entry.source_path || "";
       const folder = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
       //: **"(written here)" said nothing to the person reading it.** Reported:
       //: *"idk what (written here) is. are there even folders?? how do I make
-      //: them??"* — three fair questions, and the label answered none of
+      //: them??"*, three fair questions, and the label answered none of
       //: them. It is not a folder you can make: folders in this app are the
       //: directories of an imported Obsidian vault, and a note typed into
       //: MemoryMap has no path at all. The heading now says that.
@@ -6677,7 +8061,7 @@ function contentsGroups(entries) {
     for (const entry of entries) {
       const when = new Date(entry.created_at || entry.updated_at || Date.now());
       //: A sortable key ("2026-03") with a readable label built from it, so
-      //: months order by time rather than alphabetically — "April" before
+      //: months order by time rather than alphabetically, "April" before
       //: "January" is the classic version of this bug.
       const key = Number.isNaN(when.valueOf())
         ? "Undated"
@@ -6691,7 +8075,7 @@ function contentsGroups(entries) {
 }
 
 //: The two synthetic folder headings. Named constants because three places
-//: need to agree on them — the grouper, the ordering (they sort last) and the
+//: need to agree on them, the grouper, the ordering (they sort last) and the
 //: explanation shown when they are all there is.
 const CONTENTS_NO_FOLDER = "Written in MemoryMap (no folder)";
 const CONTENTS_VAULT_ROOT = "Top level of the vault";
@@ -6705,7 +8089,7 @@ function contentsSectionLabel(key) {
 
 function contentsOrderedKeys(groups) {
   const keys = [...groups.keys()];
-  //: Newest month first — an index by time is read from now backwards.
+  //: Newest month first: an index by time is read from now backwards.
   if (contentsMode === "date") return keys.sort((a, b) => b.localeCompare(a));
   //: Folders in path order, with the two synthetic groups last: they are
   //: where things *aren't* filed, and a tree reads better without them at
@@ -6713,7 +8097,7 @@ function contentsOrderedKeys(groups) {
   if (contentsMode === "folder") {
     //: Compared against the constants, not `startsWith("(")`. The headings
     //: used to be "(written here)" and "(vault root)", so a leading bracket
-    //: was a fair proxy — renaming them for legibility would have quietly
+    //: was a fair proxy, renaming them for legibility would have quietly
     //: sorted them in among the real folders instead of after them, which is
     //: precisely the kind of coupling a literal-matching helper hides.
     const synthetic = (key) =>
@@ -6731,7 +8115,7 @@ async function renderContents() {
   const jump = $("contents-jump");
   const noMatch = $("contents-no-match");
   if (!outline) return;
-  // Refetched on every visit, not gated behind `entriesEverLoaded` — every
+  // Refetched on every visit, not gated behind `entriesEverLoaded`, every
   // sibling Library subtab (Documents, Image Gallery, AI Skills) re-fetches
   // its own data on each visit too, and this outline is exactly the kind of
   // view where showing a note that was just deleted, or missing one just
@@ -6765,7 +8149,7 @@ async function renderContents() {
 
   //: **A mode that groups everything under one heading has to say why.**
   //: Reported: *"idk what (written here) is. are there even folders?? how do I
-  //: make them??"* Folders here are not something you create — they are the
+  //: make them??"* Folders here are not something you create, they are the
   //: directories of an imported Obsidian vault, and a note typed into this app
   //: has no path at all. Until something is imported, By folder therefore has
   //: exactly one group, which reads as a broken mode rather than an empty one.
@@ -6775,7 +8159,7 @@ async function renderContents() {
     const hint = document.createElement("p");
     hint.className = "muted contents-folder-hint";
     hint.textContent =
-      "Folders come from an imported Obsidian vault — they are not created in "
+      "Folders come from an imported Obsidian vault, they are not created in "
       + "MemoryMap. Nothing has been imported yet, so every note is grouped "
       + "here. Import a vault from Settings → Import to see its folder tree.";
     outline.appendChild(hint);
@@ -6832,7 +8216,7 @@ async function renderContents() {
       link.href = "#";
       //: **A picture note shows its picture.** Reported: "the contents tab
       //: doesnt render images". Every row was `noteLabel`, which strips
-      //: markdown down to text — so a note that *is* a photo appeared as its
+      //: markdown down to text, so a note that *is* a photo appeared as its
       //: filename, or as the bare word "image" when the alt text was empty.
       //: In an index whose whole job is helping you recognise a note, that is
       //: the one row shape that cannot do it.
@@ -6848,7 +8232,7 @@ async function renderContents() {
       const text = document.createElement("span");
       text.className = "contents-label";
       //: In folder mode a row is a *file*, so it is named the way the vault
-      //: names it — that is also the name its `[[wiki links]]` use, so the
+      //: names it: that is also the name its `[[wiki links]]` use, so the
       //: index and the links agree about what a note is called.
       const fileName =
         contentsMode === "folder" && entry.source_path
@@ -6858,7 +8242,7 @@ async function renderContents() {
       link.appendChild(text);
       //: The right-hand column of an index: what a row is filed under, or
       //: when it was written when the grouping already answers "under what".
-      //: One value, muted, at a fixed edge — so the eye can run down it.
+      //: One value, muted, at a fixed edge, so the eye can run down it.
       const meta = document.createElement("span");
       meta.className = "contents-meta";
       meta.textContent =

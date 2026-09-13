@@ -58,8 +58,8 @@ def test_agent_mode_reports_stats_for_every_round(ai_client, fake_ollama):
 def test_agent_mode_stats_carry_a_per_stage_token_estimate(ai_client, fake_ollama):
     """§88.4 item 4: a token estimate per stage, not just a total.
 
-    Attached only to the first round's stats event — see agent.py's own
-    comment on why a later round isn't re-measured — so the UI's metadata
+    Attached only to the first round's stats event: see agent.py's own
+    comment on why a later round isn't re-measured: so the UI's metadata
     line (whose accumulation logic just spreads the first event wholesale)
     ends up carrying it for the whole turn.
     """
@@ -77,7 +77,7 @@ def test_agent_mode_stats_carry_a_per_stage_token_estimate(ai_client, fake_ollam
     composition = first["composition"]
     assert set(composition) == {"system", "history", "notes", "tool_schemas"}
     assert all(isinstance(v, int) for v in composition.values())
-    # Tools are on and the registry is non-empty, so this can't be zero —
+    # Tools are on and the registry is non-empty, so this can't be zero: 
     # a zero here would mean the schemas were measured before `offered` was
     # ever populated.
     assert composition["tool_schemas"] > 0
@@ -138,7 +138,7 @@ def test_the_latest_answer_reaches_a_follow_up_nearly_whole():
 
 def test_a_saved_turn_keeps_the_whole_metadata_line(ai_client):
     """`tokens` is a sum, which is the right shape for the conversation total
-    and useless for rebuilding the per-message line — you cannot get "3.9k of
+    and useless for rebuilding the per-message line, you cannot get "3.9k of
     8k, 12 tok/s, llama3.2" back out of a single integer. So the line simply
     vanished on reload and the answer looked like it came from nowhere."""
     stats = {
@@ -164,13 +164,13 @@ def test_a_saved_turn_keeps_the_whole_metadata_line(ai_client):
     assistant = next(m for m in full["messages"] if m["role"] == "assistant")
     assert assistant["stats"] == stats
     assert assistant["elapsed_ms"] == 1500
-    # The running total still works — this adds to it rather than replacing it.
+    # The running total still works, this adds to it rather than replacing it.
     assert full["tokens"] == 4020
 
 
 def test_an_older_turn_without_stats_still_loads(ai_client):
     """Chats saved before this stored no stats. They must render without a
-    metadata line rather than with a row of "?"s — or worse, an error."""
+    metadata line rather than with a row of "?"s: or worse, an error."""
     created = ai_client.post(
         "/conversations", json={"question": "q", "answer": "a", "tokens": 10}
     ).json()

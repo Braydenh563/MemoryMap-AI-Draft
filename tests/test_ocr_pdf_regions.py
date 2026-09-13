@@ -1,7 +1,7 @@
 """The OCR workspace, pointed at a document rather than a picture.
 
 Reported: *"I begin generating ocr for a document… is the document ocr even
-working??"* — and it was not. `core/ocr.py`'s `OCR_SUFFIXES` is raster formats
+working??"*, and it was not. `core/ocr.py`'s `OCR_SUFFIXES` is raster formats
 only (Tesseract cannot open a PDF), and both region routes refused anything
 outside it with a 415, so the one window in this app built for reading a
 document was the one window a document could not be opened in.
@@ -9,7 +9,7 @@ document was the one window a document could not be opened in.
 Nothing new reads text here: `core/pdfpages.py` already rendered a page to PNG
 for the file viewer, and `ocr.extract_regions` already read a PNG. These tests
 cover the join, and the two honest answers it has to give when there is no
-Tesseract on the machine — which is the normal case for this project, by
+Tesseract on the machine, which is the normal case for this project, by
 instruction ("I basically dont want to download tesseract").
 """
 
@@ -53,14 +53,14 @@ def two_pages(tmp_path) -> Path:
 @needs_pdfium
 def test_a_pdf_reports_its_page_count(two_pages: Path):
     """The workspace builds its page rail from this number, so it has to come
-    back on every page — not only on the first request."""
+    back on every page, not only on the first request."""
     assert _pdf_regions_for(two_pages, 0, "", "").pages == 2
     assert _pdf_regions_for(two_pages, 1, "", "").pages == 2
 
 
 @needs_pdfium
 def test_the_page_asked_for_is_echoed_and_clamped(two_pages: Path):
-    """Page 99 of a 2-page document is page 2, and the caller is told so — a
+    """Page 99 of a 2-page document is page 2, and the caller is told so, a
     rail that highlighted the page it *asked* for would point at the wrong
     thumbnail for the picture on screen."""
     assert _pdf_regions_for(two_pages, 1, "", "").page == 1
@@ -85,7 +85,7 @@ def test_without_tesseract_it_points_at_the_button_and_not_at_an_install(
 
 @needs_pdfium
 def test_with_tesseract_installed_both_readers_are_offered(two_pages: Path, monkeypatch):
-    """The other half of the same rule, and the later instruction — *"make sure
+    """The other half of the same rule, and the later instruction, *"make sure
     tesseract exists as an alternative as well"*. When it **is** on the machine
     it is named, because then it is a choice rather than an errand: no model
     needed, and it marks where each block sits.
@@ -106,11 +106,11 @@ def test_with_tesseract_installed_both_readers_are_offered(two_pages: Path, monk
 def test_a_stored_reading_stands_in_for_the_first_page_only(two_pages: Path, monkeypatch):
     """A document's stored reading belongs to the *document*. Offering it as
     page 7's sections would be the app stating a guess about where the text
-    came from as a fact — the same line the source badge exists to hold.
+    came from as a fact, the same line the source badge exists to hold.
 
     (The badge is "reading" now, not "stored-text": without Tesseract the
     reading is split into its own typed blocks rather than returned as one
-    whole-page region. What is being pinned here is unchanged — page 2 gets
+    whole-page region. What is being pinned here is unchanged, page 2 gets
     nothing, because page 1's text is not page 2's.)
     """
     monkeypatch.setattr("memorymap.core.ocr.tesseract_available", lambda: False)

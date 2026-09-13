@@ -19,7 +19,7 @@ from memorymap.entry import manager
 
 router = APIRouter(tags=["settings"])
 
-#: Bounds on the retention setting itself — 1 (barely a safety net) to 100
+#: Bounds on the retention setting itself, 1 (barely a safety net) to 100
 #: (a number chosen to still mean something rather than "unlimited" wearing
 #: a costume, on a machine writing a database backup that could itself be
 #: sizeable).
@@ -70,7 +70,7 @@ def storage_location() -> dict:
 
 @router.get("/backups")
 def list_backups() -> list[dict]:
-    # Unchanged shape (a plain list) — `keep`/the retention bounds live on
+    # Unchanged shape (a plain list): `keep`/the retention bounds live on
     # GET /storage instead, which already answers "what does this app keep
     # on disk and where," rather than reshaping an endpoint existing callers
     # (including this app's own tests) already treat as one.
@@ -88,7 +88,7 @@ def backup_now(session: Session = Depends(get_session)) -> dict:
 
 @router.put("/backups/retention")
 def set_retention(body: RetentionBody) -> dict:
-    """How many backups to keep, and prune immediately to match — asked
+    """How many backups to keep, and prune immediately to match, asked
     about directly ("backup retention should be a setting"). Immediate,
     not just for the next scheduled backup: lowering the number and still
     seeing the old count is the "did that even save" moment every other

@@ -1,6 +1,6 @@
 """Quitting background work, and quitting the app (§ tasks).
 
-Two reports, one mechanism — see `core/bgtasks.py`'s docstring:
+Two reports, one mechanism, see `core/bgtasks.py`'s docstring:
 
     "allow the quitting/killing of background tasks as well"
     "and if it is an automated bg task, make sure it doesnt instantly start
@@ -11,7 +11,7 @@ Two reports, one mechanism — see `core/bgtasks.py`'s docstring:
 The middle one is the subtle one and gets the most tests here: an autonomous
 pass is on a scheduler that is *deliberately* wakeable, so quitting a pass
 without holding the scheduler off means the very next preference change
-starts another one seconds later. That is not a hypothetical race — `wake()`
+starts another one seconds later. That is not a hypothetical race, `wake()`
 exists precisely to cut the interval sleep short.
 """
 
@@ -52,7 +52,7 @@ def _clear_autonomous_state():
 
 def test_every_cancellable_kind_has_a_canceller():
     """The panel's Quit button is rendered from `CANCELLABLE_KINDS`, which is
-    derived from the table rather than repeated — so this cannot drift, and
+    derived from the table rather than repeated, so this cannot drift, and
     the test says why the two must stay the same object."""
     assert set(bgtasks.CANCELLABLE_KINDS) == set(bgtasks.CANCELLERS)
 
@@ -124,7 +124,7 @@ def test_a_stop_with_nothing_running_still_arms_the_hold():
 
 def test_the_pass_clears_the_flag_when_it_starts_not_when_it_ends():
     """A stop asked for during the previous pass must not cancel the next one
-    before it has done anything — but it must stay readable by the thread that
+    before it has done anything, but it must stay readable by the thread that
     is still finishing."""
     source = _source_of(autonomous)
     body = source.split("def _run_optimization()")[1].split("def _remember_pass")[0]
@@ -151,7 +151,7 @@ def test_cancelling_pip_with_nothing_installing_says_so():
 
 
 def test_cancelling_pip_terminates_the_child(monkeypatch):
-    """pip has no cooperative stop — terminate is the only thing that stops
+    """pip has no cooperative stop, terminate is the only thing that stops
     it, and it is what someone who pressed Quit meant."""
     calls = []
 
@@ -193,7 +193,7 @@ def test_the_embedding_download_promises_only_what_it_can_do(monkeypatch):
 def test_stop_all_is_wired_into_the_apps_shutdown():
     """The report was "make sure that if the app is quit, all ai tasks and bg
     tasks stop as well", and the cause was that there was no shutdown handler
-    at all — `/shutdown`'s docstring described one that did not exist."""
+    at all: `/shutdown`'s docstring described one that did not exist."""
     from memorymap.api import app as app_module
 
     source = _source_of(app_module)
@@ -250,7 +250,7 @@ def test_a_hold_does_not_burn_down_while_the_feature_is_off():
     """"the limit on it restarting should be based on the set interval and it
     shouldnt reset if the user disabled it." A hold is a wall-clock deadline,
     so it expired during time the feature was switched off and could not have
-    run anyway — quit a pass, switch it off for a day, switch it back on, and
+    run anyway: quit a pass, switch it off for a day, switch it back on, and
     a pass started within seconds of the toggle."""
     from memorymap.ai import autonomous
 

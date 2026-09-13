@@ -5,7 +5,7 @@ the pdf rasterisation happen automatically?"*
 
 The thing that is easy to get wrong here: rasterising a PDF does not read
 anything. It turns a page into a picture, and a model still has to read the
-picture — so both a photo and a scanned page take a vision-capable model, and
+picture: so both a photo and a scanned page take a vision-capable model, and
 every backend reports the same `vision` capability for a general VLM and for a
 document reader. The capability cannot break that tie, which is why the tie is
 broken here.
@@ -97,7 +97,7 @@ def test_an_explicit_vision_model_is_used_only_when_no_reader_is_installed(app_s
 
 def test_an_installed_reader_beats_an_explicit_but_unrelated_vision_model(app_state):
     """Reported live: "I pressed read text with AI, but it used my vision
-    model and not my OCR model" — a real OCR-family model was installed, but
+    model and not my OCR model", a real OCR-family model was installed, but
     an earlier version of this function let an explicit vision-model choice
     (set for chat, never for OCR) outrank it. A document reader sitting right
     there beats a setting made for a different purpose."""
@@ -159,10 +159,10 @@ def test_both_entry_points_pass_a_reader_rather_than_omitting_it():
 
 
 def test_the_status_poll_resolves_the_vision_model_once(app_state, monkeypatch):
-    """Reported as `GET /models/status — signal timed out`.
+    """Reported as `GET /models/status: signal timed out`.
 
     Resolving a vision model walks every installed model asking `/api/show`
-    whether it can see — one HTTP round trip each, cached per process but cold
+    whether it can see, one HTTP round trip each, cached per process but cold
     on the first poll. The status endpoint needs both a vision answer and an
     OCR answer, and deriving them independently walked that list twice, which
     on a real install was enough to pass the frontend's own 5s abort.
@@ -184,7 +184,7 @@ def test_the_status_poll_resolves_the_vision_model_once(app_state, monkeypatch):
 
 def test_the_fallback_is_only_used_when_nothing_better_exists(app_state):
     """Passing a pre-resolved vision model must not override a document reader
-    that is actually installed — the whole point of the preference order."""
+    that is actually installed, the whole point of the preference order."""
     manager = _manager(app_state)
     got = manager.resolve_ocr_model(
         _FakeOllama(["llava", "glm-ocr"]), None, vision_fallback="llava"

@@ -56,7 +56,7 @@ def test_a_request_to_the_agent_is_not_offered_again(ai_client, fake_ollama, ses
 
 
 def test_the_request_is_still_in_the_audit_log(ai_client, fake_ollama, session):
-    """Narrowing the chip row must not lose the record of what happened —
+    """Narrowing the chip row must not lose the record of what happened, 
     the log is a history, not a suggestion list."""
     fake_ollama.librarian_reply = "Done."
     _stream(ai_client, "tag every note about beans", use_tools=True)

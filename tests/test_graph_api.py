@@ -1,4 +1,4 @@
-"""The graph endpoint — nodes, link/thread edges, similarity."""
+"""The graph endpoint: nodes, link/thread edges, similarity."""
 
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ def test_graph_nodes_and_manual_link_edges(client):
             "source": a["id"],
             "target": b["id"],
             "kind": "link",
-            # The link row's own id — asked for directly, so the graph can
+            # The link row's own id: asked for directly, so the graph can
             # edit or remove a reason without going through a note card.
             "id": link_id,
             "reason": None,
@@ -46,14 +46,14 @@ def test_graph_nodes_and_manual_link_edges(client):
     assert node["category"] == "Alpha"
     assert node["preview"] == "first note"
     assert node["pinned"] is False
-    # A note with no pin ever set — see the pin tests below.
+    # A note with no pin ever set, see the pin tests below.
     assert node["graph_pin_x"] is None
     assert node["graph_pin_y"] is None
 
 
 def test_a_node_pin_survives_a_refetch(client):
     """ROADMAP §87.1's own audit: a double-click pin (graph.js) only ever
-    lived on the in-memory D3 node object — `PUT /graph/pin/{id}` is the
+    lived on the in-memory D3 node object, `PUT /graph/pin/{id}` is the
     persistence half, and this is what makes it survive a reload."""
     a = _save(client, "held in place on purpose")
     resp = client.put(f"/graph/pin/{a['id']}", json={"x": 12.5, "y": -30.0})
@@ -80,7 +80,7 @@ def test_a_pin_can_be_released(client):
 
 def test_unpin_all_releases_every_pinned_node(client):
     """Direct instruction: "I want to be able to unroot and reset the graph
-    to free float if I want with a button" — one call releases every
+    to free float if I want with a button", one call releases every
     pinned note rather than tracking each down to double-click it."""
     a = _save(client, "pinned note one")
     b = _save(client, "pinned note two")
@@ -108,7 +108,7 @@ def test_unpin_all_is_a_no_op_when_nothing_is_pinned(client):
 
 
 def test_a_lone_coordinate_is_refused_not_guessed(client):
-    """One axis set and the other null is not a position — refused rather
+    """One axis set and the other null is not a position, refused rather
     than silently coerced into either a pin or a release."""
     a = _save(client, "a note")
     resp = client.put(f"/graph/pin/{a['id']}", json={"x": 5.0, "y": None})
@@ -128,7 +128,7 @@ def test_pinning_a_deleted_note_404s(client):
 
 
 def test_a_pin_shows_up_in_focus_mode_too(client):
-    """The same persisted pin, read from /graph/local — a user can pin a
+    """The same persisted pin, read from /graph/local, a user can pin a
     node while already focused on its neighbourhood, not only from the
     top-level map."""
     a = _save(client, "central note")
@@ -141,12 +141,12 @@ def test_a_pin_shows_up_in_focus_mode_too(client):
 
 
 def test_graph_node_dates_are_valid_iso_not_double_timezoned(client):
-    """`created_at` used to be built as `e.created_at.isoformat() + "Z"` —
+    """`created_at` used to be built as `e.created_at.isoformat() + "Z"`, 
     but `core/database.DateTime` already hands back a timezone-AWARE
     datetime, so `.isoformat()` alone ends in `+00:00`, and the extra "Z"
     produced `...+00:00Z`: two timezone markers in one string. Python's own
     `datetime.fromisoformat` rejects that (and so, silently, does
-    JavaScript's `Date` constructor — `Invalid Date`, no exception) — which
+    JavaScript's `Date` constructor, `Invalid Date`, no exception), which
     is why the graph's time-filter slider could never move: every node's
     date failed to parse, so the filter's min/max collapsed to "now" no
     matter what any note's actual date was.
@@ -187,7 +187,7 @@ def test_graph_link_edge_carries_its_reason(client):
             "kind": "link",
             "id": link_id,
             "reason": "both about scheduling",
-            # A reason someone typed, not one deduced — no score attached.
+            # A reason someone typed, not one deduced, no score attached.
             "reason_confidence": None,
             # Null on a link made without one, which is every link that
             # existed before link types and still means what it always
@@ -239,7 +239,7 @@ def test_graph_include_documents_adds_a_prefixed_node_and_edge(client):
     assert node["category"] == "Document"
     assert {n["id"] for n in body["nodes"]} == {a["id"], doc_node_id}
     assert body["edges"] == [{"source": doc_node_id, "target": a["id"], "kind": "document"}]
-    # Document nodes aren't in the stable category list — same treatment as
+    # Document nodes aren't in the stable category list, same treatment as
     # entities, so the legend doesn't grow a filter for a node kind that's
     # off by default.
     assert "Document" not in body["categories"]
@@ -275,7 +275,7 @@ def test_graph_excludes_deleted_notes(client):
 
 
 def test_graph_excludes_drafts(client):
-    """A draft is unfinished by definition — reported directly ("drafts
+    """A draft is unfinished by definition, reported directly ("drafts
     appear... in the graph"). The Notes tab already keeps drafts out of
     every list it draws; `/graph` didn't."""
     keeper = _save(client, "a finished thought", category="Stuff")
@@ -289,7 +289,7 @@ def test_graph_similarity_edges_opt_in(ai_client):
     # The fake embedder puts both "joke" notes on the same axis → cosine 1.
     a = _save(ai_client, "a funny scarecrow joke")
     b = _save(ai_client, "another funny pun")
-    _save(ai_client, "buy milk and eggs")  # different topic — no edge to jokes
+    _save(ai_client, "buy milk and eggs")  # different topic: no edge to jokes
 
     # Off by default.
     assert client_edges(ai_client, similarity=False) == []
@@ -320,7 +320,7 @@ def client_edges(client, similarity: bool) -> list[dict]:
 def test_graph_previews_show_words_not_markdown_markers(client):
     """Reported: "**note" showing in graph titles when a note starts with a
     header or bolded word. Labels clip at ~40 characters, so markers are
-    stripped rather than rendered — a clip mid-`**` is scaffolding."""
+    stripped rather than rendered, a clip mid-`**` is scaffolding."""
     client.post("/entries", json={"content": "## **Seraphine build** for _mid_ lane"})
     nodes = client.get("/graph").json()["nodes"]
     assert nodes[0]["preview"] == "Seraphine build for mid lane"
@@ -328,7 +328,7 @@ def test_graph_previews_show_words_not_markdown_markers(client):
 
 # --- the physics sliders, checked against the frontend source directly -------
 #
-# Not an API test — Gravity/Spread only make sense under the force layout, and
+# Not an API test, Gravity/Spread only make sense under the force layout, and
 # the only way to check the toggle actually disables them under the others is
 # to read graph.js, the same way test_frontend_ids.py/test_style_scale.py do
 # for their own DOM-invisible-to-pytest checks.
@@ -337,13 +337,13 @@ def test_graph_previews_show_words_not_markdown_markers(client):
 def test_the_physics_sliders_are_disabled_under_tree_layouts():
     """Gravity and Spread scale the force simulation, and the tree layouts do
     not run one. Left enabled they are two controls that move, save, and change
-    nothing — which reads as a broken app rather than a setting that does not
+    nothing: which reads as a broken app rather than a setting that does not
     apply here."""
     from memorymap.api.app import FRONTEND_DIR
 
     # setGraphPhysicsEnabled's *definition* moved out of app.js into
     # frontend/graph.js in the frontend refactor path's graph-view extraction
-    # (the step after whiteboard.js) — see index.html and graph.js's own
+    # (the step after whiteboard.js), see index.html and graph.js's own
     # header for why that file has to load *before* app.js, unlike
     # whiteboard.js. Its call sites did not move with it: `switchTab`'s
     # "arrival" call and the layout-<select> "change" listener both stayed in
@@ -418,7 +418,7 @@ def test_pagerank_is_not_recomputed_for_an_unchanged_notebook(ai_client, monkeyp
 
 
 def test_the_cache_is_scoped_to_the_notebook_it_was_built_from(app_state, session):
-    """The cache is process-global and the counts in its key are not unique —
+    """The cache is process-global and the counts in its key are not unique, 
     two notebooks with three notes each collide trivially. Restoring a backup
     must not be served the previous notebook's centrality."""
     from memorymap.api import routes_graph
@@ -429,8 +429,8 @@ def test_the_cache_is_scoped_to_the_notebook_it_was_built_from(app_state, sessio
 
 def test_focus_mode_reuses_the_full_graphs_similarity_sweep(ai_client, monkeypatch):
     """`/graph/local` is meant to be the cheap one and was paying the whole
-    notebook's cost. It still needs the global sweep — a similarity edge can
-    join two notes at opposite ends — but it should not repeat it."""
+    notebook's cost. It still needs the global sweep, a similarity edge can
+    join two notes at opposite ends, but it should not repeat it."""
     from memorymap.api import routes_graph
 
     made = ai_client.post("/entries", json={"content": "kayak repair"}).json()

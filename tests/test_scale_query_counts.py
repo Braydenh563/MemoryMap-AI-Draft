@@ -46,7 +46,7 @@ def _count_queries(session, fn):
 
 def _count_statements(session, fn, contains):
     """Like `_count_queries`, but only counts statements whose SQL text
-    contains `contains` — for asserting a specific table isn't queried
+    contains `contains`, for asserting a specific table isn't queried
     twice, not just "the total didn't grow"."""
     hits = []
 
@@ -84,19 +84,19 @@ def test_graph_endpoint_query_count_does_not_scale_with_entry_count(session):
         session, lambda: routes_graph.graph(similarity=False, session=session)
     )
 
-    # A handful more is fine — more entries can touch a few more code paths.
+    # A handful more is fine, more entries can touch a few more code paths.
     # One extra query *per new entry* (the regression this guards) would be
     # +200, not a handful.
     assert large <= small + 5, (
         f"routes_graph.graph() issued {large} queries for 220 entries vs "
-        f"{small} for 20 — looks like the per-entry category lookup is back"
+        f"{small} for 20: looks like the per-entry category lookup is back"
     )
 
 
 def test_graph_endpoint_fetches_the_entries_table_once_not_twice(session):
     """`graph()` fetched the full `entries` table for node serialization,
     then `paths.build()` independently re-fetched the exact same
-    identically-scoped set for its own path index — one call, two full
+    identically-scoped set for its own path index, one call, two full
     scans of the same table. `graph()` now passes its own already-fetched
     list through."""
     category = Category(name="Garden")
@@ -104,7 +104,7 @@ def test_graph_endpoint_fetches_the_entries_table_once_not_twice(session):
     session.commit()
     _add_entries(session, 5, category.id)
 
-    # Matched on a column only the full-row ORM fetch selects — the
+    # Matched on a column only the full-row ORM fetch selects, the
     # notebook-fingerprint cache key also touches `entries` with its own
     # `count(...)`/`max(updated_at)` aggregates, which are unrelated,
     # already-cheap queries this test isn't about.
@@ -152,18 +152,18 @@ def test_semantic_search_query_count_does_not_scale_with_entry_count(
 
     assert large <= small + 5, (
         f"semantic_search issued {large} queries for 220 embedded entries vs "
-        f"{small} for 20 — looks like the per-candidate Entry fetch is back"
+        f"{small} for 20: looks like the per-candidate Entry fetch is back"
     )
 
 
 def test_related_notes_tag_matching_query_count_does_not_scale_with_entry_count(session):
-    """`_graph_neighbours` fetched every non-deleted `Entry` — the whole
-    table, `content` included — whenever the note it was walking from had
+    """`_graph_neighbours` fetched every non-deleted `Entry`, the whole
+    table, `content` included: whenever the note it was walking from had
     tags, to find tag matches by hand instead of a SQL filter.
     `_related_notes` calls it once per BFS-frontier node, so this scaled per
     call as well as per entry (ROADMAP.md Tier 1 item 8). Tags are a JSON
     text column with no per-tag index, so the fix narrows candidates with
-    `ilike` rather than eliminating the scan outright — this pins "a fixed
+    `ilike` rather than eliminating the scan outright, this pins "a fixed
     handful of queries", not "exactly one".
     """
     hub = Entry(content="hub", tags='["garden"]')
@@ -185,14 +185,14 @@ def test_related_notes_tag_matching_query_count_does_not_scale_with_entry_count(
 
     assert large <= small + 2, (
         f"related_notes issued {large} queries for 220 tagged entries vs "
-        f"{small} for 20 — looks like the unfiltered full-table tag scan is back"
+        f"{small} for 20: looks like the unfiltered full-table tag scan is back"
     )
 
 
 def test_list_notes_date_lookup_query_count_does_not_scale_with_returned_notes(session):
     """`_note_summary` called `manager.entry_dates` (one SELECT per note)
     inside the loops `list_notes` and `_summarize_notes` build their results
-    from — an N+1 on the agent's most-used read tools (ROADMAP.md Tier 1
+    from: an N+1 on the agent's most-used read tools (ROADMAP.md Tier 1
     item 8). `entry_dates_bulk` fetches every returned note's dates in one
     query instead.
     """
@@ -212,5 +212,23 @@ def test_list_notes_date_lookup_query_count_does_not_scale_with_returned_notes(s
 
     assert large <= small + 3, (
         f"list_notes issued {large} queries for 50 returned notes vs "
-        f"{small} for 5 — looks like the per-note entry_dates lookup is back"
+        f"{small} for 5: looks like the per-note entry_dates lookup is back"
     )
+
+
+def test_notes_list_fetches_attachments_once_not_once_per_note(client, session):
+    """`GET /entries` reads the attachments table once per page, not per note.
+
+    The fourth thing `_to_out` resolves per entry. `_to_out_bulk` had been
+    given batched forms for categories, dates, documents and links, so the
+    endpoint looked bulk-fetched; `attachments=` still called
+    `manager.attachments_for` inside the list comprehension. Counted on a
+    60-note page: 67 statements, 60 of them the same
+    `SELECT ... FROM attachments WHERE entry_id = ?`; 8 after. This is the
+    notes list, so it is the most-requested endpoint in the app.
+    """
+    category = session.scalars(__import__("sqlalchemy").select(Category).limit(1)).first()
+    _add_entries(session, 60, category.id if category else None)
+
+    hits = _count_statements(session, lambda: client.get("/entries"), "FROM attachments")
+    assert len(hits) <= 1, f"one query per page, got {len(hits)}"

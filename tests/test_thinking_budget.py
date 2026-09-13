@@ -2,14 +2,14 @@
 
 Reported twice, same shape both times: Quick mode on a thinking model thinks
 for a while, stops about three-quarters of the way through, and emits **no
-answer at all**. Not a short answer — nothing.
+answer at all**. Not a short answer, nothing.
 
 The cause is that the reply cap becomes `num_predict`, and `num_predict` bounds
 everything the model generates, thinking included. Quick's cap is 256 tokens.
 A model that spends 256 tokens deliberating has none left to answer with, and
 what the user sees is a turn that thought and then died.
 
-So the allowance is **added to** the reply cap rather than shared with it — and
+So the allowance is **added to** the reply cap rather than shared with it, and
 keyed on whether `think: false` was actually sent, not on what the model
 declares it can do. §35C is a report of a model whose capability list is wrong
 about exactly this, and the capability list is the only thing `request_extras`
@@ -50,7 +50,7 @@ def client():
 
 def test_quick_on_an_undeclared_thinker_keeps_room_to_answer(client):
     """The exact reported case. The model does not declare `thinking`, so
-    `think: false` is never sent — and it thinks anyway. Without headroom its
+    `think: false` is never sent: and it thinks anyway. Without headroom its
     whole 256-token budget goes on deliberation."""
     client.declared = ["completion"]
     options = client.runtime_options("gemma", mode="quick")
@@ -71,7 +71,7 @@ def test_no_allowance_once_thinking_is_actually_turned_off(client):
 
 def test_an_unknown_capability_gets_the_allowance(client):
     """An older Ollama reports no capabilities at all. `supports` answers
-    None — "can't tell" — so thinking is not suppressed and the headroom has
+    None, "can't tell", so thinking is not suppressed and the headroom has
     to be there."""
     client.declared = []
     assert client.request_extras("quick", "mystery") == {}
@@ -94,7 +94,7 @@ def test_detailed_gets_more_headroom_than_normal(client):
     """Reported: "Detailed" sometimes came back with no answer, or a much
     shorter one than the setting promised. Detailed's own length_hint asks
     the model to "work through the relevant notes, draw connections between
-    them, and explain your reasoning" — inviting more deliberation than
+    them, and explain your reasoning", inviting more deliberation than
     Normal or Quick ever asked for, so giving it the same flat 1,024-token
     allowance as the other two is the exact trap this file's own docstring
     already named ("the same trap in a larger size"), just less often. A
@@ -129,7 +129,7 @@ def test_the_context_window_is_untouched(client):
 
 
 def test_the_direction_guard_still_holds(client):
-    """Thinking is only ever turned off, never on — turning it on where it
+    """Thinking is only ever turned off, never on, turning it on where it
     isn't supported is the request that errors."""
     client.declared = ["completion", "thinking"]
     for mode in ("normal", "detailed"):

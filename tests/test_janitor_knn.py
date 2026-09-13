@@ -1,7 +1,7 @@
 """Filing by nearest neighbours (roadmap §9).
 
-The janitor compared a note against each category's *centroid* — the average
-of every note in it — and asked the chat model whenever that was inconclusive.
+The janitor compared a note against each category's *centroid*: the average
+of every note in it, and asked the chat model whenever that was inconclusive.
 A centroid is a poor description of any category holding more than one kind of
 thing, and with no chat model running "inconclusive" meant Uncategorised. Both
 of those are what k-nearest-neighbour filing fixes.
@@ -37,7 +37,7 @@ class DirectedEmbeddings(EmbeddingService):
 
 
 class DeadOllama:
-    """No chat model at all — the case this feature exists for."""
+    """No chat model at all, the case this feature exists for."""
 
     def is_running(self) -> bool:
         return False
@@ -69,7 +69,7 @@ def test_a_split_category_still_files_correctly_with_no_chat_model(session, app_
 
     "Work" holds three unrelated kinds of note, so its average sits between
     them and resembles none of them. A new note matching one cluster exactly
-    still matches that average weakly — and with no chat model to fall back
+    still matches that average weakly, and with no chat model to fall back
     on, that used to mean Uncategorised.
     """
     # Three unrelated kinds of note in one category. Their average points at
@@ -117,7 +117,7 @@ def test_a_split_vote_falls_through_to_the_model(session, app_state):
     name, _confidence, method = janitor.categorise(
         session, "ambiguous", embeddings, model_manager=None, ollama=DeadOllama()
     )
-    # No chat model, so it lands in the junk drawer — but by the intended
+    # No chat model, so it lands in the junk drawer, but by the intended
     # route, not by neighbours guessing.
     assert method == "none"
     assert name == "Uncategorised"
@@ -167,7 +167,7 @@ def test_an_empty_notebook_has_no_neighbours_to_ask(session, app_state):
 
 
 def test_the_confident_centroid_path_still_wins_first(session, app_state):
-    """kNN is a fallback, not a replacement — the cheap check goes first."""
+    """kNN is a fallback, not a replacement, the cheap check goes first."""
     _note(session, "pasta recipe", "Cooking", [1.0, 0.0, 0.0, 0.0])
     _note(session, "risotto recipe", "Cooking", [1.0, 0.0, 0.0, 0.0])
 

@@ -1,7 +1,7 @@
 """AI tool handlers for the Documents tab: list/get/create/delete.
 
 Split out of `ai/tools.py`'s "documents, past chats, and skills" section
-(ROADMAP.md §0/§4) — this is the documents quarter of it; whiteboard and
+(ROADMAP.md §0/§4): this is the documents quarter of it; whiteboard and
 skills/chat-history handlers live in their own modules alongside it.
 """
 
@@ -23,7 +23,7 @@ from ._common import (
 )
 
 def _list_documents(session: Session, args: dict) -> dict:
-    from memorymap.core.database import Document
+    from memorymap.core.database import LIKE_ESCAPE, Document, like_escape
 
     limit = _limit_arg(args, default=DEFAULT_LIST_LIMIT)
     offset = max(0, int(args.get("offset") or 0))
@@ -32,8 +32,11 @@ def _list_documents(session: Session, args: dict) -> dict:
     # total can never describe a different set than the rows.
     filters = []
     if term:
-        like = f"%{term}%"
-        filters.append(Document.title.ilike(like) | Document.content.ilike(like))
+        like = f"%{like_escape(term)}%"
+        filters.append(
+            Document.title.ilike(like, escape=LIKE_ESCAPE)
+            | Document.content.ilike(like, escape=LIKE_ESCAPE)
+        )
     total = session.scalar(select(func.count(Document.id)).where(*filters)) or 0
     rows = list(
         session.scalars(
@@ -56,7 +59,7 @@ def _list_documents(session: Session, args: dict) -> dict:
                 #: might keywords be flagged in certain pages... then it can
                 #: use a tool or smth simpler to get the full text from
                 #: those areas." This used to be `_clip(d.content,
-                #: PREVIEW_CHARS)` regardless of `term` — so a search that
+                #: PREVIEW_CHARS)` regardless of `term`, so a search that
                 #: correctly found a 40-page document because the word
                 #: appeared on page 30 showed the model page one, which very
                 #: likely does not mention it at all. `_keyword_context`
@@ -119,8 +122,8 @@ def _get_document(session: Session, args: dict) -> dict:
         #: **The "or something simpler" this was asked for, by name.** The
         #: embedding path above needs a working embedding backend
         #: (`deps.get_embeddings()`), and CLAUDE.md is explicit that this
-        #: project runs without one on purpose — no torch, no
-        #: sentence-transformers — so `q_vec` is `None` there on every
+        #: project runs without one on purpose, no torch, no
+        #: sentence-transformers: so `q_vec` is `None` there on every
         #: install that followed that instruction, and this used to fall
         #: straight through to a plain head-of-document clip: exactly the
         #: "keyword found the document, the returned text does not contain
@@ -151,7 +154,7 @@ def _get_document(session: Session, args: dict) -> dict:
 
 
 #: A document the agent writes. Generous next to a note's cap because a
-#: document is long-form by definition — but still a cap, since the content
+#: document is long-form by definition, but still a cap, since the content
 #: comes back through the model's own output and an unbounded one would mean a
 #: single tool call could fill the window on the next round.
 MAX_NEW_DOCUMENT_CHARS = 20_000
@@ -163,7 +166,7 @@ def _create_document(session: Session, args: dict) -> dict:
     The asymmetry this closes: there was `list_documents` and `get_document`
     and no way to make one, so a model asked to "write this up properly" could
     read every document the user had and then had nowhere to put the result.
-    Reported directly — "the agent can't create a document either" (§35J) —
+    Reported directly, "the agent can't create a document either" (§35J) , 
     and it was a gap nobody noticed rather than a deliberate limit, because
     §5's document work was built UI-first.
 
@@ -183,7 +186,7 @@ def _create_document(session: Session, args: dict) -> dict:
         # A titled empty document is the shape of a model that called the tool
         # to announce its intention. Refusing is what makes it write first.
         raise ToolError(
-            "A document needs its text in `content` — write the document, then "
+            "A document needs its text in `content`, write the document, then "
             "save it in one call."
         )
     if len(content) > MAX_NEW_DOCUMENT_CHARS:
@@ -210,7 +213,7 @@ def _create_document(session: Session, args: dict) -> dict:
 def _delete_document(session: Session, args: dict) -> dict:
     """Remove a document. Destructive, so the user confirms it first.
 
-    Exists mainly so `create_document` has an inverse — §21 lists "links and
+    Exists mainly so `create_document` has an inverse: §21 lists "links and
     reminders have no inverse tool" as a real cost, and shipping a new write
     without one would be adding to that list rather than working it down.
     """

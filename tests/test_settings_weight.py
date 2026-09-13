@@ -1,4 +1,4 @@
-"""Settings, measured — ROADMAP.md item 7 ("Settings has never been measured").
+"""Settings, measured: ROADMAP.md item 7 ("Settings has never been measured").
 
 The first measurement of every Settings section, at 1440x900. Words and
 paragraphs are what REDESIGN.md item 48 ("spacing and excessive paragraph
@@ -17,7 +17,7 @@ alignment test, which wants 2-4.
 About dwarfed everything, and the cause was not what it looked like: the
 whole changelog was rendered into `#changelog-body` on **every** open of
 Settings, while the `<details>` around it showed 47 pixels. It never looked
-wrong — the fold clips it — which is exactly why it survived. It was DOM
+wrong, the fold clips it, which is exactly why it survived. It was DOM
 weight and layout work for content nobody had asked to see.
 
 After deferring the render to the moment the fold opens: 45 words, 6 edges.
@@ -44,7 +44,7 @@ def test_the_changelog_renders_when_opened_not_when_settings_opens():
     # The render call must be inside the deferred painter, not at top level.
     paint_at = body.index("const paint")
     assert body.index("renderMarkdown(") > paint_at, (
-        "renderMarkdown still runs eagerly — that is the 21,452 words this guards"
+        "renderMarkdown still runs eagerly, that is the 21,452 words this guards"
     )
 
 

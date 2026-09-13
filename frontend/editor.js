@@ -3,12 +3,12 @@
 // it and the document's own [[ autocomplete are drawn with.
 //
 // Why this is a separate file rather than more of app.js: app.js is ~27k lines
-// and ROADMAP Tier 4 makes the case — correctly — that a big-bang split must
+// and ROADMAP Tier 4 makes the case, correctly, that a big-bang split must
 // not share a diff with live edits to the same code. New code in a new file
 // moves the line the right way without that risk, the same way graph.js and
 // whiteboard.js already did. Loaded after app.js (see index.html), so every
-// global it leans on — $, apiJson, allEntries, MD_ACTIONS, markDocDirty,
-// renderDocPreview, BUILTIN_TEMPLATES, prefsCache, noteLabel, toast — is
+// global it leans on, $, apiJson, allEntries, MD_ACTIONS, markDocDirty,
+// renderDocPreview, BUILTIN_TEMPLATES, prefsCache, noteLabel, toast, is
 // already defined.
 //
 // Two design decisions worth stating up front, because both were the cheap
@@ -17,14 +17,14 @@
 // 1. **One delegated listener, not one per textarea.** Every handler here is
 //    bound once on `document` and dispatches on `event.target`. Binding
 //    per-element would have meant a third `input` listener on `entry-content`
-//    (it already legitimately has two — see ALLOWED_DOUBLES in
+//    (it already legitimately has two, see ALLOWED_DOUBLES in
 //    tests/test_frontend_handlers.py) and a fresh entry in that allow-list for
 //    every surface added later. Delegation is how "one behaviour across many
 //    inputs" is supposed to be written, and it means a new editor surface is
 //    one line in EDITOR_SURFACES rather than a wiring change.
 //
 // 2. **Callouts are `> [!kind] Title`, not a custom fence.** That syntax
-//    degrades to an ordinary blockquote in any other markdown reader —
+//    degrades to an ordinary blockquote in any other markdown reader, 
 //    GitHub, Obsidian and Typora all already understand it. A custom fence
 //    would render as literal junk the moment a note left this app, and
 //    "your notes stay portable" is the whole premise of a local-first
@@ -37,7 +37,7 @@
 const EDITOR_SURFACES = {
   "entry-content": "note",
   //: The note *edit* form (app.js's `renderEditForm`), which had none of this
-  //: until now — the one editing surface in the app with no "/" menu, no
+  //: until now: the one editing surface in the app with no "/" menu, no
   //: toolbar and no selection bar. One id, because `editingId` allows exactly
   //: one open edit form at a time.
   "entry-edit-content": "note",
@@ -50,26 +50,41 @@ const EDITOR_SURFACES = {
   "chat-input": "chat",
 };
 
-//: **What context a textarea is, including the ones with generated ids.**
+//: **What context an editing surface is.**
 //:
-//: `EDITOR_SURFACES` is an id-to-context table by construction, and the live
-//: view — the document editor's *default* view — is one textarea per
-//: paragraph, created by `docLiveEditor` with a generated id. The wiring
-//: below used to gate on `textarea.id in EDITOR_SURFACES`, so **the live view
-//: had no "/" menu at all**, and anything that asked the map for a context
-//: got the `|| "note"` fallback and was told the document AI commands did not
-//: apply to it. Neither failure logged or threw: this repo's "a policy
-//: silently refusing the work" shape, in the one view most editing happens
-//: in.
+//: `EDITOR_SURFACES` is an id-to-context table by construction, and for most
+//: of this file's life the hard case was the document's Live view, which was
+//: one textarea per paragraph with a generated id: gating on
+//: `textarea.id in EDITOR_SURFACES` gave those blocks no "/" menu at all and
+//: told them the document AI commands did not apply. Neither failure logged
+//: or threw, which is this repo's "a policy silently refusing the work"
+//: shape. DOCUMENTS_PLAN Phase 2 made Live and Source one editor, so the
+//: generated ids are gone; the surface reports `doc-content` in every view.
 //:
-//: Keyed on `.lp-src`, the class those blocks carry, because that is what
-//: `isEditorSurface` already keyed on and one predicate is better than two
-//: that can disagree. Returns null — not "note" — for anything that is not an
-//: editing surface, so callers can tell "not a surface" from "a note".
-function editorSurfaceKind(textarea) {
-  if (!(textarea instanceof HTMLTextAreaElement)) return null;
-  if (textarea.id in EDITOR_SURFACES) return EDITOR_SURFACES[textarea.id];
-  return textarea.classList.contains("lp-src") ? "document" : null;
+//: Returns null, not "note", for anything that is not an editing surface, so
+//: callers can tell "not a surface" from "a note".
+function editorSurfaceKind(box) {
+  //: A surface, an element, or a node inside CodeMirror. The last of those is
+  //: why this can no longer be a `instanceof HTMLTextAreaElement` check:
+  //: CodeMirror's editable is a `div`, and gating on the textarea would have
+  //: silently taken the "/" menu, the selection bar and the inline AI away
+  //: from the document editor the moment the engine landed under it. Same
+  //: "policy silently refusing the work" shape this file's own comment
+  //: records for the Live view.
+  const surface = editorSurfaceFor(box);
+  if (!surface) return null;
+  return surface.id in EDITOR_SURFACES ? EDITOR_SURFACES[surface.id] : null;
+}
+
+//: Whatever this is, as a surface, or null. `asSurface` lives in
+//: documents.js beside the adapter itself; the guard is for the moment
+//: before that file has evaluated, which cannot happen in the browser (the
+//: script order is fixed) but does in any test that loads this file alone.
+function editorSurfaceFor(box) {
+  if (!box) return null;
+  if (box.kind === "textarea" || box.kind === "codemirror") return box;
+  if (typeof asSurface !== "function") return null;
+  return asSurface(box);
 }
 
 // The callout kinds, their icon and their accessible label. Kept as data
@@ -92,7 +107,7 @@ const CALLOUT_KINDS = {
 // Inserting text into an arbitrary textarea
 //
 // app.js's applyMarkdown() does exactly this job already, but it is hard-wired
-// to $("doc-content") — it reads the box, and it calls markDocDirty() and
+// to $("doc-content"), it reads the box, and it calls markDocDirty() and
 // renderDocPreview() unconditionally. Rather than duplicate its action table
 // (MD_ACTIONS is reused verbatim below), this is the same four insertion
 // shapes parameterised by which box to act on, plus a host-notification step
@@ -104,28 +119,43 @@ const CALLOUT_KINDS = {
 // This is the step that is easy to forget and silent when missed: the capture
 // box's character count and localStorage draft both hang off its `input`
 // event, and the document's autosave hangs off markDocDirty(). Writing
-// `.value` from script fires neither — so a note inserted through this menu
+// `.value` from script fires neither, so a note inserted through this menu
 // would look right, count wrong, and never be saved as a draft.
 function editorNotifyHost(textarea) {
-  if (textarea.id === "doc-content") {
+  if (textarea.isDocument) {
     markDocDirty();
     renderDocPreview();
     return;
   }
   textarea.dispatchEvent(new Event("input", { bubbles: true }));
-  // The capture box grows with its content; a scripted write has to ask.
+  //: The capture box grows with its content; a scripted write has to ask.
+  //: **`.el`, not the surface.** `autoGrow` is app.js's and works on a real
+  //: element: it writes `style.height`, and a surface has no `style`. Passing
+  //: the surface threw `Cannot set properties of undefined (setting
+  //: 'height')` out of every "/" command in the note composer, which still
+  //: *inserted* the text, so the menu looked like it worked and the box
+  //: silently stopped growing. Found by driving the capture box
+  //: (`scratchpad/ui-sweeps/cm-notes.js`), not by reading: the surface wears
+  //: enough of a textarea's names that the call site reads as correct.
   if (typeof autoGrow === "function" && textarea.classList.contains("autogrow")) {
-    autoGrow(textarea);
+    autoGrow(textarea.el);
   }
 }
 
 // Replace [start, end) with `text`, then place the caret. `select` picks which
 // slice of the inserted text ends up selected, so a placeholder can be typed
-// straight over — the behaviour wrapDocSelection() already establishes for the
+// straight over: the behaviour wrapDocSelection() already establishes for the
 // formatting toolbar, kept identical here so the two feel like one editor.
 function editorSplice(textarea, start, end, text, select) {
-  const value = textarea.value;
-  textarea.value = value.slice(0, start) + text + value.slice(end);
+  //: CodeMirror gets a transaction rather than a whole-document rewrite: one
+  //: keeps the editor's own undo history granular, the other collapses every
+  //: insertion into "the document became this string".
+  if (textarea.kind === "codemirror") {
+    textarea.replaceRange(start, end, text);
+  } else {
+    const value = textarea.value;
+    textarea.value = value.slice(0, start) + text + value.slice(end);
+  }
   if (select) {
     textarea.setSelectionRange(start + select.from, start + select.to);
   } else {
@@ -190,13 +220,12 @@ function editorApplyAction(textarea, action) {
 //: link, indent, undo…) and `pre`/`post` (the HTML-ish sup/sub/underline/
 //: comment) are both handled by `applyMarkdown` in documents.js and by nothing
 //: here. A "/" command wired straight to one of those through
-//: `editorApplyAction` matches no branch and returns silently — this repo's
+//: `editorApplyAction` matches no branch and returns silently, this repo's
 //: "a policy silently refusing the work" shape, and it would have shipped as
 //: three menu rows that do nothing.
 //:
-//: `applyMarkdown` takes a box id and every editor surface has one (including
-//: each live-view block, which is why `docLiveEditor` sets one), so this is a
-//: call rather than a second implementation for the two to drift apart.
+//: `applyMarkdown` takes a box id and every editor surface has one, so this
+//: is a call rather than a second implementation for the two to drift apart.
 function editorApplyNamed(textarea, kind) {
   if (typeof applyMarkdown === "function" && textarea.id) {
     applyMarkdown(kind, textarea.id);
@@ -207,7 +236,7 @@ function editorApplyNamed(textarea, kind) {
 
 // A callout block, ready to type into.
 //
-// Every line of the body needs its own "> " — a blockquote ends at the first
+// Every line of the body needs its own "> ", a blockquote ends at the first
 // line that does not start with one, so a two-line callout written without the
 // prefix on line two silently becomes a one-line callout followed by a
 // paragraph. Getting that wrong is invisible until it renders.
@@ -225,7 +254,7 @@ function calloutTemplate(kind, fold = "") {
 // ---------------------------------------------------------------------------
 
 // `contexts` omitted means "everywhere". `keywords` exists so that typing
-// "warn", "box" or "frame" finds the warning callout — the user asked for
+// "warn", "box" or "frame" finds the warning callout, the user asked for
 // "specialised boxes and frames", which is nobody's idea of the word
 // "callout", and a menu you can only search by its internal vocabulary is a
 // menu you have to already know.
@@ -266,7 +295,7 @@ function editorCommands(context) {
       id: `callout-${kind}`,
       group: "Blocks & frames",
       // Eight callout kinds would fill the whole menu on their own and push
-      // Links, AI and Templates below the fold — which is exactly what a live
+      // Links, AI and Templates below the fold, which is exactly what a live
       // browser check caught. Four show by default; typing finds the rest.
       primary: ["note", "tip", "warning", "danger"].includes(kind),
       label: `${meta.icon} ${meta.label} box`,
@@ -276,7 +305,7 @@ function editorCommands(context) {
     });
   }
 
-  // **Typed collapsible blocks** — REDESIGN.md §R7.3 item 3, and the last
+  // **Typed collapsible blocks**: REDESIGN.md §R7.3 item 3, and the last
   // piece of it. Asked for directly: "I want the structured note features and
   // elements from kortex with the slash commands to be rendered and easier
   // for the user to use."
@@ -284,14 +313,14 @@ function editorCommands(context) {
   // One command rather than eight more (a foldable variant of every callout
   // kind would double this menu, which a live browser check already caught
   // once as pushing Links and Templates below the fold). The kind is easy to
-  // change afterwards — it is one word in the text — and "fold this away" is
+  // change afterwards, it is one word in the text, and "fold this away" is
   // the thing being asked for, not "fold this away, in orange".
   commands.push({
     id: "callout-fold",
     primary: true,
     group: "Blocks & frames",
     label: "\u{1F4C1} Collapsible section",
-    hint: "> [!note]- — folded until clicked",
+    hint: "> [!note]-: folded until clicked",
     keywords: ["fold", "collapse", "collapsible", "toggle", "details", "section", "hide"],
     run: (textarea) => editorApplyAction(textarea, calloutTemplate("note", "-")),
   });
@@ -304,7 +333,12 @@ function editorCommands(context) {
       label: "\u{1F4CA} Table",
       hint: "3 columns",
       keywords: ["table", "grid", "columns"],
-      run: (textarea) => editorApplyAction(textarea, MD_ACTIONS.table),
+      //: `editorApplyNamed`, not `editorApplyAction`: the table is a `custom`
+      //: action now (it places the caret in the first header cell), and
+      //: `editorApplyAction` knows only the four insertion shapes, so it would
+      //: have matched nothing and inserted nothing, silently. Its own comment
+      //: says so.
+      run: (textarea) => editorApplyNamed(textarea, "table"),
     },
     {
       id: "codeblock",
@@ -333,6 +367,14 @@ function editorCommands(context) {
       run: (textarea) => editorApplyAction(textarea, MD_ACTIONS.ul),
     },
     {
+      id: "math",
+      group: "Blocks & frames",
+      label: "\u{1F9EE} Math",
+      hint: "$\u2026$, rendered where you write it",
+      keywords: ["math", "formula", "equation", "latex", "tex", "mathml"],
+      run: (textarea) => editorApplyAction(textarea, MD_ACTIONS.math),
+    },
+    {
       id: "divider",
       primary: true,
       group: "Blocks & frames",
@@ -346,13 +388,13 @@ function editorCommands(context) {
       primary: true,
       group: "Blocks & frames",
       label: "\u{1F516} Section heading",
-      hint: "## — becomes a jump target",
+      hint: "##, becomes a jump target",
       keywords: ["heading", "section", "anchor", "title", "h2"],
       run: (textarea) => editorApplyAction(textarea, MD_ACTIONS.h2),
     },
     //: **The rest of the block vocabulary.** The toolbar has had these since
     //: the Obsidian-toolbar pass; the "/" menu had a subset, which makes the
-    //: two disagree about what the editor can do — and "/" is the one people
+    //: two disagree about what the editor can do, and "/" is the one people
     //: reach for once they stop reading the toolbar. Every one of them runs
     //: the same MD_ACTIONS entry the toolbar button runs, so there is no
     //: second dialect of the markdown to keep in step.
@@ -411,7 +453,7 @@ function editorCommands(context) {
       primary: true,
       group: "Links & references",
       label: "\u{1F4CE} Embed a note inline",
-      hint: "![[…]] — shows its text here",
+      hint: "![[…]], shows its text here",
       keywords: ["embed", "transclude", "include", "inline", "note"],
       run: (textarea) => {
         editorApplyAction(textarea, { insert: "![[" });
@@ -422,7 +464,7 @@ function editorCommands(context) {
       id: "image",
       group: "Links & references",
       label: "\u{1F5BC}\u{FE0F} Image",
-      hint: "![alt](url) — or paste a file into the editor",
+      hint: "![alt](url): or paste a file into the editor",
       keywords: ["image", "picture", "photo", "figure", "screenshot"],
       run: (textarea) => editorApplyNamed(textarea, "image"),
     },
@@ -430,7 +472,7 @@ function editorCommands(context) {
       id: "footnote",
       group: "Links & references",
       label: "\u{1F4CC} Footnote",
-      hint: "[^1] — with its text at the foot",
+      hint: "[^1]: with its text at the foot",
       keywords: ["footnote", "reference", "cite", "aside"],
       run: (textarea) => editorApplyNamed(textarea, "footnote"),
     },
@@ -438,7 +480,7 @@ function editorCommands(context) {
       id: "comment",
       group: "Links & references",
       label: "\u{1F576}\u{FE0F} Private comment",
-      hint: "%%…%% — kept in the file, never rendered",
+      hint: "%%…%%, kept in the file, never rendered",
       keywords: ["comment", "private", "hidden", "todo", "note to self"],
       run: (textarea) => editorApplyNamed(textarea, "comment"),
     },
@@ -460,10 +502,54 @@ function editorCommands(context) {
     }
   );
 
+  //: **Properties**, the one block whose position is not the caret's:
+  //: `docInsertProperties` puts it at the top of the document, or puts the
+  //: caret in the block that is already there. Documents only, and pushed here
+  //: rather than declared with a `contexts` field, because the filter the
+  //: comment above describes is this `if`: nothing reads `contexts`.
+  if (context === "document") {
+    commands.push({
+      id: "properties",
+      primary: true,
+      group: "Blocks & frames",
+      label: "\u{1F3F7}\u{FE0F} Properties",
+      hint: "tags, status, dates",
+      keywords: ["properties", "frontmatter", "metadata", "tags", "yaml", "status", "aliases"],
+      run: (textarea) => editorApplyNamed(textarea, "properties"),
+    });
+    //: Columns, for the same reason: the `:::columns` fence renders as columns
+    //: in this editor and as three lines of literal text anywhere else, so
+    //: offering it in the capture box would be offering a block that only
+    //: looks like one somewhere the writer cannot see.
+    //: **Link to this block**, the copy half of a block reference. It inserts
+    //: nothing where the caret is: it gives the caret's own paragraph an id
+    //: (if it has none yet) and puts `[[Title#^id]]` on the clipboard, which
+    //: is the form you paste into a note, a map node or a chat. Documents
+    //: only, because the id has to be written into a document's text and the
+    //: capture box has no document to write it into.
+    commands.push({
+      id: "blockref",
+      group: "Links & references",
+      label: "\u{1F517} Link to this block",
+      hint: "copies [[Title#^id]]",
+      keywords: ["block", "reference", "anchor", "paragraph", "permalink", "copy link", "^"],
+      run: (textarea) => editorApplyNamed(textarea, "blockref"),
+    });
+    commands.push({
+      id: "columns",
+      primary: true,
+      group: "Blocks & frames",
+      label: "\u{1F4D1} Two columns",
+      hint: ":::columns",
+      keywords: ["columns", "column", "two", "side", "split", "grid", "layout"],
+      run: (textarea) => editorApplyNamed(textarea, "columns"),
+    });
+  }
+
   // --- AI actions ---
   // Document-only, because these route to the document editor's own AI panel
   // and extract-notes preview. Offering them in the capture box would open a
-  // panel pointed at whatever document happened to be loaded — acting on text
+  // panel pointed at whatever document happened to be loaded, acting on text
   // the user cannot see is worse than not offering the command.
   if (context === "document") {
     commands.push(
@@ -471,7 +557,7 @@ function editorCommands(context) {
         //: **The one AI command that does not open a panel.** First in the
         //: group and `primary`, because it is the one that answers the ask
         //: ("the agent or ai needs to be more directly integrated into the
-        //: documents") — the other two below are doors to the side pane, which
+        //: documents"), the other two below are doors to the side pane, which
         //: is the right place for "review the whole document" and the wrong
         //: place for "make this shorter".
         id: "ai-inline",
@@ -528,7 +614,7 @@ function editorCommands(context) {
     }
   );
 
-  // The user's own templates first, then the built-ins — the same "yours
+  // The user's own templates first, then the built-ins, the same "yours
   // before ours" ordering loadTemplates() already uses for the dropdown.
   const custom = (typeof prefsCache !== "undefined" && prefsCache?.custom_templates) || [];
   const builtin = typeof BUILTIN_TEMPLATES !== "undefined" ? BUILTIN_TEMPLATES : [];
@@ -567,51 +653,25 @@ const editorMenuState = {
 
 // Where the caret is, in page coordinates.
 //
-// A textarea gives no caret geometry at all, so the standard answer is to
-// build an invisible div with the same text metrics, put a marker where the
-// caret is, and measure that. It is more code than anchoring the menu under
-// the box would be — which is what the existing [[ suggest does — but the
-// document editor's textarea is most of the screen, and a menu that opens
-// hundreds of pixels from the caret reads as unrelated to what you just typed.
+// **One answer for the whole app, asked of the surface itself.** This used to
+// be a second mirror implementation: an invisible div with the same text
+// metrics, a marker span where the caret is, measured and thrown away, which
+// is the only thing a `<textarea>` can do because it exposes no caret
+// geometry at all. documents.js has the same technique in `docMirrorPoint`,
+// and two copies of a measurement this fiddly is two things to keep in step.
+//
+// The adapter already has to answer this question for CodeMirror (which does
+// have a real API for it, `coordsAtPos`), so it answers it for a textarea too
+// and this becomes the one line it always wanted to be. `lineHeight` comes
+// back with the point because every caller here places its popup *under* the
+// caret's line and needs to know how tall the line is.
 function editorCaretPoint(textarea) {
-  const mirror = document.createElement("div");
-  const style = getComputedStyle(textarea);
-  // Everything that affects where a glyph lands has to be copied, or the
-  // mirror wraps differently and the marker ends up on the wrong line.
-  for (const property of [
-    "boxSizing", "width", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
-    "borderTopWidth", "borderRightWidth", "borderBottomWidth", "borderLeftWidth",
-    "fontFamily", "fontSize", "fontWeight", "fontStyle", "letterSpacing",
-    "lineHeight", "textTransform", "wordSpacing", "textIndent", "whiteSpace",
-  ]) {
-    mirror.style[property] = style[property];
-  }
-  mirror.style.position = "absolute";
-  mirror.style.visibility = "hidden";
-  mirror.style.whiteSpace = "pre-wrap";
-  mirror.style.overflowWrap = "break-word";
-  mirror.style.top = "0";
-  mirror.style.left = "-9999px";
-
-  const upto = textarea.value.slice(0, textarea.selectionStart);
-  mirror.textContent = upto;
-  const marker = document.createElement("span");
-  // A zero-width span collapses and measures as nothing on some engines; a
-  // non-breaking space is guaranteed to have a box to measure.
-  marker.textContent = "​";
-  mirror.appendChild(marker);
-  document.body.appendChild(mirror);
-
-  const box = textarea.getBoundingClientRect();
-  const top = box.top + marker.offsetTop - textarea.scrollTop;
-  const left = box.left + marker.offsetLeft - textarea.scrollLeft;
-  const lineHeight = Number.parseFloat(style.lineHeight) || Number.parseFloat(style.fontSize) * 1.4;
-  mirror.remove();
-  return { top, left, lineHeight };
+  const at = textarea.coordsAt(textarea.selectionStart);
+  return { top: at.top, left: at.left, lineHeight: at.lineHeight };
 }
 
 // Put the menu at the caret, then pull it back on screen if it would hang off
-// the bottom or the right — a menu you have to scroll the page to read is the
+// the bottom or the right, a menu you have to scroll the page to read is the
 // same as no menu.
 function editorPositionMenu(textarea) {
   const menu = $("editor-menu");
@@ -696,7 +756,7 @@ function editorLinkMatches(needle) {
       group: "Notes",
       label: noteLabel(entry, 60),
       hint: "note",
-      // Link by the note's opening words — that is what resolution matches
+      // Link by the note's opening words: that is what resolution matches
       // on. Brackets are stripped first: a note that itself contains a
       // [[link]] would otherwise be inserted verbatim, and the parser would
       // then find the INNER brackets and resolve to the wrong note.
@@ -709,7 +769,7 @@ function editorLinkMatches(needle) {
     }))
     .filter((item) => item.value);
 
-  // Documents are link targets too — that is Phase B's whole point, and it is
+  // Documents are link targets too, that is Phase B's whole point, and it is
   // why this list is built here rather than reusing app.js's note-only one.
   const documents = (editorDocumentCache || [])
     .filter((doc) => !query || (doc.title || "").toLowerCase().includes(query))
@@ -724,7 +784,7 @@ function editorLinkMatches(needle) {
     .filter((item) => item.value);
 
   //: **Files and images**, the third and fourth kinds. They are not wiki-link
-  //: targets — there is no name to resolve, only a url — so each carries the
+  //: targets, there is no name to resolve, only a url, so each carries the
   //: markdown it wants inserted (`item.markdown`, handled in `editorRunItem`):
   //: an embed for a picture, a plain link for anything else.
   const files = (editorFileCache || [])
@@ -738,21 +798,38 @@ function editorLinkMatches(needle) {
       markdown: `${file._isImage ? "!" : ""}[${(file.original_name || "file").replace(/[[\]]/g, "")}](${file.url})`,
     }));
 
-  //: **Boards.** A board *is* an Entry (`is_board`), so it is already in
-  //: `allEntries` — but it is filtered out of the notes list above by the
-  //: same rule that keeps boards out of the note list everywhere else, and a
-  //: notebook with boards had no way to link to one at all.
-  const boards = (typeof allEntries !== "undefined" ? allEntries : [])
-    .filter((e) => e.is_board && !e.is_private)
-    .filter((e) => !query || (e.content || "").toLowerCase().includes(query))
+  //: **Boards.** A board *is* an Entry (`is_board`) and used to be found in
+  //: `allEntries`, but `GET /entries` is the notes list and no longer
+  //: returns boards at all (reported: a mind map called "test" appeared in
+  //: the Notes list as a note), so the source is now `/whiteboard/boards`
+  //: through the same index the map chips read. A notebook with boards still
+  //: has to be able to link to one.
+  //: Not awaited, and only when the index is empty: this function is
+  //: synchronous (it runs on every keystroke of a `[[` token), so the most it
+  //: can do is ask for the list and let the *next* keystroke show it. The
+  //: request itself is cached for 8s inside `loadMapBoardIndex`, so a burst
+  //: of typing costs one call.
+  if (typeof mapBoardRows === "function" && !mapBoardRows().length
+      && typeof loadMapBoardIndex === "function") {
+    loadMapBoardIndex();
+  }
+  const boards = (typeof mapBoardRows === "function" ? mapBoardRows() : [])
+    .filter((b) => b.id != null)
+    .filter((b) => !query || String(b.title || "").toLowerCase().includes(query))
     .slice(0, 3)
-    .map((entry) => ({
-      id: `board-${entry.id}`,
+    .map((board) => ({
+      id: `board-${board.id}`,
       group: "Boards",
-      label: noteLabel(entry, 60),
-      hint: "board",
-      value: (entry.content || "")
-        .split("\n")[0]
+      label: String(board.title || "Untitled board").slice(0, 60),
+      hint: board.type === "map" ? "mind map" : "board",
+      //: **The board's title, not its first raw line.** A board's content is
+      //: `# My map`, so this used to insert `[[# My map]]`, which resolved
+      //: (the resolver matched by prefix) and read as a stray heading marker
+      //: inside a sentence. `resolveWikiTarget` matches a board title with or
+      //: without the `#`, so links written the old way still resolve. The
+      //: board row's own `title` arrives with the `# ` already stripped, so
+      //: the cleaning below is only about brackets and runs of whitespace.
+      value: String(board.title || "")
         .replace(/\[\[|\]\]/g, "")
         .replace(/\s+/g, " ")
         .trim()
@@ -764,14 +841,18 @@ function editorLinkMatches(needle) {
 }
 
 //: The Library's own gallery payload, fetched once per menu session the same
-//: way documents are — `/media` and `/files/gallery` are two calls, and doing
+//: way documents are: `/media` and `/files/gallery` are two calls, and doing
 //: them per keystroke would put a request behind every letter typed.
 let editorFileCache = null;
 
 async function editorLoadFiles() {
   if (editorFileCache && editorFileCache.length) return;
   const [media, attachments] = await Promise.all([
-    apiJson("/media", { silent: true }).catch(() => []),
+    //: Read to the end (`apiPagedList`, documents.js): `GET /media` returns
+    //: a page now (INBOX 117), and this cache is what the `/` and `[[` menus
+    //: offer. A picker missing a file is a file you cannot insert, with
+    //: nothing on screen to say it exists.
+    apiPagedList("/media", MEDIA_PAGE_SIZE, { silent: true }).catch(() => []),
     apiJson("/files/gallery", { silent: true }).catch(() => []),
   ]);
   const rows = [
@@ -783,7 +864,7 @@ async function editorLoadFiles() {
     })),
   ];
   //: `_isImage` decides embed-or-link, and it is decided here once rather
-  //: than by each caller re-sniffing the extension — the same split
+  //: than by each caller re-sniffing the extension, the same split
   //: `library.js` makes for the gallery.
   editorFileCache = rows.map((row) => ({
     ...row,
@@ -862,7 +943,7 @@ function editorRunItem(position) {
     //: no name to resolve, so an item like that carries the markdown it wants
     //: inserted and the opening `[[` the trigger left behind is removed
     //: first. Asked for as "cross-link everything: notes, documents, files,
-    //: maps from anywhere" — the picker covered two of the four.
+    //: maps from anywhere", the picker covered two of the four.
     const at = textarea.selectionStart;
     const open = trigger === "[[" ? at - trigger.length : at;
     editorSplice(textarea, open, at, item.markdown, null);
@@ -915,12 +996,22 @@ function editorRefreshMenu() {
 }
 
 // ---------------------------------------------------------------------------
-// Wiring — one delegated listener per event, for every surface at once
+// Wiring: one delegated listener per event, for every surface at once
 // ---------------------------------------------------------------------------
 
-document.addEventListener("input", (event) => {
-  const textarea = event.target;
-  if (!(textarea instanceof HTMLTextAreaElement)) return;
+//: **Called, not only listened for.** A `<textarea>` raises `input` for every
+//: character and this file has always hung the trigger check off that. The
+//: engine does not: CodeMirror applies a typed character itself, through its
+//: own transaction pipeline, and no bubbling `input` reaches this listener at
+//: all. Measured, not reasoned: with the engine mounted the "/" menu and the
+//: `[[` picker simply never opened, and nothing logged, which is this repo's
+//: "a policy silently refusing the work" shape in the one place it is hardest
+//: to notice, because both menus look like they are just not wanted yet.
+//:
+//: So the body is a function, and documents.js's update listener calls it for
+//: the engine. One implementation, two ways in.
+function editorHandleInput(textarea) {
+  if (!textarea) return;
   if (!editorSurfaceKind(textarea)) return;
 
   if (editorMenuState.open && editorMenuState.textarea === textarea) {
@@ -932,18 +1023,21 @@ document.addEventListener("input", (event) => {
   // The capture box keeps its own [[ autocomplete (app.js's #wiki-suggest),
   // which predates this file and is wired, styled and tested. Two menus racing
   // for the same trigger in the same box would both open. So "[[" is claimed
-  // here only for surfaces that had nothing before — today, the document
+  // here only for surfaces that had nothing before, today, the document
   // editor. Migrating capture onto this one mechanism is worth doing, but as
   // its own change, not folded into the diff that introduces the mechanism.
   const claimsWiki = textarea.id !== "entry-content";
   for (const trigger of claimsWiki ? ["/", "[["] : ["/"]) {
     if (editorTokenAt(textarea, trigger)) {
       if (trigger === "[[") {
-        // Fetch documents once, then redraw — the list opens on notes alone
+        // Fetch documents once, then redraw, the list opens on notes alone
         // and gains documents a moment later rather than blocking on a fetch.
         if (editorDocumentCache === null) {
           editorDocumentCache = [];
-          apiJson("/documents")
+          //: Paged to the end, same reason as the file cache above: a
+          //: document missing from this list is a `[[link]]` the menu
+          //: cannot offer, silently.
+          apiPagedList("/documents", DOCUMENTS_PAGE_SIZE)
             .then((docs) => {
               editorDocumentCache = Array.isArray(docs) ? docs : [];
               if (editorMenuState.open) editorRefreshMenu();
@@ -966,13 +1060,24 @@ document.addEventListener("input", (event) => {
       return;
     }
   }
+}
+
+document.addEventListener("input", (event) => {
+  //: The engine's own edits arrive through `editorHandleInput` above, called
+  //: from documents.js's update listener. Anything from inside the view that
+  //: *does* raise a DOM `input` (a paste, in some browsers) would otherwise
+  //: run the check a second time and reopen a menu the first pass closed.
+  if (typeof docEventFromCm === "function" && docEventFromCm(event.target)) return;
+  editorHandleInput(editorSurfaceFor(event.target));
 });
 
 document.addEventListener(
   "keydown",
   (event) => {
     if (!editorMenuState.open) return;
-    if (event.target !== editorMenuState.textarea) return;
+    //: Compared as *surfaces*: the event target inside CodeMirror is whichever
+    //: line element the caret is in, never the object the menu was opened on.
+    if (editorSurfaceFor(event.target) !== editorMenuState.textarea) return;
     const { items } = editorMenuState;
 
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
@@ -1010,7 +1115,7 @@ document.addEventListener("mousedown", (event) => {
 });
 
 // Scrolling the *page* moves the caret out from under a menu anchored to it,
-// so the menu closes. Scrolling *inside the menu itself* must not — reported
+// so the menu closes. Scrolling *inside the menu itself* must not, reported
 // directly: "the popup options for commands aren't scrollable and disappear
 // when I try to scroll them". This listener is on the capture phase, so it saw
 // the menu's own wheel-scroll before it reached the menu and shut it every
@@ -1038,7 +1143,7 @@ window.addEventListener("resize", () => editorMenuState.open && editorCloseMenu(
 // plugin. Ive used it and it is great."*
 //
 // The thing that plugin actually changes is **where the buttons are**, not
-// which ones exist — this app's fixed toolbar already has more of them. A bar
+// which ones exist: this app's fixed toolbar already has more of them. A bar
 // that follows the text you selected puts formatting where you are looking,
 // instead of at the top of a panel you may have scrolled a screen away from.
 //
@@ -1060,15 +1165,15 @@ const SELECTION_BAR_ACTIONS = [
   //: text and say something in the chat and the agent gets the context of
   //: what is highlighted and cursor position."* It is the highest ratio of
   //: "feels capable" to work in that whole section, and this bar is already
-  //: the thing on screen the moment a selection exists — a second control
+  //: the thing on screen the moment a selection exists, a second control
   //: somewhere else would be a second thing to find.
   { ask: true, label: "ph:chat-teardrop-text", title: "Ask the AI about this selection" },
   //: **The second half of that pair: change it here, rather than talk about
   //: it there.** Asking sends the selection to the chat and leaves the text
   //: alone; this rewrites the selection in place. They belong next to each
   //: other because the choice between them is the whole decision, and a
-  //: selection is the moment it gets made. Document surfaces only — see
-  //: `inlineAiAvailable` — so the button is skipped where it could not work.
+  //: selection is the moment it gets made. Document surfaces only: see
+  //: `inlineAiAvailable`, so the button is skipped where it could not work.
   { inlineAi: true, label: "ph:magic-wand", title: "Rewrite this with AI (Ctrl+J)" },
 ];
 
@@ -1104,7 +1209,7 @@ function selectionBarElement() {
     button.setAttribute("aria-label", action.title);
     setLabel(button, action.label);
     //: `mousedown`, not `click`, and prevented: a click would first move focus
-    //: out of the textarea, and the browser drops the selection on the way —
+    //: out of the textarea, and the browser drops the selection on the way, 
     //: so by the time the handler ran there would be nothing selected to wrap.
     button.addEventListener("mousedown", (event) => {
       event.preventDefault();
@@ -1117,7 +1222,7 @@ function selectionBarElement() {
       }
       if (action.inlineAi) {
         //: The selection is read from the textarea *before* the bar takes
-        //: focus, which `inlineAiOpen` does on its first two lines — the same
+        //: focus, which `inlineAiOpen` does on its first two lines, the same
         //: reason this whole handler is on `mousedown`.
         inlineAiOpen(textarea);
         return;
@@ -1125,7 +1230,7 @@ function selectionBarElement() {
       applyMarkdown(action.md, textarea.id);
       //: Deliberately *not* hidden here. `applyMarkdown` leaves the text it
       //: wrapped selected, so the bar re-anchors to it on the next
-      //: `selectionchange` — which is what lets bold-then-italic be two
+      //: `selectionchange`, which is what lets bold-then-italic be two
       //: presses rather than a re-selection between them. Hiding it made the
       //: bar blink out and straight back in.
     });
@@ -1155,12 +1260,20 @@ function selectionBarShow(textarea) {
   const { top, left, lineHeight } = editorCaretPoint(textarea);
   const size = bar.getBoundingClientRect();
   const margin = 8;
+  //: **The boundary is the editing pane, and now that is the surface itself.**
+  //: This used to need a special case: the Live view gave every paragraph its
+  //: own box, so the caret's box was the top of *that paragraph*, and the rule
+  //: below read every selection in Live as "on the first line, flip the bar
+  //: below it". Measured at the time: selecting inside the third paragraph put
+  //: the bar at y=358 against a selection at y=328, under the words instead of
+  //: above them. With one editor in every view the surface's own rectangle is
+  //: the pane's, and the special case goes.
   const boxTop = textarea.getBoundingClientRect().top;
   let y = top - size.height - 6;
   //: **Above the line, unless that means on top of the fixed toolbar.** Every
   //: editing surface in this app has its own formatting row immediately above
   //: the textarea, so a selection on the *first* line put this bar straight
-  //: over it — measured, and it read as two toolbars stacked rather than as a
+  //: over it: measured, and it read as two toolbars stacked rather than as a
   //: bar belonging to the selection. Below the line in that case: it covers
   //: the next line of the note instead, which is text you can scroll to and
   //: not a control you might press by mistake.
@@ -1181,10 +1294,10 @@ function isEditorSurface(node) {
 function selectionBarSync() {
   //: The inline AI bar anchors to the same caret and leaves its answer
   //: *selected* on purpose, so without this the two bars stack on top of each
-  //: other the moment an answer lands — and the one underneath is the one with
+  //: other the moment an answer lands, and the one underneath is the one with
   //: Keep and Undo on it.
   if (inlineAiState.phase !== "idle") return selectionBarHide();
-  const active = document.activeElement;
+  const active = editorSurfaceFor(document.activeElement);
   if (!isEditorSurface(active)) {
     return selectionBarHide();
   }
@@ -1196,7 +1309,7 @@ function selectionBarSync() {
 }
 
 //: `selectionchange` is the one event that fires for *every* way a selection
-//: can change — drag, shift+arrow, double-click, select-all, undo — where
+//: can change, drag, shift+arrow, double-click, select-all, undo, where
 //: mouseup/keyup each miss several. It fires on `document`, not the element.
 document.addEventListener("selectionchange", selectionBarSync);
 //: The bar is positioned in viewport coordinates against a caret that moves
@@ -1211,7 +1324,7 @@ document.addEventListener("keydown", (event) => {
 //: How much text either side of the selection travels with it. Enough that a
 //: pronoun in the selection ("why does *it* do that?") has an antecedent, and
 //: small enough that a selection made in a 40,000-character document does not
-//: quietly become the whole document — the harness budgets tool *results*
+//: quietly become the whole document, the harness budgets tool *results*
 //: (§R5 item 4) but the question itself is not a tool result, so nothing else
 //: would bound this.
 const SELECTION_CONTEXT_MARGIN = 240;
@@ -1221,33 +1334,12 @@ const SELECTION_CONTEXT_MARGIN = 240;
 //: every editor in the world shows the user, and the number is going into a
 //: chip they read.
 function selectionContextFrom(textarea) {
-  //: **A live-view block reports itself in the document's coordinates.** Its
-  //: own offsets start at zero for every paragraph, so left alone this would
-  //: tell the model "line 2" for the last paragraph of a long document — and
-  //: `revalidateSelection` would then check those offsets against the wrong
-  //: textarea entirely, since the block is replaced whenever it re-renders.
-  //: Translating here means everything downstream sees one surface.
-  if (textarea.classList.contains("lp-src")) {
-    const source = $("doc-content");
-    const base = typeof docLiveBlockOffset === "function" ? docLiveBlockOffset(textarea) : null;
-    if (source && base !== null) {
-      return selectionOffsets(
-        source,
-        base + textarea.selectionStart,
-        base + textarea.selectionEnd
-      );
-    }
-    //: The block could not be located in the document — it is mid-edit, or two
-    //: paragraphs are identical and neither the index nor the search settled
-    //: it. Still a *document* selection, and saying so matters: falling
-    //: through to the line below would label a document "the note you're
-    //: writing" and report a line number counted from the top of the
-    //: paragraph. The offsets are the block's own, which
-    //: `revalidateSelection` will find do not match `doc-content` — so it
-    //: reports the position as unknown, which is the truth.
-    return { ...selectionOffsets(textarea, textarea.selectionStart, textarea.selectionEnd),
-      surfaceId: "doc-content", kind: "document" };
-  }
+  //: **One set of coordinates.** This used to translate a live-view
+  //: paragraph's own offsets into the document's, because Live gave every
+  //: paragraph its own box and left alone this would have told the model
+  //: "line 2" for the last paragraph of a long document. DOCUMENTS_PLAN
+  //: Phase 2 made Live and Source one editor, so a selection is already in
+  //: the document's coordinates wherever it was made.
   return selectionOffsets(textarea, textarea.selectionStart, textarea.selectionEnd);
 }
 
@@ -1273,7 +1365,7 @@ function selectionOffsets(textarea, start, end) {
 //: The label on the chip, and the only place that knows which surface belongs
 //: to which thing. `entry-content` deliberately has no id: it is a note being
 //: written that does not exist yet, and a selection from it is still worth
-//: asking about — the text is what matters, not a row in the database.
+//: asking about: the text is what matters, not a row in the database.
 function selectionContextSource(surfaceId) {
   if (surfaceId === "doc-content") {
     const doc = typeof currentDoc !== "undefined" ? currentDoc : null;
@@ -1315,7 +1407,7 @@ function askAboutSelection(textarea) {
 //
 // The DOM shape, the captured Escape handler, the backdrop click and the
 // "focus the safe option, not the committing one" rule are all copied from
-// confirmDialog deliberately — a second dialog that behaves differently from
+// confirmDialog deliberately: a second dialog that behaves differently from
 // the app's own is worse than no dialog.
 function editorChoiceDialog(message, choices) {
   return new Promise((resolve) => {
@@ -1323,7 +1415,7 @@ function editorChoiceDialog(message, choices) {
     overlay.className = "modal-overlay confirm-overlay";
     overlay.setAttribute("role", "dialog");
     // aria-modal, because this one genuinely is: the page behind it is inert
-    // until it is answered. (The focus trap keys off exactly this attribute —
+    // until it is answered. (The focus trap keys off exactly this attribute, 
     // see HANDOVER.md on the 13 anchored popovers that must NOT carry it.)
     overlay.setAttribute("aria-modal", "true");
 
@@ -1398,7 +1490,7 @@ async function offerToCreateWikiTarget(name) {
   try {
     if (choice === "note") {
       // The note's content opens with the link text, because that is what
-      // resolution matches on — a note created here that did not start with
+      // resolution matches on: a note created here that did not start with
       // the name would leave the very link that made it still unresolved.
       const entry = await apiJson("/entries", {
         method: "POST",
@@ -1431,7 +1523,7 @@ async function offerToCreateWikiTarget(name) {
 // ---------------------------------------------------------------------------
 //
 // **Written here rather than pulled in.** This app is offline by construction
-// — there is no CDN to load highlight.js from and no bundler to vendor it
+//, there is no CDN to load highlight.js from and no bundler to vendor it
 // with, and a 900 KB library shipped for one panel would be the largest
 // single asset in the project. Four token classes cover what makes code
 // readable at a glance: comments recede, strings and numbers stand out from
@@ -1440,7 +1532,7 @@ async function offerToCreateWikiTarget(name) {
 //
 // **The colours are existing semantic tokens, not new ones.** `--muted` for
 // comments, `--ok` for strings, `--warn` for numbers, `--accent` for
-// keywords — each already has a light and a dark value, so this follows the
+// keywords: each already has a light and a dark value, so this follows the
 // theme for free and adds nothing for `tests/test_style_scale.py` to police.
 //
 // **Every pattern here is linear.** CI runs CodeQL, which has caught a real
@@ -1450,7 +1542,7 @@ async function offerToCreateWikiTarget(name) {
 
 //: What a suffix is written in. The value is the profile name below; a suffix
 //: that is missing gets `generic`, which still finds strings, numbers and
-//: both comment styles — worth having for a `.conf` nobody thought about.
+//: both comment styles: worth having for a `.conf` nobody thought about.
 const CODE_LANGUAGES = {
   js: "c", mjs: "c", cjs: "c", ts: "c", tsx: "c", jsx: "c", java: "c",
   c: "c", h: "c", cpp: "c", hpp: "c", cs: "c", go: "c", rs: "c", swift: "c",
@@ -1462,7 +1554,7 @@ const CODE_LANGUAGES = {
 
 //: Keywords worth colouring, per family. Deliberately not exhaustive: a
 //: keyword list that tries to be complete is a maintenance burden that buys
-//: nothing — what the eye uses is the *shape* of the control flow, and these
+//: nothing: what the eye uses is the *shape* of the control flow, and these
 //: are the words that carry it.
 const CODE_KEYWORDS = {
   c: "abstract async await break case catch class const continue default delete do else enum export extends false final finally for from function goto if implements import in instanceof interface let new null package private protected public return static struct super switch this throw throws true try typeof var void while yield",
@@ -1495,7 +1587,7 @@ function codeScanner(family) {
   return scanner;
 }
 
-//: Which family a filename is in. Extension only — content sniffing guesses
+//: Which family a filename is in. Extension only: content sniffing guesses
 //: wrong on short files and there is nothing to gain: a file this app can
 //: view arrived with a suffix it recognised (`docview.CODE_SUFFIXES`).
 function codeFamilyFor(filename) {
@@ -1504,7 +1596,7 @@ function codeFamilyFor(filename) {
 }
 
 //: Fills `target` with the highlighted source. Text nodes and `<span>`s
-//: built with `textContent`, never `innerHTML` — a file's own text is exactly
+//: built with `textContent`, never `innerHTML`, a file's own text is exactly
 //: the untrusted input a markup-assembling highlighter turns into an
 //: injection, and this app's CSP would not save a same-origin one.
 function highlightCodeInto(target, text, filename) {
@@ -1532,12 +1624,12 @@ function highlightCodeInto(target, text, filename) {
 }
 
 // ---------------------------------------------------------------------------
-// Inline AI — the AI at the caret, not in a panel
+// Inline AI: the AI at the caret, not in a panel
 // ---------------------------------------------------------------------------
 //
 // Asked for directly: *"the agent or ai needs to be more directly integrated
-// into the documents."* Everything the document editor already had — AI edit,
-// extract notes, rephrase, translate, check with AI — is a *panel*: you leave
+// into the documents."* Everything the document editor already had, AI edit,
+// extract notes, rephrase, translate, check with AI, is a *panel*: you leave
 // the text, open a side pane, ask, read, accept, come back. That is a fine
 // place for "review this whole document" and the wrong place for "make this
 // sentence shorter", which is the thing writers actually do fifty times an
@@ -1554,7 +1646,7 @@ function highlightCodeInto(target, text, filename) {
 //    false with a message when the model is not there. A third code path to
 //    the same model would be a third place for the offline message, the
 //    thinking trace and the token budget to drift.
-// 2. **Nothing is written until it is accepted — and "accepted" is the
+// 2. **Nothing is written until it is accepted, and "accepted" is the
 //    default, not a modal.** The result goes straight into the text, selected,
 //    with Keep / Try again / Undo underneath. Undo restores the exact prior
 //    value and caret, because `before` is captured whole; a diff would be
@@ -1568,7 +1660,7 @@ const inlineAiState = {
   //: The range the answer replaces, captured when the bar opens. Held rather
   //: than re-read on submit because clicking into the bar's own input moves
   //: focus out of the textarea, and several browsers drop the selection on the
-  //: way — the same trap `selectionBarElement` documents for `mousedown`.
+  //: way: the same trap `selectionBarElement` documents for `mousedown`.
   start: 0,
   end: 0,
   //: The whole textarea value before anything was inserted. Undo restores this
@@ -1707,7 +1799,7 @@ function inlineAiDescribeScope() {
   }
 }
 
-//: True when this surface can reach `POST /documents/{id}/ai-edit` — a
+//: True when this surface can reach `POST /documents/{id}/ai-edit`, a
 //: document textarea *and* a document actually open. Checked by both doors
 //: (the "/" command and the shortcut) rather than letting the bar open and
 //: fail on submit, which is the shape that teaches people a feature is broken.
@@ -1718,7 +1810,7 @@ function inlineAiAvailable(textarea) {
 
 function inlineAiOpen(textarea, instruction = "") {
   if (!inlineAiAvailable(textarea)) {
-    toast("Open a document first — inline AI writes into the document you're editing.");
+    toast("Open a document first, inline AI writes into the document you're editing.");
     return;
   }
   const bar = inlineAiElement();
@@ -1790,10 +1882,10 @@ async function inlineAiSubmit() {
   if (!textarea) return;
   const instruction = $("inline-ai-input").value.trim();
   const selection = before.slice(start, end);
-  //: "Write" needs an instruction — there is nothing else to go on. "Edit"
+  //: "Write" needs an instruction: there is nothing else to go on. "Edit"
   //: does too: a selection alone says *what*, never *what to do to it*.
   if (!instruction) {
-    $("inline-ai-scope").textContent = "Say what you'd like — for example, “make this two sentences”.";
+    $("inline-ai-scope").textContent = "Say what you'd like: for example, “make this two sentences”.";
     $("inline-ai-input").focus();
     return;
   }
@@ -1840,19 +1932,19 @@ async function inlineAiSubmit() {
     }
     //: `replaced_selection` comes from the server rather than being inferred
     //: here, because the server is what decided whether the selection or the
-    //: whole document was the target — inferring it a second time is how the
+    //: whole document was the target, inferring it a second time is how the
     //: two would drift.
     const to = data.replaced_selection ? end : start;
     editorSplice(textarea, start, to, revised, { from: 0, to: revised.length });
-    //: The inserted text ends up *selected*. That is the highlight — a
-    //: textarea cannot paint a range any other way — and it also means the
+    //: The inserted text ends up *selected*. That is the highlight, a
+    //: textarea cannot paint a range any other way, and it also means the
     //: next thing typed replaces it, which is what "try it and see" should
     //: feel like.
     inlineAiState.phase = "review";
     $("inline-ai-input").disabled = false;
     $("inline-ai-review").classList.remove("hidden");
     $("inline-ai-scope").textContent =
-      data.thinking ? `Done. ${data.thinking}` : "Done — keep it, ask again, or undo.";
+      data.thinking ? `Done. ${data.thinking}` : "Done: keep it, ask again, or undo.";
     run.disabled = false;
     run.textContent = "Ask";
     inlineAiPosition();
@@ -1871,7 +1963,7 @@ async function inlineAiSubmit() {
   }
 }
 
-//: Enter submits, Esc dismisses — handled on the bar rather than globally so
+//: Enter submits, Esc dismisses, handled on the bar rather than globally so
 //: neither key is stolen from the document behind it.
 document.addEventListener("keydown", (event) => {
   if (inlineAiState.phase === "idle") return;
@@ -1899,7 +1991,7 @@ document.addEventListener("keydown", (event) => {
 });
 
 //: Clicking away keeps the result and closes, the same as Esc. Not on
-//: `mousedown` inside the bar, obviously, and not while the model is writing —
+//: `mousedown` inside the bar, obviously, and not while the model is writing, 
 //: a stray click should not throw away work that is seconds from arriving.
 document.addEventListener("mousedown", (event) => {
   if (inlineAiState.phase === "idle" || inlineAiState.phase === "working") return;

@@ -4,8 +4,8 @@
 work: it takes a `vision_reader`, `ai/vision_ocr.py` reads images, and nothing
 turned a PDF page into one. The seam was built and the plug did not exist.
 
-pypdfium2 was then actually installed and measured — ~16 MB, no system
-packages, no torch, about 20 ms a page — so the plug exists now. These tests
+pypdfium2 was then actually installed and measured, ~16 MB, no system
+packages, no torch, about 20 ms a page, so the plug exists now. These tests
 cover the two things that matter: it degrades to nothing when the optional
 library is absent, and it never raises at a caller that has to return a page.
 """
@@ -66,7 +66,7 @@ def test_a_truncated_pdf_is_no_pages(tmp_path):
 
 
 def test_without_the_extra_nothing_happens_and_nothing_breaks(one_page, monkeypatch):
-    """The library is optional and stays optional — this is the path every
+    """The library is optional and stays optional, this is the path every
     install that never presses the button takes."""
     monkeypatch.setattr(pdfpages, "available", lambda: False)
     assert pdfpages.render_pages(one_page) == []
@@ -166,7 +166,7 @@ def test_the_extras_catalogue_offers_it(one_page):
     entry = extras.EXTRAS_BY_ID["pdfpages"]
     assert entry.module == "pypdfium2"
     assert "Pillow" in entry.packages
-    # It must not claim to read anything by itself — a model is still needed.
+    # It must not claim to read anything by itself, a model is still needed.
     assert "model" in entry.caveat.lower()
 
 
@@ -175,12 +175,12 @@ def test_the_extras_catalogue_offers_it(one_page):
 # Reported live, from a real multi-page PDF viewed through the new lightbox:
 # several pages 404ing at once and "it crashed... i couldnt scroll." FastAPI's
 # sync routes run in an anyio threadpool, and a browser fetches every page
-# `<img>` on a viewed PDF roughly at once — reproduced directly below,
+# `<img>` on a viewed PDF roughly at once, reproduced directly below,
 # without any FastAPI involved: hammering `render_page` from several threads
 # at once, even against independently-opened `PdfDocument`s, corrupted
 # PDFium's heap and aborted the whole process (`corrupted double-linked
 # list`, SIGABRT) before `_pdfium_lock` existed. A crash like that cannot be
-# asserted on with pytest.raises — the process is gone, not an exception —
+# asserted on with pytest.raises, the process is gone, not an exception , 
 # so the only test that means anything here is "many threads, zero
 # failures, still running afterwards."
 
@@ -227,7 +227,7 @@ def test_concurrent_page_renders_do_not_corrupt_or_crash(multi_page):
         results[(index, attempt)] = png is not None and png.startswith(b"\x89PNG\r\n\x1a\n")
 
     # Every page, hammered from several threads at once, several times each
-    # — the shape that reproduced the crash (a browser requesting every
+    #, the shape that reproduced the crash (a browser requesting every
     # `<img>` on a multi-page PDF roughly simultaneously).
     jobs = [(index, attempt) for attempt in range(4) for index in range(_MULTI_PAGE_PDF_PAGES)]
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:

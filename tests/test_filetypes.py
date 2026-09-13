@@ -2,8 +2,8 @@
 
 `normalise` is the whole surface worth testing: everything else in the module
 is data, and the one thing that can go wrong at runtime is a value arriving in
-a spelling nobody anticipated. Its contract is deliberately forgiving — it
-never raises, and it falls back rather than refusing — because the field only
+a spelling nobody anticipated. Its contract is deliberately forgiving, it
+never raises, and it falls back rather than refusing, because the field only
 describes how to *display* a document, and failing a save over it would refuse
 someone's writing on account of its label.
 """
@@ -70,8 +70,8 @@ def test_every_type_can_be_commented_somehow():
 
 
 def test_the_served_table_keeps_the_pickers_order():
-    """The order is a decision — "the ones you will actually pick" is not
-    alphabetical — and sorting it client-side would quietly undo it."""
+    """The order is a decision, "the ones you will actually pick" is not
+    alphabetical: and sorting it client-side would quietly undo it."""
     served = [t["ext"] for t in filetypes.as_dicts()]
     assert served == [ft.ext for ft in filetypes.FILE_TYPES]
     assert served[0] == "md"

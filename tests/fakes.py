@@ -23,7 +23,7 @@ class FakeEmbeddingService(EmbeddingService):
     """Keyword-based 4-dim vectors: same text topic → same direction."""
 
     def __init__(self, available: bool = True) -> None:
-        # No real model manager / ollama needed — we override everything
+        # No real model manager / ollama needed, we override everything
         # that would touch them.
         super().__init__(model_manager=None, ollama_client=None)  # type: ignore[arg-type]
         self.available = available
@@ -64,12 +64,12 @@ class FakeOllama:
         self.chat_models: list[str] = []  # which model each chat() used (Wave N)
         self.librarian_reply = "Here's what I found in your notebook!"
         self.librarian_thinking: str | None = None  # set to fake a thinking model
-        # `ai.extractor.propose_split`'s own JSON reply — kept apart from
+        # `ai.extractor.propose_split`'s own JSON reply, kept apart from
         # `librarian_reply` (which every OTHER non-janitor prompt shares,
         # including `generate_link_reason`) because a split reply has to be
         # valid `{"notes": [...]}` JSON, not prose. Empty by default: no
         # '{' in it means `_extract_json_object` raises, which is exactly
-        # `build_extraction`'s single-note-fallback path — a safe default
+        # `build_extraction`'s single-note-fallback path: a safe default
         # for tests that don't care about splitting specifically.
         self.extract_split_reply = ""
         self.installed = [{"name": "llama3.2:latest", "size": 2_000_000_000}]
@@ -177,7 +177,7 @@ class FakeOllama:
                 "stats": dict(self.stats, model=model),
             }
         # Mimic the real client recovering a tool call the model wrote as
-        # text (Wave O) — one-shot, so the second round returns the answer.
+        # text (Wave O): one-shot, so the second round returns the answer.
         if self.text_tool_reply:
             from memorymap.ai.ollama_client import extract_text_tool_calls
 
@@ -209,7 +209,7 @@ class FakeOllama:
         tools: list[dict],
         mode: str | None = None,
     ):
-        """The streaming shape of chat_tools — what the agent loop calls now.
+        """The streaming shape of chat_tools, what the agent loop calls now.
 
         Delegates so both paths stay in lockstep and the existing tool_script /
         tool_rounds fixtures keep working unchanged.
@@ -234,7 +234,7 @@ class FakeOllama:
         system = messages[0]["content"].lower()
         user = messages[-1]["content"].lower()
         if "filing assistant" in system:  # the janitor asking
-            # Match topics against the note only — the prompt also lists
+            # Match topics against the note only, the prompt also lists
             # existing category names (e.g. "Dad Jokes"), which would
             # otherwise trip the keyword match.
             if "note:" in user:
@@ -279,7 +279,7 @@ class FakeOllama:
 
 
 class GarbageOllama(FakeOllama):
-    """A model having a bad day — replies with no JSON at all."""
+    """A model having a bad day, replies with no JSON at all."""
 
     def _reply_text(self, messages: list[dict]) -> str:
         if not self.running:

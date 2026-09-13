@@ -1,78 +1,165 @@
-# MemoryMap AI — read this first
+# MemoryMap AI: read this first
 
 A 100% offline, local-first notebook where a local AI files your notes and
-answers questions about them. Python + FastAPI backend, vanilla JS frontend,
-SQLite. No build step: `frontend/app.js` and `frontend/style.css` are served
-as-is.
+answers questions about them. Python and FastAPI backend, vanilla JS
+frontend, SQLite. No build step: `frontend/*.js` and `frontend/css/*.css`
+are served as-is.
 
-## Before you build anything
+This file is the operating manual for any session, human or model. It is
+short on purpose; the detail lives in the files it points at.
 
-**Check the running app first.** Three separate sessions have independently
-rebuilt something that already existed, and an audit of one roadmap section
-found four of its six "quick wins" already done. Ten seconds of `grep` is
-cheaper than a session of rework.
+## 1. Before you build anything
 
-**"Already exists" is not the same claim as "is good enough."** The check
-above guards against rebuilding something that's already there; it is not
-license to close a report by finding the feature present and stopping. The
-user's own instruction: a thing they flag may already be a feature in this
-app and still not meet the bar — wrong shape, missing a case, clumsy to use,
-visually inconsistent with the rest of the app. When a report lands on
-something that already exists, the finding-it-exists step is the *start* of
-triage, not the end: read the report against what actually renders/runs and
-say whether it meets what was asked, not just whether the code path exists.
+**Check the running app first.** Three sessions have rebuilt something that
+already existed; an audit of one roadmap section found four of its six
+"quick wins" already done. Ten seconds of `grep` beats a session of rework.
+The owner's words: "Three sessions rebuilt existing work. It's the single
+most expensive recurring mistake in this project's history."
 
-# EMPHASIS ON THESE INSTRUCTIONS
-1. Check the running app before building. You said: {"Three sessions rebuilt existing work. It's the single most expensive recurring mistake in this project's history."}
-2. You can't see a browser — say what you couldn't verify. You said: {"Everything visual I did this session is reasoned, not observed. A session that forgets this will report UI work as done when it's untested."}
+**"Already exists" is not "is good enough."** A thing the owner flags may be
+present and still wrong: the wrong shape, a missing case, clumsy, visually
+inconsistent. Finding it exists is the start of triage, not the end: read
+the report against what actually renders or runs and say whether it meets
+what was asked.
 
-## Where things are written down
+**You cannot see a browser, so say what you could not verify.** The owner's
+words: "Everything visual I did this session is reasoned, not observed. A
+session that forgets this will report UI work as done when it's untested."
+Chromium and Playwright are in the sandbox (section 5); use them.
+
+## 2. Standing orders on branch `claude/epic-ramanujan-8xocc0`
+
+These are the owner's rules, collected from this project's sessions. The
+full text, with the reasons, is the block at the top of
+[`docs/roadmap/HANDOVER.md`](docs/roadmap/HANDOVER.md).
+
+1. **"Continue"** (or the owner's usual prompt: review the docs, proceed
+   with the top-priority, most impactful, qualitative work, autonomously,
+   token-efficiently, scanning for bugs, keeping docs current) means: read
+   this file, the HANDOVER block and its "Now" line, `docs/ROADMAP.md`'s
+   opening table; merge any agent worktree with commits not on the branch;
+   then work, in order, `docs/roadmap/INBOX.md`, `docs/roadmap/agent-remaining/*.md`,
+   `docs/roadmap/SESSION_BRIEFS.md` Briefs in order, the plan phases in
+   ROADMAP order, then ROADMAP's live list and BACKLOG by impact. Never
+   wait for a prompt; never ask permission for work inside the plans.
+2. **Mid-work drops** (a screenshot, a bug, a request, a usage figure) go
+   into `INBOX.md` verbatim and are triaged at the next step boundary in
+   one pass; the step in hand is finished to standard first; the "Now"
+   line in HANDOVER is never lost to the pile. A usage figure means commit
+   and push now, then continue more tersely. INBOX is a tray, not a
+   backlog: under twenty items by lint; a triaged item is fixed now and
+   moved to HISTORY, or placed in its plan's "Placed from INBOX" section.
+3. **Decisions are not remade.** Every plan has a "Decisions made"
+   section. A missing decision becomes an INBOX entry with a one-line
+   recommendation, which is then taken.
+4. **Agents, by specialty, at most two at once.** Sonnet: the mechanical
+   and verifiable (lints, copy moves, fixture edits, sweeps, bugs whose fix
+   is named). Opus: anything with a design judgement in it (frontend layout
+   and visual work, plan phases, backend moves against their spec tests).
+   Fable, when available: plans, specs, line-by-line review of merges, the
+   invisible bugs. Each agent: own worktree cut from the branch, own port
+   and data dir, commit per step, remaining list before stopping. The
+   orchestrator merges, gates, pushes.
+5. **Quality does not drop with the model.** Tests first, measure before
+   claiming, one commit per step, push per batch, five-line reports
+   (status, commits, numbers, not verified, found-not-fixed).
+5a. **Speed without losing quality** (the owner's ask, 2026-09-08). Three
+   rules, none of which trims a measurement:
+   - An agent runs the targeted tests for the files it touched plus the
+     lint set (`scripts/gate.sh --changed`) after each step. **The full
+     suite is not routine** (the owner, 2026-09-09: it is ten to fifteen
+     minutes now): CI runs it on every push; locally it runs only when
+     absolutely needed, meaning once before a large agent task's final
+     report (a backend move, a multi-file surface), once at the end of a
+     session before the PR closes (HANDOVER done-when item 7), or when a
+     change touches something the targeted tests cannot see (migrations,
+     the event bus, conftest). Never per step, never per merge.
+   - A brief names the files, selectors and line areas, the plan's
+     measured numbers, and the sweep script to run, so the agent starts
+     at the change, not at orientation. Most agent tokens otherwise go to
+     re-reading the codebase.
+   - Two agents that land close together are merged and gated in one
+     pass (suite, sweeps, push once).
+   What does not speed things up: a third agent (the cap, and merges
+   start conflicting on the same CSS files) or skipping the sweeps (the
+   "fixed again" rounds came from exactly that).
+6. **Copy:** sentence case; no em-dashes anywhere (a lint fails the build);
+   no "Oops", no exclamation marks; one line of description per section,
+   longer help behind a `data-help-for` '?' popover.
+7. **CI red is fixed the same hour.** CodeQL comments are bug reports: fix,
+   push, resolve the thread. The hourly check-in (`send_later`) re-arms
+   itself at the end of every turn with these orders in its prompt.
+8. **No new plan documents.** Eleven exist. A new need is a brief row in
+   the plan it belongs to or an INBOX entry.
+10. **Documentation hygiene, enforced by a lint** (the owner, after the
+   fourth time: "I keep having to ask you to clean up and move the
+   documentation"). A plan holds open work only. When a phase or step is
+   built, its "Built" block moves whole into `HISTORY.md` ("Moved from the
+   plans") at that step boundary, leaving a one-line pointer;
+   `tests/test_plan_hygiene.py` fails otherwise, and fails when
+   `HANDOVER.md` passes 600 lines (the session record goes to HISTORY).
+   `tests/test_readme_freshness.py` checks the README's tool count, skill
+   count, version and mode names against the code, so a change that makes
+   the README stale fails the build until the README says the same. Every
+   merge ends with: CHANGELOG line, README if a number or name moved,
+   INBOX entry marked and moved (`python scratchpad/inbox_resolve.py <n>`
+   moves it to HISTORY's "INBOX resolved"; the lint fails on a "Fixed"
+   item left in INBOX), the plan's Built block moved.
+11. **New UI comes from DESIGN.md's recipe index**, never from scratch: a
+   menu is `kebabMenu`, a bar is `.dock`, help is `data-help-for`, a
+   blurred surface is on the glass-off list, spacing and radius are
+   tokens. A need the index does not cover gets its recipe and its lint
+   added in the same commit as the feature. `tests/test_ui_recipes.py`
+   holds the ratchets (hand-built menus may not multiply, every blurred
+   surface is listed). The owner's words: "all the ui issues ... happen
+   when new features are added or changed because you don't follow
+   design.md".
+9. **Commit trailers** on every commit: the `Co-Authored-By` and
+   `Claude-Session` lines the recent commits carry. No model identifiers in
+   commits, PR bodies or code.
+
+## 3. Where things are written down
+
+Start with [`docs/ROADMAP.md`](docs/ROADMAP.md): its opening table says
+which of the roadmap files are plans, which are reference, and which are
+superseded. Then:
 
 | File | What it answers |
 | --- | --- |
-| [`docs/roadmap/HANDOVER.md`](docs/roadmap/HANDOVER.md) | **Read this first.** The last session's handover: what changed, what could not be verified and why, where to start, and the traps that cost an hour each. |
-| [`docs/roadmap/MINDMAP_PLAN.md`](docs/roadmap/MINDMAP_PLAN.md) | The mindmap feature built on the whiteboard — research, the finding that a board is already an `Entry`, a scope call to make first, and five phases. A first pass, meant to be extended. |
-| [`docs/roadmap/FABLE_BRIEF.md`](docs/roadmap/FABLE_BRIEF.md) | The prompt handed to the next session, and the reading order it enforces. |
-| [`docs/roadmap/AGENT_SKILLS_REFORM.md`](docs/roadmap/AGENT_SKILLS_REFORM.md) | **Top priority, the other half**: why a skill run on a small model skips steps and calls no tools, and the four-phase reform for it — step contracts, small-model mode, the run as a collapsible object, recovery. |
-| [`docs/roadmap/UI_MODERNISATION_PLAN.md`](docs/roadmap/UI_MODERNISATION_PLAN.md) | **The top priority by direct instruction**: the phased plan to modernise and professionalise the whole UI — causes, per-family targets, acceptance counts, order. Sweep scripts in `scratchpad/ui-sweeps/`. |
-| [`docs/ROADMAP.md`](docs/ROADMAP.md) | **The live list — only what is still open.** Opens with it; nothing finished is kept here any more. |
-| [`docs/roadmap/BACKLOG.md`](docs/roadmap/BACKLOG.md) | The standing backlog, §1–§29. |
-| [`docs/roadmap/ANALYSIS.md`](docs/roadmap/ANALYSIS.md) | §30–§34, §59, §60. Judgements and competitor reads — **including the licence constraint. This project is AGPL-3.0 now, so odysseus's AGPL code may come in (with its notices); nothing may go out to an MIT project.** **§114 is the product-strategy read** — competitor teardown, per-feature upgrades, inventions, a 90-day plan, and the no-telemetry metrics answer. §59 is a second, unrelated read (claude-obsidian/cognee/graphify, all permissively licensed) behind ROADMAP.md items 32–36 (32/33/34 now built; 36 backend-only, see HANDOVER.md). §60 is a second odysseus read, behind ROADMAP.md items 37–39. |
-| [`docs/roadmap/HISTORY.md`](docs/roadmap/HISTORY.md) | **What is already built, including every retraction.** Read it before starting anything — five items have now been caught as "already built" one grep before being rebuilt. |
-| [`docs/DESIGN.md`](docs/DESIGN.md) | The design system. Any CSS work has to follow it; `tests/test_style_scale.py` fails the build otherwise. |
+| [`docs/roadmap/HANDOVER.md`](docs/roadmap/HANDOVER.md) | The standing orders in full, the Opus-as-orchestrator block, the "Now" line, how far each plan is, the agents table and merge recipe, the last session's traps. |
+| [`docs/roadmap/INBOX.md`](docs/roadmap/INBOX.md) | The owner's mid-work findings, placed. Bugs first. |
+| [`docs/roadmap/SESSION_BRIEFS.md`](docs/roadmap/SESSION_BRIEFS.md) | The operating protocol (section 0) and one complete brief per session: goal, done-when, decisions, files, tests first, steps, traps. |
+| [`docs/roadmap/WORLD_CLASS_PLAN.md`](docs/roadmap/WORLD_CLASS_PLAN.md) | The consistency contract with a lint per rule, the competitor gap table, fifteen frontend dossiers, the backend moves, the security review, twelve flaw classes with commands, the execution order. |
+| [`docs/roadmap/UI_MODERNISATION_PLAN.md`](docs/roadmap/UI_MODERNISATION_PLAN.md) | Phases 0 to 9 of the UI work; 8 and 9 partly open. |
+| [`docs/roadmap/DOCUMENTS_PLAN.md`](docs/roadmap/DOCUMENTS_PLAN.md), [`GRAPH_PLAN.md`](docs/roadmap/GRAPH_PLAN.md), [`TIMELINE_PLAN.md`](docs/roadmap/TIMELINE_PLAN.md), [`WHITEBOARD_PLAN.md`](docs/roadmap/WHITEBOARD_PLAN.md), [`CHAT_PLAN.md`](docs/roadmap/CHAT_PLAN.md), [`MINDMAP_PLAN.md`](docs/roadmap/MINDMAP_PLAN.md), [`AGENT_SKILLS_REFORM.md`](docs/roadmap/AGENT_SKILLS_REFORM.md) | One plan per surface: what exists, why it disappoints (measured), the target, decisions made, gated phases, research, not verified. |
+| [`docs/roadmap/agent-remaining/`](docs/roadmap/agent-remaining/) | What each agent left, with file, id and next step. |
+| [`docs/roadmap/HISTORY.md`](docs/roadmap/HISTORY.md), [`BACKLOG.md`](docs/roadmap/BACKLOG.md), [`ANALYSIS.md`](docs/roadmap/ANALYSIS.md), [`MODERNISATION_AUDIT.md`](docs/roadmap/MODERNISATION_AUDIT.md) | What is built (with every retraction), the standing backlog, the judgements and competitor reads (including the licence constraint: this project is AGPL-3.0; odysseus's AGPL code may come in with its notices, nothing may go out to an MIT project), the measured audit. |
+| [`docs/DESIGN.md`](docs/DESIGN.md) | The design system; `tests/test_style_scale.py` fails the build otherwise. |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | How the pieces fit. |
-| [`.claude/skills/README.md`](.claude/skills/README.md) | The seven vendored MIT design skills (`ui-ux-pro-max` and friends) — what they cover, the two local edits, and what was never verified. Read before doing visual design work; `docs/DESIGN.md` still overrides them for anything in `frontend/`. |
+| [`.claude/skills/README.md`](.claude/skills/README.md) | The vendored design skills; `docs/DESIGN.md` overrides them for anything in `frontend/`. |
 
-The roadmap was split because it passed 4,500 lines. **Section numbers did not
-change**, so a `§21` in a code comment still resolves — but a session that
-reads only `ROADMAP.md` will miss finished work and settled decisions. All four
-files cross-link, and `tests/test_docs_layout.py` enforces that.
+Section numbers (`§21`) in code comments resolve through HISTORY.md's index;
+`tests/test_docs_layout.py` enforces the cross-links.
 
-## The standing caveat
+## 4. The standing caveat
 
-**Every provider test runs against a fake transport.** Tool-call fragment
-indices come from reading the spec, not from a running LM Studio. Reasoning
-about behaviour instead of reproducing it has cost real time more than once —
-when something is reported broken, reproduce it before theorising, and say
-plainly when you could not.
+**Every provider test runs against a fake transport.** Plain SSE streaming
+and one streamed tool call are verified against a real socket
+(`scratchpad/fake_openai_server.py`); real inference, concurrent tool calls
+at index 1+, Ollama's native tool-call dialect, and every claim about how a
+real small model responds to a re-prompt are not. When something is
+reported broken, reproduce it before theorising, and say plainly when you
+could not. A dev-only llama.cpp script is planned (WORLD_CLASS_PLAN 9); the
+suite must never depend on it.
 
-**The plain-streaming half of that caveat is lifted.** A real stdlib
-`HTTPServer` speaking the OpenAI `/v1` dialect (no mocked `requests`, a real
-socket) stood in for LM Studio/llama.cpp/Jan/vLLM: `POST /models/provider`
-switched the live app to it, and `/help/ask`, `/voice/summarize` and a full
-`/chat/stream` turn (status → meta → two answer deltas → stats → done, in
-order) all round-tripped correctly, including the SSE `data:`/`[DONE]`
-framing `OpenAICompatClient.chat_stream` parses. **Not covered**: real
-inference (the stand-in server returns a canned string, not a model's own
-output) and `chat_tools`/`chat_tools_stream`'s tool-call fragment parsing —
-that half of the caveat still stands.
-
-**The UI half of that caveat is now lifted, and you should use it.** The
-sandbox has Chromium and Playwright, and the app runs on localhost:
+## 5. Running and verifying the app
 
 ```bash
-# setsid, not plain &. `pkill -f uvicorn` kills your own shell here (same
-# process group, exit 144) — start it detached and leave it running.
+# setsid, not plain &: pkill -f uvicorn kills your own shell here (exit 144).
+# One server per data dir; never put `kill $(pgrep ...)` and a setsid start
+# on the same shell line.
+bash scratchpad/ui-sweeps/serve.sh 8781 /tmp/mm-me
+# or:
 setsid env PYTHONPATH=src MEMORYMAP_DATA_DIR=<scratch>/appdata \
     .venv/bin/python -m uvicorn memorymap.api.app:create_app \
     --factory --port 8781 > <scratch>/server.log 2>&1 < /dev/null &
@@ -80,174 +167,114 @@ setsid env PYTHONPATH=src MEMORYMAP_DATA_DIR=<scratch>/appdata \
 # /opt/node22/lib/node_modules/playwright, with PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers
 ```
 
-**Two Playwright traps, each worth an hour:** `waitUntil: "networkidle"` never
-settles against this app — it polls reminders, model status and tasks, so
-`goto` and `reload` both time out at 30s. Use `domcontentloaded` plus an
-explicit `waitForTimeout`. And the login is *one* field in two modes, not a
-setup/confirm pair: fill `#lock-password`, click `#lock-submit`.
+Sweeps live in `scratchpad/ui-sweeps/` (`lib.js` boot, `errors.js`,
+`contrast.js`, `docks.js`, `touch.js`, `chrome.js`, per-surface sweeps).
+Password `testpassword123`; `THEME=dark` for dark.
 
-Unlock with the password you set on first run, skip `#onboarding-overlay`, and
-you can click, measure and screenshot. One sitting of this found three bugs
-that reading the source had not: a static-file cache header that let the
-desktop app run yesterday's `app.js` (which is why a fixed button gets
-reported broken *again*), a reminder poll running on two timers, and a tab
-clipped off the left edge. **Measure and look before you claim a UI change
-works — and still say plainly what you did not check.**
+**Traps, each worth an hour:**
 
-A later sitting found the worst UI bug in the project's history the same way,
-and it is the best argument for this rule: two settings were missing from
-`APPEARANCE_DEFAULTS`, so `undefined` and `NaN` were written into two CSS
-custom properties, and **every card, field and dialog in the app rendered flat
-and borderless on every fresh profile.** Nothing logged, nothing threw, and the
-source reads as correct at every single line involved. One `getComputedStyle`
-found it. The shape to remember: *a value that is invalid where it is used, not
-where it is set, does its damage nowhere near the code that caused it.*
+- `waitUntil: "networkidle"` never settles (the app polls); use
+  `domcontentloaded` plus `waitForTimeout`.
+- The login is one field in two modes: fill `#lock-password`, click
+  `#lock-submit`.
+- A screenshot you look at is not a measurement. Use `getComputedStyle`,
+  `getBoundingClientRect`, `scrollHeight` vs `clientHeight`, and
+  `scratchpad/pngpixel.py` for colour. Never close a visual report as a
+  capture artifact without a number.
+- A value that is invalid where it is used, not where it is set, does its
+  damage nowhere near the code that caused it (two missing appearance
+  defaults once wrote `NaN` into CSS and flattened every card in the app).
+- Two appended CSS sections merged can drop a `}`; only
+  `tests/test_css_braces.py` sees it.
+- The Bash tool times out at 120s; `errors.js` needs the background flag.
+- Restart the server after any Python change: a stale uvicorn is why a
+  correct fix "did not work" twice.
+- Local `css`/`js` URLs are version-stamped (`?v=`), enforced by
+  `tests/test_asset_cache_busting.py`; a report that keeps coming back while
+  the code tests clean is a stale file or a bad interaction shape, not the
+  handler.
+- A test that runs a script able to delete things (the uninstallers, the
+  launcher's `--reinstall`) runs it in a scratch copy, never with
+  `cwd=ROOT`: one such test took the sandbox's own `.venv` mid-suite, and
+  every later test that spawned Python died with "No such file".
+  `tests/test_launcher_scripts.py` has the guard fixture.
+- CodeQL reads `scratchpad/` too: lazy `.*?` over argv paths, unclosed
+  `open()`, case-sensitive tag filters and wrong keyword arguments have
+  all been flagged there.
+- **The desktop window caches independently of every browser tab, for
+  days.** `start-desktop.bat`/`.sh` launches `webview.start(...,
+  private_mode=False, storage_path=<data dir>/webview)`
+  (`src/memorymap/__main__.py`), a deliberately persistent profile so
+  settings and theme survive between launches. It also keeps its cache.
+  Cost one owner report of "basically all my bugs are still there" after
+  a long stretch of fixes each individually measured correct against the
+  branch: a browser tab opened fresh always fetches current files, the
+  desktop window did not. **Fixed, not a manual step**: every local
+  CSS/JS URL is stamped `?v=<__version__>`, and `RevalidatedStatic` in
+  `src/memorymap/api/app.py` now splices a `_BOOT_TOKEN` (fixed once per
+  server process) onto every one of those stamps inside `index.html`'s
+  own served body, so a fresh launch of either script always gets its
+  own stamp and can never reuse a previous launch's cache; `__version__`
+  alone still governs what a *released* build caches for a year. If this
+  report recurs anyway on a head after `dd2d843`, the bug is real, not a
+  cache: reproduce it, do not repeat the deleted-`webview`-folder advice
+  this replaced.
 
-**A screenshot you look at is not a measurement, and this cost six rounds on
-one popup.** The nav-history menu was reported broken, "fixed", and reported
-again four times. Each round ended by *looking* at a screenshot and calling
-it good, and one round closed the report as "a screenshot/DPI capture
-artifact" — which was **wrong**, and is what let the real bug survive three
-more fixes. It was two bugs at once, and neither was visible to the eye:
+## 6. Reviewing work that came from somewhere else
 
-- `--modal-bg` is `rgba(…, 0.96)` — **4% see-through by design**. Over the
-  note editor (the densest small text in the app) that was enough for the
-  form underneath to read as ghost text. Found by decoding the PNG and
-  sampling pixels: `(252,253,255)` at the top of the popup against
-  `(244,246,253)` lower down, a real ~8-unit gradient.
-- Its rows are `<button>`s, and the app's generic control-height rule pinned
-  them to 32.36px while their content needed 35px — so `overflow: hidden`
-  sliced every glyph down to its top few pixels. That was the "illegible
-  dashes" the artifact call had dismissed.
+Look for these four shapes first, in this order; they are cheap to check
+and expensive to miss:
 
-So: **two tools, and reach for them before forming an opinion.**
-`scratchpad/pngpixel.py` (~50 lines, pure Python, no dependencies) prints
-exact pixel values — use it for any report about transparency, contrast or a
-colour looking wrong. `scrollHeight` vs `clientHeight` in `page.evaluate`
-settles any report about text being cut off, clipped or "garbled", in one
-number. **Never close a visual report as a capture artifact without a
-measurement that says so** — and note that a vision model reading a
-downscaled screenshot will both invent faint "ghost text" that is not in the
-pixels and miss a real 3px clip.
+1. A working thing rewritten into a riskier thing, with no stated reason.
+2. A feature that never ran once: grep the call site of anything new.
+3. A guard removed while the shape around it was kept.
+4. A policy silently refusing the work (inline `style=` is rejected by the
+   CSP; use `el.style.x =` or a class).
 
-The same discipline applies to a report you cannot reproduce. Bookmark URL
-editing was reported broken five times while working end-to-end every single
-time it was driven in a clean browser. The code was never the fault: a
-second modal that only appears *after* you commit the first is a bad way to
-expose a second field. **When a report keeps coming back and the code keeps
-testing clean, stop re-reading the handler — the shape of the interaction is
-the bug, or the reporter is running a stale file.** Local `css`/`js` URLs are
-version-stamped (`?v=<version>`, enforced by
-`tests/test_asset_cache_busting.py`) precisely to kill the second case.
+Run the suite against the base branch first, so "everything else here is
+new" is a fact rather than a guess.
 
-## Reviewing work that came from somewhere else
+## 7. Working here
 
-A week of another agent's work was merged-in and audited (§40). It was not bad
-work — the features were good ideas and several are now core — but it arrived
-with 90 failing tests, and the failures had four recurring shapes. Look for
-these first, in this order, because they are cheap to check and expensive to
-miss:
+- **Do not install torch or `sentence-transformers`.** Install by hand:
+  `python3 -m venv .venv && .venv/bin/pip install fastapi "uvicorn[standard]" SQLAlchemy alembic python-dotenv requests numpy "fsspec[http]" bcrypt cryptography python-multipart pytest httpx ruff defusedxml`
+- `python -m pytest tests/`: 2,800+ tests, ten to fifteen minutes, all
+  green. Keep it that way, but run it locally only when absolutely
+  needed (`scripts/gate.sh --full`: the end of a large agent task, the
+  end of a session); CI runs it on every push. `PYTHONPATH=src` is
+  needed to run the app.
+- `.venv/bin/ruff check .` before pushing; CI runs it and CodeQL.
+- `scripts/gate.sh` is the merge gate in one command: the lint set,
+  `node --check`, ruff; `--changed` adds the tests that name the files
+  changed since `origin/main` (the routine local gate); **`--staged` runs
+  the lint set against the index rather than the working tree**, which is
+  the only mode that catches a commit splitting a pair (2026-09-12: staging
+  `index.html` while an agent was mid-way through removing an element took
+  the id without its `app.js` handler, and the app stopped booting; the
+  working tree was whole, so every other mode passed); `--full` adds
+  the whole suite (only when absolutely needed, standing order 5a);
+  `BASE=... --sweeps` adds errors,
+  docks, contrast and touch against a running app. Run it before every
+  push and paste its five lines into the report.
+- `node --check frontend/<file>.js` after any JS edit; there is no bundler.
+- The lints that exist because the suite cannot see the DOM:
+  `test_style_scale.py`, `test_ui_signatures.py`, `test_css_braces.py`,
+  `test_frontend_ids.py`, `test_frontend_handlers.py`, `test_dock_grammar.py`,
+  `test_docs_layout.py`, `test_asset_cache_busting.py`, `test_no_em_dashes.py`,
+  `test_no_innerhtml_interpolation.py`, `test_markdown_link_schemes.py`. If
+  one fails it has found something real: fix the cause, never widen the
+  rule.
+- The executable specs for the backend moves are strict-xfail tests
+  (`tests/test_events.py`, `test_search_engine_spec.py`,
+  `test_harness_verifier_spec.py`, `test_learned_spec.py`,
+  `test_resurface_spec.py`): remove a marker only when its test passes on
+  its own.
+- Comments explain why, at length; a comment that restates the code is
+  noise. Prompt text is budgeted (`agent.PROSE_BUDGET_CHARS`).
 
-1. **A working thing rewritten into a riskier thing**, with no stated reason.
-   `/chat/stream` became a WebSocket: nothing gained, and it cost thread-safety,
-   the auth gate and the same-origin policy.
-2. **Features that never ran once.** Not buggy — never executed. A `start()`
-   never called, a function that does not exist called inside a broad `except`,
-   a method name that appears nowhere else in the codebase. Grep for the call
-   site of anything new before believing it works.
-3. **A guard removed while the shape around it was kept.** Two tools grew batch
-   arguments and quietly stopped calling `_require_note`, which is the only
-   thing that refuses a private note. The code still looked right.
-4. **A policy silently refusing the work.** Thirty-five inline `style`
-   attributes, all rejected by this app's own CSP, all invisible until a
-   browser was pointed at them.
+## 8. Token budget (the owner's policy, condensed)
 
-**Run the suite against the base branch first.** Knowing `main` had exactly two
-failures — both a time-bomb in a dated test, not the other agent's doing — was
-what made "everything else here is new" a fact rather than a guess.
-
-## Working here
-
-- **Do not install torch, and do not install `sentence-transformers` (which
-  pulls it in).** It has failed to install in several sessions and costs a long
-  time before it does. You said: {"When installing dependencies in prev
-  sessions torch hasn't installed properly so skip it."} The suite passes
-  without both — semantic search falls back to keywords, and the tests that
-  care use a fake embedding backend. Install the rest by hand rather than
-  `-r requirements.txt`:
-
-  ```bash
-  python3 -m venv .venv && .venv/bin/pip install fastapi "uvicorn[standard]" \
-      SQLAlchemy alembic python-dotenv requests numpy "fsspec[http]" bcrypt \
-      cryptography python-multipart pytest httpx ruff
-  ```
-
-- `python -m pytest tests/` — 2,700+ tests, ~7-8 minutes, all green. Keep it that way.
-- **Restart the server after any Python change.** A stale uvicorn is why a
-  correct fix "didn't work" twice in one session — the browser was running the
-  old code and the diff looked wrong.
-- `.venv/bin/ruff check .` before pushing — **CI runs it and it fails the
-  build.** CI also runs CodeQL, which has caught a real polynomial-ReDoS in
-  code written the same session; an anchored `[…]+$` is the shape to avoid.
-- Running the app needs `PYTHONPATH=src`, which the recipe below omits:
-  `PYTHONPATH=src MEMORYMAP_DATA_DIR=<scratch> .venv/bin/python -m uvicorn memorymap.api.app:create_app --factory --port 8781`
-- `node --check frontend/app.js` after any JS edit; there is no bundler to catch you.
-- Several tests are **lints, not behaviour tests**, and exist because browsers
-  and this Python suite cannot see the DOM: `test_style_scale.py` (design
-  tokens), `test_frontend_ids.py` (duplicate ids), `test_frontend_handlers.py`
-  (duplicate event listeners), `test_docs_layout.py` (the roadmap split). If
-  one fails, it has found something real — fix the cause, don't widen the rule.
-- Comments here explain **why**, at length, and match that. A comment that
-  restates the code is noise; one that records the failure it prevents is why
-  this codebase is maintainable by a fresh session.
-- Prompt text is budgeted: `agent.PROSE_BUDGET_CHARS` is asserted, because
-  every sentence added to the system prompt is resent on every round.
-
----
-
-# Appendix: user-supplied token-budget policy (optional, removable)
-
-The user pasted this policy verbatim and asked it be kept here as a clearly
-separate block so it can be deleted on its own without touching anything
-above. It targets the interactive Claude Code CLI (`/usage`, `/compact`,
-`/model`, `/effort` as slash commands); this repo is also worked on through
-Claude Code on the web / CCR sessions, where those aren't literal commands
-you can shell out to — treat the mechanisms below as **intent**, mapped onto
-whatever the running surface actually offers (e.g. `ScheduleWakeup` fallback
-checks instead of a polled `/usage`, a real `/compact` where the CLI exposes
-one), not as literal command invocations that must resolve on every surface.
-The core rules — don't downgrade model/effort for quality-sensitive work
-just because quota is low, keep subagents terse (final-summary-only, no
-running commentary), compact proactively rather than hitting a hard limit —
-apply regardless of surface.
-
-# Claude Code Token Budget & Auto-Compaction Policy (v2, condensed)
-
-**Condensed during a CLAUDE.md bloat audit** (explicit ask: check this file
-for anything unnecessary, bloated or out of date). The original v2 ran ~280
-lines — a usage-check trigger schedule, an auto-compact pseudocode block, a
-subagent-spawning pseudocode function, a user-notification copy table, a
-commands-reference table, and a "sources & rationale" list — nearly all of
-it written for the interactive CLI's literal `/usage`/`/compact` slash
-commands, which this appendix's own opening paragraph already says do not
-exist as invokable commands on this surface (Claude Code on the web / CCR).
-Restated as what is actually actionable here, in full:
-
-- **Quality first, always.** Never downgrade model or effort because quota
-  is low. Effort may drop for a genuinely trivial task (a rename, a single
-  targeted search) regardless of quota; it does not drop for anything
-  moderate or complex just because usage is high — that trades a small
-  saving now for the rework a worse answer costs later.
-- **Compact proactively, not at a hard wall.** When context is growing large
-  and a natural boundary arrives (a task finishes, a big block of read-only
-  exploration ends), prefer compacting then over waiting until forced. On a
-  surface without a literal `/compact`, this means summarizing/dropping
-  unneeded context deliberately rather than letting it run unbounded.
-- **Subagents stay terse.** A spawned subagent's own final report should be
-  a status line plus results/errors/next-steps — not a transcript of its
-  intermediate reasoning. This applies regardless of quota; it is a cost
-  discipline, not a low-quota fallback.
-- **Say the state plainly when it's low**, rather than silently changing
-  behavior. If usage is genuinely constrained, one line telling the user
-  ("running low, being terser / skipping the optional X") beats either
-  silently cutting corners or a running commentary about quota.
+Quality first: never downgrade model or effort for quality-sensitive work
+because usage is high. Compact proactively at natural boundaries. Subagents
+report a status line plus results, never a transcript. When usage is low,
+say so in one line and be terser rather than silently cutting corners.

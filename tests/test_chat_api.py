@@ -1,5 +1,5 @@
 """The /chat endpoint end-to-end over HTTP (with the AI faked so it runs
-offline — the real-model run happens manually with Ollama installed): the
+offline: the real-model run happens manually with Ollama installed): the
 dad-joke "done when" test, suggestions, and follow-up conversation memory."""
 
 from __future__ import annotations
@@ -38,7 +38,7 @@ def test_dad_joke_loop(ai_client):
 
 def test_semantic_match_carries_its_score(ai_client):
     """A semantic hit's `match_info` should name a real similarity score, not
-    just "semantic" with nothing behind it — the whole point of the badge is
+    just "semantic" with nothing behind it, the whole point of the badge is
     to say *how* confident the match was."""
     joke = _save(ai_client, "Why did the scarecrow win an award? Outstanding in his field!")
     _save(ai_client, "buy milk, eggs and bread")
@@ -126,6 +126,45 @@ def test_suggestions_are_content_aware(client):
     assert len(picks) == len(set(picks))  # no duplicates
 
 
+def _asked(session, question):
+    """One question in the Ask box's history, the row `/chat/recent` reads."""
+    from memorymap.api.routes_chat import ASK_SURFACE
+    from memorymap.core.database import AuditLog
+
+    session.add(AuditLog(action="queried", entity_type=ASK_SURFACE, detail=question))
+    session.commit()
+
+
+def test_suggestions_drop_what_ask_again_already_offers(client, session):
+    """INBOX 120: "the try asking and ask again suggestions are nearly
+    identical". The history row wins a duplicate, and the generated row fills
+    the gap with its next candidate rather than coming back one chip short."""
+    _save(client, "a joke", category="Jokes")
+    _save(client, "another joke", category="Jokes")
+    _save(client, "milk", category="Shopping")
+    _save(client, "a run", category="Fitness")
+
+    before = client.get("/chat/suggestions").json()
+    assert "What have I saved about jokes?" in before
+
+    _asked(session, "What have I saved about jokes?")
+    after = client.get("/chat/suggestions").json()
+
+    assert "What have I saved about jokes?" not in after
+    assert "What have I saved about jokes?" in client.get("/chat/recent").json()
+    # Same length, one new candidate promoted into the gap.
+    assert len(after) == len(before)
+    assert set(after) - set(before) == {"What have I saved about fitness?"}
+
+
+def test_suggestions_ignore_case_and_spacing_of_what_was_asked(client, session):
+    _save(client, "a joke", category="Jokes")
+    _save(client, "milk", category="Shopping")
+    _asked(session, "  what have i saved about   JOKES?  ")
+
+    assert "What have I saved about jokes?" not in client.get("/chat/suggestions").json()
+
+
 def test_suggestions_ignore_uncategorised(client):
     _save(client, "a stray thought")  # lands in Uncategorised (no AI)
     # Only the generic starters, since there's no real category.
@@ -152,7 +191,7 @@ def test_build_messages_clips_history_length():
     history = [{"question": f"q{i}", "answer": long_answer} for i in range(10)]
     messages = librarian.build_messages("now", [{"content": "n", "category": "c"}], history=history)
 
-    # At most MAX_HISTORY_TURNS pairs survive, and each answer is clipped —
+    # At most MAX_HISTORY_TURNS pairs survive, and each answer is clipped, 
     # old ones hard, the most recent one generously, because "save that as a
     # note" refers to it and a stump of it is what used to get saved.
     assistant_msgs = [m for m in messages if m["role"] == "assistant"]
@@ -165,7 +204,7 @@ def test_build_messages_clips_history_length():
 
 
 def test_an_attached_documents_content_actually_reaches_the_model(ai_client, fake_ollama):
-    """The composer has sent `document_ids` since the staging UI shipped —
+    """The composer has sent `document_ids` since the staging UI shipped, 
     the field didn't exist on ChatRequest and routes_chat.py never read it,
     so an attached document showed as a chip on the message and the model
     never saw a word of it. Worse than not offering the feature: it looked

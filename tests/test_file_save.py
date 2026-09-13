@@ -9,7 +9,7 @@ swallowed and the user gets no file *and no error*.
 The fix is available because this app already runs a local server: it can write
 the file itself and say where it went. `POST /files/save` is that, and the
 frontend picks it over a download when `/health` says it is being viewed
-through the window rather than a browser tab — asked, not sniffed, because
+through the window rather than a browser tab, asked, not sniffed, because
 pywebview's user agent is not reliably distinguishable and a wrong guess would
 fail silently in the exact direction being fixed.
 
@@ -52,7 +52,7 @@ def test_a_file_is_written_and_its_path_reported(client, app_state):
 
 
 def test_binary_survives_the_round_trip(client, app_state):
-    """A support bundle is a zip, not text — the route carries both, which is
+    """A support bundle is a zip, not text, the route carries both, which is
     why the payload is base64 rather than a string."""
     blob = bytes(range(256))
     written = Path(_save(client, "bundle.zip", blob).json()["path"])
@@ -60,8 +60,8 @@ def test_binary_survives_the_round_trip(client, app_state):
 
 
 def test_the_exports_folder_is_created_on_demand(client, app_state):
-    """It only has to go missing once — a cleanup tool, a restore that didn't
-    include an empty folder — for every export to fail with a traceback."""
+    """It only has to go missing once, a cleanup tool, a restore that didn't
+    include an empty folder, for every export to fail with a traceback."""
     exports = app_state.data_dir / EXPORTS_DIRNAME
     assert not exports.exists()
     _save(client, "first.md", b"x")
@@ -114,7 +114,7 @@ def test_safe_filename_keeps_readable_names_readable():
 
 def test_within_exports_accepts_a_plain_name(tmp_path):
     """The containment guard CodeQL's py/path-injection wanted (alerts
-    #289/#290 on `main`) — belt-and-braces on top of `safe_filename`'s own
+    #289/#290 on `main`), belt-and-braces on top of `safe_filename`'s own
     whitelist, checked at the point the path is actually used."""
     exports = tmp_path / "exports"
     exports.mkdir()
@@ -123,7 +123,7 @@ def test_within_exports_accepts_a_plain_name(tmp_path):
 
 def test_within_exports_refuses_a_traversal_that_reaches_it_directly(tmp_path):
     """`safe_filename` is the normal caller and never lets `..` through, but
-    `_within_exports` has to hold on its own — it's the actual sink-side
+    `_within_exports` has to hold on its own, it's the actual sink-side
     guard, not just a second opinion on an already-trusted string."""
     exports = tmp_path / "exports"
     exports.mkdir()
@@ -133,7 +133,7 @@ def test_within_exports_refuses_a_traversal_that_reaches_it_directly(tmp_path):
 
 def test_within_exports_refuses_a_symlink_that_points_outside_it(tmp_path):
     """The reason `os.path.realpath` replaced `Path.resolve()` and not a
-    plain `os.path.normpath` — `os.path.realpath` follows symlinks; a
+    plain `os.path.normpath`, `os.path.realpath` follows symlinks; a
     lexical-only normalise would not. A file that lives at a name inside
     `exports` but is actually a symlink pointing elsewhere is exactly what
     `Path.resolve()` used to catch, and the rewritten guard has to catch it
@@ -216,7 +216,7 @@ def test_export_save_dir_rejects_a_file_that_is_not_a_directory(client, tmp_path
 
 
 def test_export_save_dir_bad_value_leaves_the_old_one_in_place(client, tmp_path):
-    """A rejected PUT must not half-apply — the preference the export path
+    """A rejected PUT must not half-apply, the preference the export path
     actually reads stays whatever it was before this request."""
     good = tmp_path / "good"
     good.mkdir()
@@ -237,7 +237,7 @@ def test_open_exports_folder_creates_the_folder_before_trying_to_open_it(
     client, app_state, monkeypatch
 ):
     """However the OS call itself goes, the folder it's pointed at has to be
-    real first — nothing to reveal is worse than nothing happening."""
+    real first: nothing to reveal is worse than nothing happening."""
     monkeypatch.setenv("MEMORYMAP_DESKTOP", "1")
     monkeypatch.setattr(routes_files.subprocess, "Popen", lambda *a, **k: None)
     monkeypatch.setattr(routes_files.sys, "platform", "linux")

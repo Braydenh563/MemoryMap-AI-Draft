@@ -22,7 +22,7 @@ def _ask(client, question):
 def test_recent_questions_last_five_distinct(client):
     for i in range(7):
         _ask(client, f"question {i}")
-    _ask(client, "question 6")  # repeat — must not duplicate
+    _ask(client, "question 6")  # repeat: must not duplicate
 
     recent = client.get("/chat/recent").json()
     assert recent == ["question 6", "question 5", "question 4", "question 3", "question 2"]

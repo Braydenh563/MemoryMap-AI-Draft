@@ -38,12 +38,26 @@ def test_documents_are_listed_most_recently_edited_first(client):
     assert titles[0] == "First"
 
 
-def test_documents_past_the_old_200_cap_are_still_reachable(client):
-    """`list_documents` used to `.limit(200)` with no offset — a notebook
-    with more than 200 documents had no way, UI or API, to see the rest."""
-    for i in range(205):
+def test_documents_past_the_page_size_are_still_reachable(client):
+    """`list_documents` once had a `.limit(200)` with **no offset**: a
+    notebook with more than 200 documents had no way, UI or API, to see the
+    rest. The list is paged again (INBOX 117), so this guard stays and asks
+    the question the old cap failed: is everything still reachable? It is,
+    through `offset`, and `X-Total-Count` is how a caller knows to ask."""
+    from memorymap.api import routes_documents
+
+    size = routes_documents.DOCUMENTS_PAGE_SIZE
+    for i in range(size + 5):
         client.post("/documents", json={"title": f"Doc {i}"})
-    assert len(client.get("/documents").json()) == 205
+
+    first = client.get("/documents")
+    assert len(first.json()) == size
+    assert first.headers["X-Total-Count"] == str(size + 5)
+
+    rest = client.get("/documents", params={"offset": size})
+    assert len(rest.json()) == 5
+    seen = {d["id"] for d in first.json()} | {d["id"] for d in rest.json()}
+    assert len(seen) == size + 5
 
 
 def test_documents_search_matches_the_title(client):
@@ -56,7 +70,7 @@ def test_documents_search_matches_the_title(client):
 def test_documents_search_matches_content_not_only_title(client):
     """The gap `GET /documents?q=` exists to close: `_summary()` never sends
     a document's body to the browser, so client-side filtering alone could
-    only ever match a title — the AI's own `_list_documents` tool already
+    only ever match a title, the AI's own `_list_documents` tool already
     searched title *and* content; this mirrors it rather than a title-only
     filter reachable from the API."""
     client.post("/documents", json={"title": "Untitled", "content": "carbonara guanciale"})
@@ -101,7 +115,7 @@ def test_markdown_export_includes_the_title_and_a_filename(client):
 
 
 def test_export_filename_cannot_be_steered_by_the_title(client):
-    """The title is user text — it must not decide where the file lands."""
+    """The title is user text, it must not decide where the file lands."""
     created = client.post(
         "/documents", json={"title": "../../etc/passwd", "content": "x"}
     ).json()
@@ -174,7 +188,7 @@ def test_ai_edit_of_an_empty_document_is_a_clean_400(ai_client):
 
 
 def test_ai_write_inserts_new_content_without_needing_existing_text(ai_client, fake_ollama):
-    """The one verb an empty document must NOT 400 on — there is nothing to
+    """The one verb an empty document must NOT 400 on, there is nothing to
     edit yet, but there is plenty to write."""
     created = ai_client.post("/documents", json={"title": "Empty"}).json()
     fake_ollama.librarian_reply = "A brand new opening paragraph."
@@ -350,7 +364,7 @@ def test_revert_ai_edit_restores_the_documents_content(client):
 
 def test_revert_ai_edit_records_its_own_changelog_entry(client):
     """The changelog stays a truthful record of everything that happened,
-    including the revert itself — never a silent rewind."""
+    including the revert itself, never a silent rewind."""
     created = client.post(
         "/documents", json={"title": "Essay", "content": "After."}
     ).json()
@@ -377,7 +391,7 @@ def test_revert_ai_edit_can_itself_be_reverted(client):
     stored_after_revert = client.get(f"/documents/{created['id']}").json()
     assert stored_after_revert["content"] == "v1"
 
-    # Revert the revert (the newest changelog entry) — should bring v2 back.
+    # Revert the revert (the newest changelog entry), should bring v2 back.
     listed = client.get(f"/documents/{created['id']}/ai-edit-log").json()
     revert_entry_id = listed[0]["id"]
     client.post(f"/documents/{created['id']}/ai-edit-log/{revert_entry_id}/revert")
@@ -407,7 +421,7 @@ def test_ai_write_without_the_model_returns_nothing_to_insert(ai_client, fake_ol
         json={"instruction": "add a sentence", "verb": "write"},
     ).json()
     # Falling back to the existing content (compose()'s own contract) would
-    # insert the whole document into itself — "write" must fall back to ""
+    # insert the whole document into itself, "write" must fall back to ""
     # instead, since there is nothing sensible to insert.
     assert body["revised"] == ""
     assert body["ollama_running"] is False
@@ -529,6 +543,106 @@ def test_the_file_type_table_is_served_for_the_editor(client):
 
 def test_the_file_types_route_is_not_swallowed_by_the_id_route(client):
     """FastAPI matches in definition order and "file-types" is a fine string
-    for a path parameter typed int — registered the other way round this
+    for a path parameter typed int, registered the other way round this
     would 422 on every call."""
     assert client.get("/documents/file-types").status_code == 200
+
+
+# --- pagination (INBOX 117: this list used to hand back the whole table,
+# 300 documents measured at 116.7 KB in one response) ----------------------
+
+
+def test_documents_page_and_report_the_real_total(client):
+    for i in range(5):
+        client.post("/documents", json={"title": f"Doc {i}", "content": "words here"})
+
+    first = client.get("/documents", params={"limit": 2, "offset": 0})
+    assert first.status_code == 200
+    assert len(first.json()) == 2
+    assert first.headers["X-Total-Count"] == "5"
+
+    second = client.get("/documents", params={"limit": 2, "offset": 2})
+    assert len(second.json()) == 2
+    assert second.headers["X-Total-Count"] == "5"
+
+    last = client.get("/documents", params={"limit": 2, "offset": 4})
+    assert len(last.json()) == 1
+    assert last.headers["X-Total-Count"] == "5"
+
+    # `offset` reaches the rest: paging through returns every document
+    # exactly once, which is what stops a cap making page two unreachable.
+    paged = [d["id"] for d in first.json() + second.json() + last.json()]
+    assert len(set(paged)) == 5
+    whole = client.get("/documents", params={"limit": 100})
+    assert set(paged) == {d["id"] for d in whole.json()}
+
+
+def test_documents_default_page_is_bounded_but_the_common_case_is_unchanged(client):
+    """Any notebook under the default page size sees exactly what it saw
+    before, and the header reports the true total either way."""
+    from memorymap.api import routes_documents
+
+    for i in range(3):
+        client.post("/documents", json={"title": f"Doc {i}"})
+    response = client.get("/documents")
+    assert len(response.json()) == 3
+    assert response.headers["X-Total-Count"] == "3"
+    assert routes_documents.DOCUMENTS_PAGE_SIZE <= routes_documents.DOCUMENTS_PAGE_SIZE_MAX
+
+
+def test_documents_search_total_counts_the_matches_not_the_table(client):
+    """With `q` given, `X-Total-Count` has to be the size of the *search*:
+    a caller paging a search against the whole table's count would loop
+    past the end of its own results."""
+    client.post("/documents", json={"title": "Sourdough notes", "content": "flour"})
+    client.post("/documents", json={"title": "Sourdough again", "content": "water"})
+    client.post("/documents", json={"title": "Tax return", "content": "receipts"})
+
+    response = client.get("/documents", params={"q": "sourdough", "limit": 1})
+    assert len(response.json()) == 1
+    assert response.headers["X-Total-Count"] == "2"
+
+
+def test_documents_limit_is_validated(client):
+    from memorymap.api import routes_documents
+
+    assert client.get("/documents", params={"limit": 0}).status_code == 422
+    assert client.get("/documents", params={"offset": -1}).status_code == 422
+    over = routes_documents.DOCUMENTS_PAGE_SIZE_MAX + 1
+    assert client.get("/documents", params={"limit": over}).status_code == 422
+
+
+def test_a_document_with_a_note_attached_can_still_be_deleted(client, session):
+    """Four tables point at a document, and the delete knew about two.
+
+    `DocumentLink` (the notes attached to this document) and
+    `DocumentBookmark` (its saved links) hold a real foreign key with no
+    cascade, so a document with a note attached could not be deleted **at
+    all**: `FOREIGN KEY constraint failed`, a 500, and the document still
+    there. The integration the owner asked for, notes and documents joined
+    up, was what made a document undeletable.
+
+    The same shape had already bitten once, for revisions and AI edits, and
+    the comment recording that is still above the fix. The list is now taken
+    from `grep 'ForeignKey("documents.id")'` rather than from memory, which
+    is the only thing that stops it going stale a third time.
+    """
+    from sqlalchemy import func, select
+
+    from memorymap.core.database import DocumentBookmark, DocumentLink
+
+    note = client.post("/entries", json={"content": "a note to attach"}).json()
+    document = client.post("/documents", json={"title": "Doc", "content": "body"}).json()
+    assert client.post(
+        f"/documents/{document['id']}/notes", json={"entry_id": note["id"]}
+    ).status_code == 201
+    session.commit()
+    assert session.scalar(select(func.count()).select_from(DocumentLink)) == 1
+
+    removed = client.delete(f"/documents/{document['id']}")
+    assert removed.status_code == 200, removed.text
+    session.expire_all()
+    assert session.scalar(select(func.count()).select_from(DocumentLink)) == 0
+    assert session.scalar(select(func.count()).select_from(DocumentBookmark)) == 0
+    # The note itself is not the document's to delete.
+    assert client.get(f"/entries/{note['id']}").status_code == 200

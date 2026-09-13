@@ -23,7 +23,7 @@ def test_a_logged_value_cannot_forge_a_second_line():
     cleaned = logbuffer.safe_value(forged)
     assert "\n" not in cleaned
     assert "\r" not in cleaned
-    # The text survives — it is flattened, not thrown away.
+    # The text survives: it is flattened, not thrown away.
     assert "your notes were deleted" in cleaned
 
 
@@ -61,7 +61,7 @@ def test_a_tool_explains_the_failures_it_anticipates(session, app_state):
 
 
 def test_an_unexpected_exception_does_not_leak_its_text(session, app_state, caplog):
-    """A bare ValueError from inside a handler is an internal detail — the
+    """A bare ValueError from inside a handler is an internal detail, the
     caller gets the shape of the problem, the log gets the rest."""
     from memorymap.ai import tools
 
@@ -163,7 +163,7 @@ def test_removing_a_model_never_returns_the_filesystem_path(app_state, monkeypat
 
     `embedmodels.remove` returned `f"...: {exc}"` for an OSError, and that
     string goes straight to the browser as the API response. An OSError's text
-    carries the full path it failed on — so a failed delete published where the
+    carries the full path it failed on, so a failed delete published where the
     model cache lives. The detail belongs in the log, where only the owner of
     the machine reads it.
     """
@@ -191,7 +191,7 @@ def test_removing_a_model_never_returns_the_filesystem_path(app_state, monkeypat
 def test_cryptography_is_pinned_past_the_two_advisories():
     """<= 48.0.0 has an exponential path-building DoS and a wildcard-SAN
     escape from an intermediate's permittedSubtrees. Neither is reachable from
-    this app — nothing here builds or verifies an X.509 chain — but the floor
+    this app, nothing here builds or verifies an X.509 chain, but the floor
     is free, and Dependabot was blocked by *our own* ceiling rather than by a
     real conflict, which is the part worth pinning so it cannot recur.
     """

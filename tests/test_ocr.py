@@ -3,7 +3,7 @@
 Never touches a real Tesseract binary or a real image file: every test
 mocks `shutil.which` and (where needed) `pytesseract`/`PIL.Image` so this
 suite runs identically whether or not Tesseract happens to be installed on
-the machine running it — the same reasoning `find_system_python`'s own
+the machine running it, the same reasoning `find_system_python`'s own
 tests use for not depending on the real system Python being anything in
 particular.
 """
@@ -32,7 +32,7 @@ def test_extract_text_returns_empty_and_never_raises_when_the_binary_is_missing(
     with caplog.at_level("INFO", logger="memorymap.ocr"):
         assert ocr.extract_text(Path("/does/not/exist.png")) == ""
         assert ocr.extract_text(Path("/does/not/exist2.png")) == ""
-    # Logged once, not raised, and not once per call — the "once per
+    # Logged once, not raised, and not once per call, the "once per
     # process, not once per upload" contract this module's own docstring
     # promises.
     assert sum("tesseract" in r.message.lower() for r in caplog.records) == 1
@@ -132,12 +132,12 @@ def test_extract_and_store_does_not_blow_up_if_the_upload_was_deleted_first(
     """A race is possible: OCR is still running when the row it would write
     to has already been deleted (DELETE /media/{id}). Must not raise."""
     monkeypatch.setattr(ocr, "extract_text", lambda path: "found text")
-    ocr.extract_and_store(999999, tmp_path / "gone.png")  # no such row — must not raise
+    ocr.extract_and_store(999999, tmp_path / "gone.png")  # no such row: must not raise
 
 
 # --- attempt_binary_install: installing the tesseract binary itself,
 # asked for directly ("add the option for install assistance ... automate
-# it if possible") — every test below mocks subprocess.run and shutil.which,
+# it if possible"), every test below mocks subprocess.run and shutil.which,
 # so none of this ever shells out to a real package manager. ----------------
 
 
@@ -188,7 +188,7 @@ def test_attempt_binary_install_succeeds_on_windows_via_winget(monkeypatch):
 
 def test_attempt_binary_install_never_trusts_exit_code_alone(monkeypatch):
     """A `0` exit code that didn't actually make the binary appear must not
-    be reported as success — the same "don't trust a report of stored
+    be reported as success, the same "don't trust a report of stored
     state, verify it" caution this app applies everywhere else."""
     monkeypatch.setattr(ocr.sys, "platform", "darwin")
     monkeypatch.setattr(ocr.shutil, "which", lambda name: "/usr/local/bin/brew" if name == "brew" else None)
@@ -219,9 +219,9 @@ def test_attempt_binary_install_handles_a_timeout_without_raising(monkeypatch):
 
 def test_attempt_binary_install_tries_sudo_dash_n_before_giving_up_on_linux(monkeypatch):
     """Root already (a container) skips straight to the bare command; a
-    non-root process tries a *non-interactive* sudo first — one that fails
+    non-root process tries a *non-interactive* sudo first, one that fails
     immediately rather than hanging on a password prompt nothing can
-    answer — falling back to the bare command only after that."""
+    answer: falling back to the bare command only after that."""
     monkeypatch.setattr(ocr.sys, "platform", "linux")
     monkeypatch.setattr(
         ocr.shutil, "which", lambda name: "/usr/bin/apt-get" if name == "apt-get" else None

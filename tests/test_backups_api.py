@@ -12,7 +12,7 @@ def _save(client, content, **extra):
 
 
 def test_backup_create_list_delete(client):
-    # create_app() already took a startup backup — work relative to it.
+    # create_app() already took a startup backup, work relative to it.
     baseline = {b["name"] for b in client.get("/backups").json()}
     _save(client, "worth keeping")
     created = client.post("/backups")
@@ -37,19 +37,19 @@ def test_storage_reports_whether_the_data_dir_is_writable(client, tmp_path):
     """ROADMAP.md's onboarding item named this the one still-open gap: a
     data-dir writability check. The database opening at all already implies
     the directory was writable at boot, but nothing before this told anyone
-    whether it *still* is — a synced folder, a permissions change, or a disk
+    whether it *still* is, a synced folder, a permissions change, or a disk
     remounted read-only can flip that later with no visible symptom until a
     save silently fails. This is the same `os.access` check
     `_validated_export_dir` already trusts for the export folder, asked of
     the notebook's own folder instead."""
     storage = client.get("/storage").json()
-    # The sandbox's own data dir is writable — the client fixture would not
+    # The sandbox's own data dir is writable, the client fixture would not
     # have been able to create the database otherwise.
     assert storage["data_dir_writable"] is True
 
 
 def test_retention_is_a_setting_and_prunes_immediately(client):
-    """Asked about directly: "backup retention should be a setting —
+    """Asked about directly: "backup retention should be a setting, 
     backups accumulate with no cap the user can see or change." The prune
     itself already existed; this is the missing control, and lowering it
     has to take effect now, not just on the next scheduled backup."""

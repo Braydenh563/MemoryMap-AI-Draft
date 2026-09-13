@@ -3,8 +3,8 @@
 Asked for directly: *"draft notes shouldnt be able to connect with actual
 notes, they need to be separate."*
 
-Drafts are already kept out of every other view — sidebar counts, category
-lists, retrieval — because an unfinished note is not part of the notebook yet.
+Drafts are already kept out of every other view, sidebar counts, category
+lists, retrieval: because an unfinished note is not part of the notebook yet.
 A link was the one thing still crossing that line, and it crossed it in the
 worst direction: a link outlives the draft's own invisibility, so a committed
 note grew an edge to something a reader cannot reach from anywhere else.
@@ -59,7 +59,7 @@ def test_two_saved_notes_are_unaffected(session):
 
 def test_saving_the_draft_makes_the_link_allowed(session):
     """The rule is about what a note *is* right now, not a permanent mark on
-    it — so the fix the error message suggests actually works."""
+    it: so the fix the error message suggests actually works."""
     draft = _draft(session, "half an idea about beans")
     note = manager.create_entry(session, "the beans need netting next week")
     session.commit()
@@ -72,7 +72,7 @@ def test_saving_the_draft_makes_the_link_allowed(session):
 
 def test_the_api_says_which_refusal_it_was(ai_client, session):
     """Three refusals share one return value, so the message has to name the
-    one that applies — "already linked" would send someone hunting for a link
+    one that applies: "already linked" would send someone hunting for a link
     that was never allowed to exist."""
     draft = _draft(session, "half an idea about beans")
     note = manager.create_entry(session, "the beans need netting next week")

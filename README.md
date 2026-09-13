@@ -4,7 +4,7 @@
 
 # MemoryMap AI
 
-**Your thoughts, mapped by a local AI. 100% offline, on your machine.**
+**A notebook that files itself. Local AI, your machine, nothing sent anywhere.**
 
 [![CI](https://github.com/Braydenh563/MemoryMap-AI/actions/workflows/ci.yml/badge.svg)](https://github.com/Braydenh563/MemoryMap-AI/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/Braydenh563/MemoryMap-AI/actions/workflows/codeql.yml/badge.svg)](https://github.com/Braydenh563/MemoryMap-AI/actions/workflows/codeql.yml)
@@ -16,312 +16,277 @@
 
 ---
 
-Note apps make *you* do the filing. MemoryMap AI doesn't.
-
-Type a thought and a local AI files it. Later, ask a question in plain
-English and get back **both** a conversational answer **and** the raw notes
-it came from — so you can check it.
+Type a thought. A local AI files it, tags it and links it to what you
+already wrote. Later, ask a question in plain English and get an answer
+together with the notes it came from, so you can check it.
 
 ```
-capture text  →  AI files it  →  ask a question  →  answer + the notes behind it
+capture a thought
+  -> the AI files it
+  -> ask a question
+  -> an answer, with the notes behind it
 ```
 
-Everything runs on your own computer. No account, no cloud, no telemetry.
-Your notes are a SQLite file in a folder you control.
-
-**Getting started** — [download a prebuilt package](#windows-installer) for
-Windows or Linux, or [run the launcher script](docs/INSTALL.md) — no
-terminal experience needed either way.
+The AI files, you decide: everything it does can be seen, edited and
+undone. Everything runs on your own computer. No account, no cloud, no
+telemetry.
+Your notes are a SQLite file in a folder you control, and the app is fully
+usable with no AI model running at all.
 
 <p align="center">
-  <img src="docs/screenshots/dashboard.png" alt="MemoryMap AI dashboard - capture streak, notebook stats, a force-directed constellation of your notes, pinned notes and recent activity" width="850">
+  <img src="docs/screenshots/dashboard.png" alt="The MemoryMap AI dashboard: capture streak, notebook statistics, a constellation of your notes, pinned notes and recent activity" width="850">
 </p>
 
 <details>
-<summary><b>More screenshots</b> — Notes, Chat, Graph, Library, Timeline, Reminders, Documents</summary>
+<summary><b>Twelve more screenshots</b>: Notes, Chat, Graph, Library, boards, concept maps, Documents, Timeline, Reminders, the features browser, the command palette and Appearance</summary>
 <br>
 
-<table>
-<tr>
-<td width="50%">
-<img src="docs/screenshots/notes.png" alt="Notes tab - a list of AI-filed notes with categories, tags and inline related-note chips">
-<p align="center"><sub><b>Notes</b> — captured, categorised, and linked to what they relate to</sub></p>
-</td>
-<td width="50%">
-<img src="docs/screenshots/chat.png" alt="Chat tab - a question answered from saved notes, with tool-use steps shown and the linked notes it drew on">
-<p align="center"><sub><b>Chat</b> — an answer plus the tool-use steps and notes behind it, not a black box</sub></p>
-</td>
-</tr>
-<tr>
-<td width="50%">
-<img src="docs/screenshots/graph.png" alt="Graph tab - a force-directed map of notes coloured by category, with links drawn between related notes">
-<p align="center"><sub><b>Graph</b> — your notes as a map, coloured by category, linked by meaning</sub></p>
-</td>
-<td width="50%">
-<img src="docs/screenshots/library.png" alt="Library tab - every note, document and chat in one searchable, filterable grid">
-<p align="center"><sub><b>Library</b> — notes, documents, chats and files, all in one place</sub></p>
-</td>
-</tr>
-<tr>
-<td width="50%">
-<img src="docs/screenshots/timeline.png" alt="Timeline tab - notes plotted on a time axis, grouped into bands by category">
-<p align="center"><sub><b>Timeline</b> — every note on a time axis, banded by category</sub></p>
-</td>
-<td width="50%">
-<img src="docs/screenshots/reminders.png" alt="Reminders tab - due dates with quick-set buttons and priority, linked back to the note they came from">
-<p align="center"><sub><b>Reminders</b> — due dates linked back to the note they came from</sub></p>
-</td>
-</tr>
-<tr>
-<td width="50%">
-<img src="docs/screenshots/documents.png" alt="Documents tab - the long-form editor with a formatting toolbar, a document list, live word count and writing suggestions">
-<p align="center"><sub><b>Documents</b> — a real editor: four views, a formatting toolbar, spelling and style checks, and a full edit history</sub></p>
-</td>
-<td width="50%">
-</td>
-</tr>
-</table>
+<p align="center">
+  <img src="docs/screenshots/notes.png" alt="Notes: a list of AI-filed notes with categories, tags and related-note chips" width="850">
+  <br><sub><b>Notes</b>: captured, categorised and linked to what they relate to</sub>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/chat.png" alt="Chat: the composer with skills, web search, plan and agent mode, a saved-chat list beside it and four suggested questions" width="850">
+  <br><sub><b>Chat</b>: ask in plain English, with skills, web search and agent mode beside the box</sub>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/graph.png" alt="Graph: a map of notes coloured by category, with links between related notes" width="850">
+  <br><sub><b>Graph</b>: your notes as a map, coloured by category, linked by meaning</sub>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/library.png" alt="Library: notes, documents, chats and files in one searchable grid" width="850">
+  <br><sub><b>Library</b>: everything you have made, in one place</sub>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/whiteboard.png" alt="A whiteboard board: coloured cards in three columns under a banner, with the tool rail along the bottom" width="850">
+  <br><sub><b>Boards</b>: cards, drawings and images you arrange yourself</sub>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/map.png" alt="A concept map: a central topic with coloured branches and leaves, and the keyboard hints for growing it" width="850">
+  <br><sub><b>Concept maps</b>: a branch with Tab, one beside it with Enter, tidied on demand</sub>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/documents.png" alt="Documents: the long-form editor with a formatting toolbar, a document list, live word count and writing suggestions" width="850">
+  <br><sub><b>Documents</b>: a long-form editor with four views, writing checks and full history</sub>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/timeline.png" alt="Timeline: every note in a feed, with a sticky header per day" width="850">
+  <br><sub><b>Timeline</b>: every note on a time axis</sub>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/reminders.png" alt="Reminders: due dates with quick-set buttons and priority, linked to the note they came from" width="850">
+  <br><sub><b>Reminders</b>: due dates linked to the note they came from</sub>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/features.png" alt="The Tools and features browser: a search box over grouped rows, each naming one thing the app can do" width="850">
+  <br><sub><b>Tools &amp; features</b>: everything the app can do, grouped and searchable</sub>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/palette.png" alt="The command palette: one typed word matching commands and notes at once" width="850">
+  <br><sub><b>Command palette</b>: Ctrl/⌘-K reaches a command, a note, a document, a file or a board</sub>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/appearance.png" alt="Settings, Appearance: ten themes as swatches, with typography, density, corners and background below" width="850">
+  <br><sub><b>Appearance</b>: ten themes, your own accent, type, density and corners</sub>
+</p>
 
 </details>
 
 ## Contents
 
-- [Why this exists](#why-this-exists)
-- [What's in it](#whats-in-it)
-- [Windows installer](#windows-installer)
-- [Linux package](#linux-package)
-- [Get started another way](#get-started-another-way)
-- [Your data and privacy](#your-data-and-privacy)
-- [Troubleshooting](#troubleshooting)
+- [Get started](#get-started)
+- [What it does](#what-it-does)
+- [The AI, and life without it](#the-ai-and-life-without-it)
+- [Your data](#your-data)
+- [Documentation](#documentation)
 - [Developing](#developing)
-- [Where it's up to](#where-its-up-to)
-- [Full documentation](#full-documentation)
-- [License](#license)
+- [Status](#status)
+- [Licence](#licence)
 
-## Why this exists
+## Get started
 
-- **Just capture.** Type a thought; a local AI files it into the right
-  category — matched by meaning, decided by the chat model, or your own
-  choice in guided mode. It tells you *which*, and flags the ones it wasn't
-  sure about.
-- **Ask, don't dig.** Plain-English questions return an answer *and* the
-  notes that back it up, side by side. You are never asked to trust a
-  summary you can't check.
-- **It's genuinely yours.** No account, no cloud, no telemetry. Plain
-  SQLite in a folder you choose, with JSON/CSV/Markdown export built in.
-  The server binds to localhost and never phones home.
-- **It works when the AI doesn't.** No Ollama running? Notes are filed as
-  `Uncategorised`, search falls back to keywords, and a dot in the header
-  says what the AI is doing. **Saving a note never fails.**
+Three ways in. None needs a terminal.
 
-## What's in it
+**Windows.** Download `MemoryMap-AI-Setup-*.exe` from the
+[latest release](https://github.com/Braydenh563/MemoryMap-AI/releases/latest)
+and run it. The app opens in its own window.
+[What the SmartScreen prompt means](docs/INSTALL.md#windows-installer).
 
-Seven tabs, all offline:
+**Linux.** Download `MemoryMap-AI-*-linux-x86_64.zip` from the same page,
+unzip it and run `MemoryMap AI`. Needs GTK and WebKit (`python3-gi` and
+`gir1.2-webkit2-4.1`, or your distribution's equivalent).
 
-- **Dashboard** — capture streak, at-a-glance stats, an AI digest of your
-  week, and a layout you can rearrange
-- **Notes** — capture, browse and ask, with auto-filing, tags, threads,
-  private notes, a recycle bin, and **extract notes** (turn a block of free
-  text into AI-drafted, auto-linked notes)
-- **Chat** — a saved, resumable conversation. **Agent mode** gives it
-  ~50 tools to search, link, organise and act on your notes, with
-  destructive actions always confirmed
-- **Graph** — your notes as a force-directed map and a knowledge graph the
-  AI can walk, labelled with *how* two notes connect
-- **Library** — everything you've made in one place: notes, documents,
-  chats, files, tags, the bin and the activity log, plus **Links** (a
-  bookmark shelf for websites, grouped and pinnable), **Contents** (a
-  hyperlinked outline of the whole notebook, grouped by category or tag) and
-  **AI Skills**. A note or document can attach a saved bookmark as a
-  **reference**, shown live beside it while you edit. Also where the
-  long-form **document editor** and the **whiteboard** (freehand sketches +
-  note cards on a pannable canvas) open from. The editor has four views —
-  **Live** (renders as you write, showing the raw markdown for the block
-  you're in), **Source**, **Split** and **Read** — and handles code files
-  with line numbers, Tab/Shift+Tab indenting and Ctrl+/ commenting
-- **Timeline** — every note on a time axis, banded by category or tag
-- **Reminders** — due dates with priority, repeats and snooze, or just say
-  "call mum tomorrow evening" and let the AI schedule it
+**macOS, or from source on any platform.** Clone the repository and run
+`./start-desktop.sh` (on Windows, double-click `start-desktop.bat`), or
+`./start.sh` for a browser tab. The launcher builds a private Python
+environment, installs everything and opens the app. `--doctor` on either
+one checks the machine and prints a table with a fix per row. A
+step-by-step version for first-time terminal users is in
+[docs/INSTALL.md](docs/INSTALL.md).
 
-Every image added to the library is read automatically in the background,
-three ways where each is available: a **caption** describing it, a **vision
-model transcription** of any text in it, and **Tesseract OCR** (if the
-binary is installed). All three are editable by hand, and all three are
-searchable. Nothing blocks the upload — the tile fills in as each finishes.
+Add the AI afterwards: install [Ollama](https://ollama.com) and pull a
+model that fits your machine. Which one, from "runs on a laptop with no
+GPU" upwards, is in [docs/MODELS.md](docs/MODELS.md). Any OpenAI-compatible
+server works too: LM Studio, llama.cpp's `llama-server`, Jan, vLLM.
 
-Attach **any file** to a chat message: images go to the image gallery for a
-vision model to look at, and documents, spreadsheets, PDFs and code are
-imported into Documents with their text extracted. A **scanned** PDF is
-rasterised page by page and read by an OCR model — no Tesseract, and you can
-pick the model or leave it automatic, in which case a document reader
-(GLM-OCR, DeepSeek-OCR, PaddleOCR-VL) is preferred over a general vision
-model when you have one.
+## What it does
 
-Notes and documents take markdown inline — `**bold**`, `*italic*`,
-`` `code` ``, `~~strike~~`, `[[wiki links]]` — plus **highlighting**:
-`==like this==`, or `==green|like this==` for one of six colours. It is
-just characters in the note, so a highlight survives search, export and the
-AI's own reading of it.
+**Capture.** Type, paste, dictate (local Whisper) or draw. The AI picks a
+category by meaning, or asks you in guided mode, and says which. Free text
+can be split into separate, auto-linked notes. Notes take Markdown inline,
+including `[[wiki links]]`, `~~strikethrough~~` and `==highlights==` in
+six colours.
 
-Plus a status bar, command palette (`Ctrl`/`Cmd`+`K`), a sketch pad, local
-Whisper dictation, read-aloud, opt-in web search, 10 themes over 8 colour
-palettes, 20 built-in skills, interface zoom (`Ctrl`+`+`/`-`/`0`), and daily
-local backups.
+**Ask.** A question returns a conversational answer and the notes behind
+it, side by side, with each sentence linked to the note it came from. Chat
+is saved and resumable. In Agent mode the assistant has 58 tools to
+search, link, organise and act on your notebook; anything destructive
+asks first, and every step it takes is shown.
 
-**Settings → Help** has a full in-app guide — topic-by-topic explanations
-with quick-access links straight into the setting or tab each one describes
-— plus a small "Ask the guide" AI chat for "how do I…" questions, answered
-by your utility model from the app's own reference material rather than
-guessed. It never sees your notes and keeps no history past the current
-session.
+**See the shape of it.** The Graph draws your notes as a map, coloured by
+category and linked by meaning, with the reason for each link written
+down. The Timeline puts every note on a time axis. The Dashboard shows
+your capture streak, statistics, a weekly digest and whatever widgets you
+choose.
 
-**Any OpenAI-compatible server works**, not just Ollama — LM Studio,
-`llama-server`, Jan, vLLM. Settings → Models also exposes the sampling
-parameters (temperature, top-p, top-k, min-p, repeat penalty), and starts each
-one at what the model itself recommends: a GGUF ships its author's values and
-the app reads them rather than guessing.
+**Write at length.** Documents is a long-form editor with Live, Source,
+Split and Read views, a formatting toolbar, spelling and style checks you
+can click on, version history, and code files with line numbers.
 
-Two things run on their own once you switch them on — both **off by
-default**, because both act without being asked:
+**Think on a canvas.** The Whiteboard holds sketches, shapes, images and
+note cards on a pannable surface. A board can be a **mind map**: a root
+topic with branches you grow by hand or from your notes, exportable as
+Markdown or OPML.
 
-- **Search by meaning** (✨ Semantic) — matches ideas, not words.
-- **The background librarian** — tags, links and flags duplicates on an
-  interval you choose. Never deletes, never asks a question it can't
-  answer, skips itself on battery power.
+**Keep everything in one Library.** Notes, documents, chats, files, tags,
+bookmarks, the recycle bin and the activity log. Every image you add is
+read three ways where each is available (a caption, a vision-model
+transcription and Tesseract OCR), all editable, all searchable. Attach any
+file to a chat message: images go to a vision model, and documents,
+spreadsheets, PDFs and code are imported with their text extracted.
+Scanned PDFs are read page by page by an OCR model.
 
-**Settings → Packages** installs the packages behind optional features —
-dictation, the desktop window, search-by-meaning — nothing there is needed
-for the core app to work.
+**Remember.** Reminders with priority, repeats and snooze, or type "call
+Sam tomorrow evening" and let the AI schedule it.
 
-## Windows installer
+**Automate.** 20 built-in skills (and your own) run multi-step jobs over
+the notebook as a visible checklist, one step at a time, with each tool
+call shown. An optional background librarian tags, links and flags
+duplicates on a schedule you set. It never deletes anything.
 
-The simplest way in, no terminal or Python install required: download the
-latest `MemoryMap-AI-Setup-*.exe` from the
-**[latest release](https://github.com/Braydenh563/MemoryMap-AI/releases/latest)**
-and run it. Full walkthrough — including the SmartScreen warning you'll
-see and how the desktop app runs without a terminal window — in
-**[`docs/INSTALL.md`](docs/INSTALL.md#windows-installer)**.
+Also: a command palette (`Ctrl`/`Cmd`+`K`), read-aloud, opt-in web search,
+themes over several colour palettes, interface zoom, daily local backups,
+and an in-app guide under Settings that answers "how do I" questions from
+the app's own documentation without ever reading your notes.
 
-## Linux package
+## The AI, and life without it
 
-A prebuilt `MemoryMap-AI-*-linux-x86_64.zip` is on the same
-**[latest release](https://github.com/Braydenh563/MemoryMap-AI/releases/latest)**
-page — unzip it and run `MemoryMap AI` inside. Needs GTK/WebKit
-(`python3-gi`, `gir1.2-webkit2-4.1` or your distro's equivalent) already
-on the system, and ships without a system tray icon for now. Prefer a
-package manager instead? The launcher script below works just as well.
+MemoryMap is built around a local model, and built to work when there is
+none. With no model running, notes are filed as Uncategorised, search
+uses full-text matching with stemming and spelling correction, and every
+other feature keeps working. A dot in the header always says what the AI
+is doing.
 
-## Get started another way
+- **Any local model.** Ollama by default; any OpenAI-compatible server by
+  setting a URL. Settings > Models shows the sampling parameters and
+  starts each at the value the model's own file recommends.
+- **Small models are first-class.** Skills and tool use have a small-model
+  mode that gives a 4B model one step and one tool at a time, with
+  recovery when it skips a step.
+- **Search by meaning** is optional and off by default. Turn it on and
+  questions match ideas rather than words, using a local embedding model
+  through Ollama.
+- **Settings > Packages** installs the optional pieces (dictation, the
+  desktop window, search by meaning) from inside the app. None of them is
+  needed for the core.
 
-- **macOS, or building it yourself on any platform:** the launcher script
-  — `./start.sh` or `start-desktop.bat` (Windows; opens the app in its own
-  window rather than a browser tab — prefer it over plain `start.bat`
-  unless you specifically want the browser tab) — installs everything and
-  opens the app in one command. Full step-by-step (including for a
-  first-ever terminal user): **[`docs/INSTALL.md`](docs/INSTALL.md)**.
-- **Prefer to manage the virtual environment yourself?** Manual setup,
-  updating and uninstalling are all in the same guide.
-- **Adding the AI:** install [Ollama](https://ollama.com) and pull a model
-  — which one depends on your machine's RAM. Full recommendations, a
-  runs-on-anything table, and using LM Studio/llama.cpp/Jan/vLLM instead:
-  **[`docs/MODELS.md`](docs/MODELS.md)**.
+## Your data
 
-## Your data and privacy
+Everything lives in one folder: `memorymap.db` (your notes), `preferences.json`,
+`uploads/` (attachments and sketches) and `backups/` (daily local
+snapshots). Set `MEMORYMAP_DATA_DIR` to put it somewhere else. Export to
+JSON, CSV or Markdown from Settings at any time.
 
-Everything lives in the `data/` folder (gitignored) — `memorymap.db` (your
-notes), `preferences.json`, `uploads/` (attachments and sketches), and
-`backups/` (daily local snapshots). Point `MEMORYMAP_DATA_DIR` somewhere
-else to relocate all of it.
+Nothing leaves your machine unless you ask it to. The server binds to
+localhost, the AI is confined to your own network, web search is off by
+default and sends only your search words, and private notes are encrypted
+at rest with a key derived from your password. The full model, including
+session expiry, the CSRF and CSP protections and what to do if you forget
+your password, is in [docs/PRIVACY.md](docs/PRIVACY.md). To report a
+vulnerability, see [SECURITY.md](SECURITY.md).
 
-**Nothing leaves your machine unless you explicitly ask it to.** The AI is
-locked to your own network by default, web search (off by default) sends
-only your search words and never your notes, and private notes are
-encrypted at rest with a key your password derives. The full model — what
-touches the network and when, session expiry, the CSRF/CSP protections, and
-what to do if you forget your password — is in
-**[`docs/PRIVACY.md`](docs/PRIVACY.md)**.
+## Documentation
 
-To report a security vulnerability, see **[`SECURITY.md`](SECURITY.md)**.
-
-## Troubleshooting
-
-The most common snags — a Windows torch DLL error, SearXNG not starting,
-what the AI-status dot's colours mean, and how to pull logs for a bug
-report — are answered in **[`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md)**.
+| Document | What it answers |
+| --- | --- |
+| [docs/INSTALL.md](docs/INSTALL.md) | The Windows installer, the launcher script, manual setup, updating and uninstalling |
+| [docs/MODELS.md](docs/MODELS.md) | Which model to pick for your machine, and using a backend other than Ollama |
+| [docs/PRIVACY.md](docs/PRIVACY.md) | What touches the network and when, private-note encryption, session security |
+| [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | The common problems and their fixes |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How the pieces fit: request lifecycle, data model, the AI stack, where to change any given thing |
+| [docs/DESIGN.md](docs/DESIGN.md) | The design system every screen is written against |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | What is open, in order, with the reasoning |
+| [CHANGELOG.md](CHANGELOG.md) | What changed, release by release |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Setup, tests and opening a pull request |
+| [SECURITY.md](SECURITY.md) | How to report a vulnerability |
 
 ## Developing
 
 ```
-pytest                       # 2,700+ tests, ~7-8 minutes
-ruff check .                 # what CI lints with
-node --check frontend/app.js # the frontend is one plain-JS file
+pytest                          # 3,000+ tests, about eight minutes, fully offline
+ruff check .                    # what CI lints with
+node --check frontend/app.js    # the frontend has no build step
 ```
 
-Tests use a throwaway database and fake every AI call, so they run fast and
-fully offline — no GPU, no models, no network.
-
-**They also cannot see the interface.** Drive the app in a browser before
-believing a frontend change works —
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §10 says how, and lists the
-layout traps that keep catching people out.
-
-[`CONTRIBUTING.md`](CONTRIBUTING.md) covers setup and opening a PR.
+Tests use a throwaway database and fake every AI call, so they need no
+GPU, no model and no network. They also cannot see the interface, so a
+frontend change is driven in a real browser before it is called done;
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) says how.
 
 ```
 src/memorymap/
-├── __main__.py       # entry point: python -m memorymap [--desktop]
-├── core/             # config, database + auto-migrator, singletons, backup, logs
-├── entry/            # create/read/soft-delete notes + the audit log
-├── ai/                # ollama client, janitor, librarian, agent, tools, embeddings, voice
-├── search/            # keyword + semantic search, opt-in web search, SearXNG
-└── api/               # FastAPI app + routers, one per feature area
-frontend/              # vanilla HTML/CSS/JS + PWA - no framework, no build step
-tests/                 # pytest; every AI call faked
-docs/                  # ARCHITECTURE.md, DESIGN.md, ROADMAP.md + roadmap/
+  __main__.py     entry point: python -m memorymap [--desktop]
+  core/           config, database and migrations, backups, logs, crypto
+  entry/          notes: create, read, link, soft-delete, the audit log
+  ai/             model clients, filing, the agent and its tools, skills, embeddings, voice
+  search/         full-text and semantic search, opt-in web search
+  api/            the FastAPI app, one router per feature
+frontend/         plain HTML, CSS and JavaScript, served as-is
+tests/            pytest, every AI call faked
+docs/             user documentation, architecture, design system, roadmap
 ```
 
-## Where it's up to
+Migrations are additive by default: a new column is added the next time
+the app opens an older database. Alembic is wired in behind that for the
+day a rename or drop is needed. CI runs ruff, CodeQL and the full suite on
+Python 3.11 to 3.13 on every push.
 
-The core app — capture, chat, the graph, documents, private notes, themes,
-the whiteboard, desktop packaging — is built and stable; **2,600+ tests**
-stay green on every push. What changed most recently, wave by wave, is in
-[`CHANGELOG.md`](CHANGELOG.md). What's still open, ranked with the
-reasoning behind each item, is [`docs/ROADMAP.md`](docs/ROADMAP.md) — kept
-current every session rather than periodically reconciled with this file.
+## Status
 
-## Full documentation
+Version 0.3.0. The core is built and stable: capture, chat, the graph,
+documents, the whiteboard and mind maps, private notes, themes, desktop
+packaging for Windows and Linux. Current work is a modernisation of the
+whole interface and a redesign of the graph, documents, timeline and chat
+surfaces, tracked in [docs/ROADMAP.md](docs/ROADMAP.md) and recorded in
+[CHANGELOG.md](CHANGELOG.md).
 
-| Document | What's in it |
-| --- | --- |
-| [`docs/INSTALL.md`](docs/INSTALL.md) | The Windows installer, the launcher script, manual setup, updating and uninstalling |
-| [`docs/MODELS.md`](docs/MODELS.md) | Which AI model to pick for your machine, and using a backend other than Ollama |
-| [`docs/PRIVACY.md`](docs/PRIVACY.md) | What touches the network and when, private-note encryption, session security |
-| [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) | Common problems and their fixes |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | The whole project explained: design principles, request lifecycle, data model, the AI stack, and where to look to change any given thing |
-| [`docs/ROADMAP.md`](docs/ROADMAP.md) | What's outstanding, in order, and *why* each thing matters. Split into `roadmap/BACKLOG.md`, `roadmap/ANALYSIS.md` and `roadmap/HISTORY.md` |
-| [`docs/DESIGN.md`](docs/DESIGN.md) | The design system — tokens, scales, and the rules new features are written against |
-| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Setup, tests, opening a PR |
-| [`SECURITY.md`](SECURITY.md) | How to report a vulnerability |
-| [`CHANGELOG.md`](CHANGELOG.md) | What changed, wave by wave |
+## Licence
 
-**Operational decisions worth knowing:** migrations are additive by
-default — a new column is added automatically the next time the app opens
-an older database, no migration script needed; Alembic is wired in behind
-that (every database is stamped to a baseline revision) for the day a
-rename or drop is actually needed, which additive-only changes can't do;
-SQLCipher is deferred (your OS's disk encryption covers a single-user
-local file, and private notes are already encrypted individually); CI
-lints with ruff and runs the full suite on Python 3.11–3.13 on every push,
-needing no GPU, models or network beyond pip.
+[GNU Affero General Public License v3.0](LICENSE).
 
-## License
-
-Released under the
-[GNU Affero General Public License v3.0](https://github.com/Braydenh563/MemoryMap-AI/blob/main/LICENSE).
-
-In short: you may use, study, modify and share this, and anything you build
-on it must stay under the same licence — **including if you run a modified
-copy as a network service.** That last clause is the AGPL's whole point and
-the reason it was chosen here: MemoryMap is a local-first app, and the
-licence is what stops a modified, closed version of it being offered back
-to people as a hosted product.
+You may use, study, modify and share this, and anything built on it must
+stay under the same licence, including a modified copy run as a network
+service. That last clause is why the AGPL was chosen: MemoryMap is a
+local-first app, and the licence keeps a closed, hosted version of it from
+being offered back to the people it was written for.

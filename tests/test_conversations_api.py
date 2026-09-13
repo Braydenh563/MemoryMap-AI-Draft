@@ -1,7 +1,7 @@
 """Conversations: lifecycle, turns, retitling, personas.
 
 (The embedding status-pill tests that used to live here moved to
-test_models_api.py — same domain as the rest of /models/status's
+test_models_api.py: same domain as the rest of /models/status's
 coverage.)"""
 
 from __future__ import annotations
@@ -44,7 +44,7 @@ def test_conversation_lifecycle(client):
 
 def test_browsing_conversations_sees_as_many_as_searching_does(client):
     """The no-search-term branch capped at 50 while the with-term branch
-    capped at 200 — browsing without typing a search saw fewer chats than
+    capped at 200: browsing without typing a search saw fewer chats than
     searching for one did, with no way to reach the rest either way."""
     for i in range(60):
         client.post("/conversations", json={"question": f"q{i}", "answer": "a"})
@@ -195,7 +195,7 @@ def test_replace_last_turn_swaps_answer_in_place(client):
     )
     assert resp.status_code == 200
     full = client.get(f"/conversations/{cid}").json()
-    assert full["turns"] == 2  # not 3 — the last pair was replaced, not added
+    assert full["turns"] == 2  # not 3: the last pair was replaced, not added
     assert full["messages"][-1]["content"] == "v2 (better)"
 
 
@@ -207,7 +207,7 @@ def test_delete_turn_removes_one_exchange(client):
     cid = created["id"]
     client.post(f"/conversations/{cid}/turns", json={"question": "q2", "answer": "a2"})
 
-    # Delete the first exchange (index 0) — the second should remain and shift up.
+    # Delete the first exchange (index 0): the second should remain and shift up.
     resp = client.delete(f"/conversations/{cid}/turns/0")
     assert resp.status_code == 200
     full = client.get(f"/conversations/{cid}").json()
@@ -356,3 +356,50 @@ def test_a_turn_without_steps_still_saves(client):
     ).json()
     assistant = client.get(f"/conversations/{created['id']}").json()["messages"][1]
     assert "steps" not in assistant
+
+
+def test_a_chat_past_the_page_is_still_reachable_and_findable(client):
+    """**The old cap made an old chat unreachable, and unsearchable too.**
+
+    `list_conversations` was a flat `.limit(200)` with no offset, and the
+    search filtered *after* it: the post-filter ran over the 200 most recent
+    rows, so a chat older than that could not be opened from the sidebar and
+    could not be found by searching for its own words either. Same finding as
+    INBOX 117 on documents, reminders and media, one list later.
+    """
+    from memorymap.api import routes_conversations
+
+    size = routes_conversations.CONVERSATIONS_PAGE_SIZE
+    oldest = client.post(
+        "/conversations", json={"question": "zarquon the marmoset", "answer": "yes"}
+    ).json()["id"]
+    for index in range(size + 5):
+        client.post("/conversations", json={"question": f"Chat {index}", "answer": "ok"})
+
+    first = client.get("/conversations")
+    assert len(first.json()) == size
+    assert first.headers["X-Total-Count"] == str(size + 6)
+
+    rest = client.get("/conversations", params={"offset": size})
+    assert len(rest.json()) == 6
+    seen = {c["id"] for c in first.json()} | {c["id"] for c in rest.json()}
+    assert oldest in seen, "the oldest chat is past the first page and must still be listed"
+
+    # And searchable: the word is only in the chat the first page does not hold.
+    found = client.get("/conversations", params={"q": "zarquon"})
+    assert [c["id"] for c in found.json()] == [oldest]
+    assert found.headers["X-Total-Count"] == "1"
+
+
+def test_a_search_pages_over_its_own_matches(client):
+    """A searched page counts matches, not rows scanned: a caller paging a
+    search must not loop past the end of its own results."""
+    for index in range(5):
+        client.post("/conversations", json={"question": f"marmoset {index}", "answer": "ok"})
+    client.post("/conversations", json={"question": "something else", "answer": "ok"})
+
+    page = client.get("/conversations", params={"q": "marmoset", "limit": 2})
+    assert len(page.json()) == 2
+    assert page.headers["X-Total-Count"] == "5"
+    tail = client.get("/conversations", params={"q": "marmoset", "limit": 2, "offset": 4})
+    assert len(tail.json()) == 1

@@ -1,5 +1,5 @@
 """Notes untouched for a long time with nothing else pointing at them
-(ROADMAP.md item 31) — the detection function, kept deliberately arithmetic
+(ROADMAP.md item 31): the detection function, kept deliberately arithmetic
 the same way `test_duplicates.py` covers the arithmetic dedupe finder.
 """
 

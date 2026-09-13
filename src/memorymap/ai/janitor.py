@@ -1,6 +1,6 @@
 """The janitor: files a new thought into a category (LLM prompt #1).
 
-Not a separate AI model — just a prompt to the active chat model, with
+Not a separate AI model, just a prompt to the active chat model, with
 embedding-based filing behind it for when there is no model. Order of
 attempts:
 
@@ -10,10 +10,10 @@ attempts:
    the model was almost never asked, and notes were filed by resemblance
    rather than by meaning. Reported as notes landing in the wrong category
    and needing fixing by hand; see `categorise` for the full reasoning.
-2. Embedding vs. category centroids — free, and what files notes when no
+2. Embedding vs. category centroids: free, and what files notes when no
    chat model is running.
 3. Nearest neighbours: the k most similar individual notes vote for their
-   own category. Catches what a centroid can't — a category holding more
+   own category. Catches what a centroid can't: a category holding more
    than one kind of thing has an average resembling none of them.
 4. No AI available and nothing similar → 'Uncategorised' with confidence 0.
    Saving an entry must never fail because the AI is down (plan §4).
@@ -29,6 +29,7 @@ import numpy as np
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from memorymap.ai import librarian
 from memorymap.ai.embeddings import EmbeddingService, bytes_to_vector, cosine_similarity
 from memorymap.ai.model_manager import ModelManager
 from memorymap.ai.ollama_client import OllamaClient, OllamaError
@@ -76,6 +77,18 @@ class NeighbourMatch:
 
 logger = logging.getLogger("memorymap.janitor")
 
+#: The `method` values `categorise` returns when the *AI* made the choice, as
+#: opposed to the user, a parent note, or nothing being available. A note filed
+#: by one of these carries `manager.AUTO_FILED`, which is what makes a later
+#: move by hand a correction rather than an ordinary edit (Brief 13). A tuple
+#: here rather than a check at each call site so a fourth method added later
+#: has one place to be listed.
+AI_METHODS = ("semantic-match", "semantic-neighbours", "llm")
+
+
+def is_ai_method(method: str) -> bool:
+    return str(method or "") in AI_METHODS
+
 
 def categorise(
     session: Session,
@@ -92,17 +105,17 @@ def categorise(
     'none' (no AI available).
 
     When RE-categorising an existing note (add-context), pass
-    `exclude_entry_id` — otherwise the note's own stored vector anchors
+    `exclude_entry_id`, otherwise the note's own stored vector anchors
     it to its old category and it can never move."""
     # **The model decides when there is a model.** This used to run the other
-    # way round — a confident centroid match, then nearest neighbours, and the
-    # chat model only if both declined — which meant that in an established
+    # way round: a confident centroid match, then nearest neighbours, and the
+    # chat model only if both declined, which meant that in an established
     # notebook the AI was almost never consulted at all: there is nearly
     # always *some* category whose vectors sit close to a new note. Reported
     # directly, and the complaint is the right one: "what's the point of
     # having an ai managed notebook if it is filed inaccurately and I need to
     # manually fix it". Vector similarity answers "what does this most
-    # resemble", which is not the same question as "where does this belong" —
+    # resemble", which is not the same question as "where does this belong", 
     # a note about a bug in a work project resembles every other code note
     # more than it resembles the rest of "Work", and gets filed accordingly.
     #
@@ -116,7 +129,7 @@ def categorise(
     # check.
     # The order is a preference, defaulting to the model. Asking the model
     # first buys accuracy and costs a round-trip on every single capture,
-    # which on a slow local model is felt immediately — so anyone who would
+    # which on a slow local model is felt immediately, so anyone who would
     # rather have the instant save can have the old order back without giving
     # up the AI entirely (the model still decides everything the vectors
     # decline). Flagged as a real latency change when it shipped; this is the
@@ -256,7 +269,7 @@ def _knn_match(
 
     Each neighbour votes for its own category, weighted by how similar it is,
     so one very close note outweighs three vague ones. Returns None unless the
-    nearest note is genuinely close *and* the winner takes a clear majority —
+    nearest note is genuinely close *and* the winner takes a clear majority, 
     a split vote is the case where asking the model is worth its cost.
     """
     note_vector = embeddings.embed_text(content)
@@ -283,7 +296,7 @@ def _knn_match(
     if not rows:
         return None
 
-    # Was a Python loop calling `cosine_similarity` once per candidate note —
+    # Was a Python loop calling `cosine_similarity` once per candidate note, 
     # every save paid an unvectorized per-row cost that `embeddings.similar_pairs`
     # already avoids for the equivalent all-pairs comparison. One query vector
     # against N candidates is a single matrix-vector product, not a block sweep
@@ -323,7 +336,7 @@ def _knn_match(
         return None
 
     # Confidence reflects both how close the neighbours are and how much they
-    # agree — a unanimous vote among distant notes shouldn't read as certain.
+    # agree: a unanimous vote among distant notes shouldn't read as certain.
     confidence = round(min(1.0, scored[0][0]) * share * 100)
     return NeighbourMatch(name=name, confidence=max(1, min(100, confidence)))
 
@@ -342,13 +355,15 @@ def _ask_llm(
         for name in session.scalars(select(Category.name))
         if name != UNCATEGORISED
     ]
-    user_prompt = (
-        f"Existing categories: {', '.join(existing) if existing else '(none yet)'}\n"
-        f"Note: {content}"
-    )
+    # Built by the librarian, because it now carries more than this function
+    # knows about: the corrections the user has already made for these
+    # categories (Brief 13). Filing the same kind of note into the same wrong
+    # place every week, with the user moving it every week, is the reported
+    # failure this answers.
+    user_prompt = librarian.filing_prompt(session, content, existing)
     try:
         reply = ollama.chat(
-            # Filing is a quick background job — use the utility model so a
+            # Filing is a quick background job, use the utility model so a
             # big slow chat model isn't tied up on every save.
             model_manager.utility_model(),
             [
@@ -370,7 +385,7 @@ def _ask_llm(
 
 
 def _extract_json(text: str) -> dict:
-    """Small models often wrap JSON in chatter — grab the {...} part."""
+    """Small models often wrap JSON in chatter, grab the {...} part."""
     start, end = text.find("{"), text.rfind("}")
     if start == -1 or end <= start:
         raise ValueError(f"no JSON object in reply: {text!r}")

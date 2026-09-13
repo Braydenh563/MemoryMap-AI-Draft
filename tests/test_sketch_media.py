@@ -7,7 +7,7 @@ Two halves of one report:
     "and allow captions if they accompany images of sketches to be read by the
      ai if they appear in semantic searches."
 
-A saved sketch used to go to `POST /entries/{id}/files` — the *attachment*
+A saved sketch used to go to `POST /entries/{id}/files`, the *attachment*
 table, which is a different pipeline from `MediaUpload`. Only MediaUpload rows
 are captioned, OCR'd, read by a vision model or listed in the Library gallery,
 so a drawing was the one image in this app none of that ever touched. And even
@@ -163,7 +163,7 @@ def test_saving_a_sketch_uploads_it_as_media():
     )
     assert "/files`" not in code, "the old attachment path is gone"
     # Referenced from the note's markdown, which is what triggers
-    # `_process_committed_media` on the way in — and what puts the drawing in
+    # `_process_committed_media` on the way in, and what puts the drawing in
     # the note where you can see it.
     assert "![" in block and "uploaded.url" in block
 
@@ -173,7 +173,7 @@ def test_saving_a_sketch_uploads_it_as_media():
 
 def test_a_skill_run_is_recorded(client):
     """Reported: "I dont think the skill logs work in the ai skills section in
-    the library??" Correct, and the panel was not the broken half — a grep for
+    the library??" Correct, and the panel was not the broken half, a grep for
     a `log_action` call with entity_type "skill" returned nothing at all, so
     the reader was reading rows no writer produced."""
     from memorymap.ai import skill_runner

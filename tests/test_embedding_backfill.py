@@ -1,7 +1,7 @@
 """Notes that missed their embedding get one on the next start.
 
 The bug: a note saved while the embedding model was still warming up got no
-vector, and nothing ever went back for it — so it stayed invisible to semantic
+vector, and nothing ever went back for it, so it stayed invisible to semantic
 search forever while looking completely normal in the notes list.
 """
 
@@ -47,7 +47,7 @@ def test_backfill_leaves_existing_embeddings_alone(client, session, fake_embeddi
 
 
 def test_backfill_skips_private_notes(client, session, fake_embeddings):
-    """A vector encodes what a note is about — backfilling one would leak it."""
+    """A vector encodes what a note is about, backfilling one would leak it."""
     vault.close()
     vault.create(session, "test-passphrase")
     session.commit()
@@ -102,7 +102,7 @@ def test_wal_and_busy_timeout_are_set(app_state):
 
 
 def test_repeated_embeds_of_the_same_text_are_cached():
-    """Saving a note embeds the same text twice in quick succession — once to
+    """Saving a note embeds the same text twice in quick succession, once to
     store the vector, once by the near-duplicate check right afterwards.
 
     Uses the real service: FakeEmbeddingService overrides embed_text wholesale,

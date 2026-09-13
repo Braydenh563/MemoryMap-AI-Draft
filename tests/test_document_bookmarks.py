@@ -1,5 +1,5 @@
 """Attaching a saved bookmark to a document, the same References concept
-notes already got this session (§30 — "should bookmarks show in documents
+notes already got this session (§30: "should bookmarks show in documents
 ... as well?")."""
 
 from __future__ import annotations

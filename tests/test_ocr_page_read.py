@@ -6,8 +6,8 @@ to `pdfpages.MAX_PAGES`, which is the wrong shape for a workspace where the
 question is always "what does *this* page say" and a reader who wants page six
 should not wait through five they have already checked.
 
-Nothing is stored — a wrong transcription written onto the row is worse than one
-to repeat — so these tests are about the refusals and the routing, which is
+Nothing is stored: a wrong transcription written onto the row is worse than one
+to repeat: so these tests are about the refusals and the routing, which is
 where a page reader can actually mislead.
 """
 
@@ -43,7 +43,7 @@ def _attach(client, name: str, data: bytes) -> int:
 
 
 def test_only_a_pdf_is_read_a_page_at_a_time(client):
-    """An image *is* one page — it goes through the ordinary vision read, and
+    """An image *is* one page, it goes through the ordinary vision read, and
     offering a page-scoped route for it would imply a page rail that does not
     exist."""
     attachment_id = _attach(client, "photo.png", b"\x89PNG\r\n\x1a\n" + b"0" * 32)
@@ -65,7 +65,7 @@ def test_a_missing_model_is_a_409_not_a_500(client):
 
 def test_without_the_rasteriser_it_answers_rather_than_failing(client, monkeypatch):
     """No pypdfium2 means no pixels to read, which is a *state* rather than an
-    error — the reader is told what to install, in the response body, at 200."""
+    error: the reader is told what to install, in the response body, at 200."""
     monkeypatch.setattr(pdfpages, "available", lambda: False)
     attachment_id = _attach(client, "scan.pdf", ONE_PAGE_PDF)
     response = client.post(f"/files/{attachment_id}/ocr-page-read?page=0")

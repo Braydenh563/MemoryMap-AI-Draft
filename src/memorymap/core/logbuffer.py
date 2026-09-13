@@ -2,12 +2,13 @@
 
 Keeps the last few hundred records from the app AND uvicorn so the user
 can see what the server is doing without hunting for a terminal. Memory
-only — nothing is written to disk, in keeping with the privacy posture.
+only: nothing is written to disk, in keeping with the privacy posture.
 """
 
 from __future__ import annotations
 
 import logging
+import re
 import threading
 from collections import deque
 from datetime import datetime, timezone
@@ -23,7 +24,7 @@ _lock = threading.Lock()
 # A deque with a maxlen drops silently, which makes a busy hour and a quiet one
 # look identical in the viewer: 500 rows either way, and no way to tell whether
 # the top row is the beginning of the story or the middle of it. That matters
-# most in exactly the case the viewer exists for — chasing something that has
+# most in exactly the case the viewer exists for, chasing something that has
 # been failing repeatedly, where the repetition itself is what pushed the first
 # occurrence out.
 _dropped = 0
@@ -34,7 +35,7 @@ _dropped_since: str | None = None
 # Position in the deque cannot do this job: the deque shifts every time it is
 # full, so "the 400th record" means something different one message later. A
 # never-reused number means a reconnecting reader can ask for "everything after
-# 8,317" and get exactly that — no replayed lines, and no silent gap where the
+# 8,317" and get exactly that, no replayed lines, and no silent gap where the
 # reconnect landed.
 _next_seq = 1
 
@@ -48,7 +49,7 @@ def _assign_seq() -> int:
 
 # Windows' asyncio Proactor loop logs an "Exception in callback
 # _ProactorBasePipeTransport._call_connection_lost" whenever a client drops a
-# connection abruptly — a browser reload mid-stream does it every time. It is
+# connection abruptly: a browser reload mid-stream does it every time. It is
 # harmless and nothing can be done about it from here, but it fills the log
 # viewer with red ERROR lines that look like a broken app.
 _NOISE_MARKERS = (
@@ -63,14 +64,14 @@ class NoiseFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         try:
             text = record.getMessage()
-        except Exception:  # noqa: BLE001 — a bad format string isn't noise
+        except Exception:  # noqa: BLE001  # a bad format string isn't noise
             return True
         return not any(marker in text for marker in _NOISE_MARKERS)
 
 
 # Anything that could let one logged value pose as a second log line. The
 # viewer renders one record per row, so a newline inside a message would draw a
-# forged row — and the text being logged includes things the user typed (chat
+# forged row: and the text being logged includes things the user typed (chat
 # questions) and things the internet said (page titles). Control characters go
 # for the same reason: they can rewrite what a terminal shows.
 _CONTROL_CHARS = {c: None for c in range(0x20) if c not in (0x09,)}
@@ -83,7 +84,7 @@ def sanitise(text: str) -> str:
     """Flatten a message to one printable line, capped in length."""
     # The line breaks are stripped explicitly rather than only via the
     # translation table below: they are the whole attack, and spelling them out
-    # is what makes this readable as a barrier — to a reviewer and to CodeQL.
+    # is what makes this readable as a barrier, to a reviewer and to CodeQL.
     cleaned = str(text).replace("\r\n", " ").replace("\n", " ").replace("\r", " ")
     cleaned = cleaned.translate(_CONTROL_CHARS)
     if len(cleaned) > MAX_MESSAGE_CHARS:
@@ -97,7 +98,7 @@ def safe_value(value: object, limit: int = MAX_VALUE_CHARS) -> str:
     `sanitise` runs at the ring buffer, which protects the Settings → Logs
     viewer and nothing else: the terminal, and any handler a user attaches, see
     the raw record. Anything the user typed or the internet said therefore has
-    to be cleaned at the *call site* — this is that call.
+    to be cleaned at the *call site*, this is that call.
 
     Truncation is part of the job. A forged row is the obvious risk; a chat
     question long enough to push every real record out of a 500-record buffer
@@ -128,7 +129,7 @@ class BufferHandler(logging.Handler):
                 trace = ""
         global _dropped, _dropped_since
         with _lock:
-            # A full deque discards the oldest on append, so count it here —
+            # A full deque discards the oldest on append, so count it here, 
             # afterwards there is nothing left to notice.
             if len(_records) == MAX_RECORDS:
                 if not _dropped:
@@ -148,10 +149,35 @@ class BufferHandler(logging.Handler):
             )
 
 
+_TOKEN_QUERY = re.compile(r"(?i)([?&]token=)[^&\s\"]+")
+
+
+class TokenScrubFilter(logging.Filter):
+    """Keep the session token out of the access log.
+
+    Media and file URLs carry the session token as `?token=` (see
+    `mediaSrc` in app.js), so every image the browser loads writes the
+    token into uvicorn's access line. The support bundle ships that log
+    and Settings shows it, so a token in it is a token in a screenshot.
+    Rewrites the value in the record's args (uvicorn formats the path from
+    args, not from msg) and in a pre-formatted msg, and never drops the
+    record. WORLD_CLASS_PLAN 12, S1."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if isinstance(record.args, tuple):
+            record.args = tuple(
+                _TOKEN_QUERY.sub(r"\1[redacted]", a) if isinstance(a, str) else a
+                for a in record.args
+            )
+        if isinstance(record.msg, str) and "token=" in record.msg.lower():
+            record.msg = _TOKEN_QUERY.sub(r"\1[redacted]", record.msg)
+        return True
+
+
 def install() -> None:
     """Attach the buffer to the root logger and uvicorn's loggers.
 
-    Idempotent — calling twice (tests, reloads) adds nothing. Uvicorn
+    Idempotent: calling twice (tests, reloads) adds nothing. Uvicorn
     configures its own loggers with propagate=False, so the root handler
     alone would miss request logs; we attach to them directly."""
     handler = BufferHandler()
@@ -161,6 +187,10 @@ def install() -> None:
         logger = logging.getLogger(name)
         if not any(isinstance(h, BufferHandler) for h in logger.handlers):
             logger.addHandler(handler)
+    # On the logger, not the handler, so the terminal line is scrubbed too.
+    access = logging.getLogger("uvicorn.access")
+    if not any(isinstance(f, TokenScrubFilter) for f in access.filters):
+        access.addFilter(TokenScrubFilter())
     # asyncio logs the Proactor noise on its own logger; filter it at source so
     # it doesn't reach the terminal either.
     asyncio_logger = logging.getLogger("asyncio")
@@ -179,7 +209,7 @@ def recent(limit: int = 200) -> list[dict]:
 
 
 def since(seq: int, limit: int = MAX_RECORDS) -> list[dict]:
-    """Records newer than `seq`, oldest first — the live stream's whole job.
+    """Records newer than `seq`, oldest first: the live stream's whole job.
 
     A reader that has been away longer than the buffer is deep gets whatever
     survived rather than an error: the records it missed are genuinely gone,
@@ -207,8 +237,8 @@ def stats(limit: int = 200) -> dict:
 
     `dropped` counts records the ring buffer discarded; `truncated` counts ones
     it still holds but this request did not ask for. They are different
-    problems — the first is gone for good, the second is one bigger `limit`
-    away — and telling a reader they are the same would send them looking in
+    problems: the first is gone for good, the second is one bigger `limit`
+    away: and telling a reader they are the same would send them looking in
     the wrong place.
     """
     with _lock:
@@ -227,7 +257,7 @@ def clear() -> None:
 
     Restarting it at 1 would break every stream already open: a reader holding
     "I have seen up to 8,317" would treat the next thousand records as older
-    than what it had and show none of them — a log console that goes silent
+    than what it had and show none of them, a log console that goes silent
     the moment you press Clear.
     """
     global _dropped, _dropped_since

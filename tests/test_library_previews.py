@@ -1,8 +1,8 @@
 """The Library's document and board cards carry a preview of the real thing.
 
 Both sub-tabs were reported as "boring and should probably have previews".
-Each showed the same three facts for every row — an icon, a name, and a count
-or a date — none of which tells four similarly-named drafts apart, or two
+Each showed the same three facts for every row, an icon, a name, and a count
+or a date: none of which tells four similarly-named drafts apart, or two
 boards you drew last week, which is the job a list of them has.
 """
 
@@ -83,7 +83,7 @@ def test_empty_board_has_no_points():
 # --- what the thumbnail actually says --------------------------------------
 #
 # Reported a second time, after the first version shipped: "the whiteboard
-# preview is poor". Looking at it explained why in one glance — every card
+# preview is poor". Looking at it explained why in one glance, every card
 # drew as an identical blank rectangle, so three boards all named "Cloud
 # computing" showed three indistinguishable arrangements of grey blobs, and a
 # board holding only sketches previewed as an *empty box* beside a line
@@ -141,8 +141,16 @@ def test_labels_stay_with_their_own_positions(client):
     a board whose cards all say the wrong thing. One stride, applied once."""
     from memorymap.api.routes_whiteboard import _preview_items
 
+    #: Seven fields per row since the preview started carrying each item's own
+    #: size (INBOX 68): x, y, kind, label, colour, width, height. This test
+    #: kept passing five and went red the moment a gate ran it, which is the
+    #: whole reason a call that unpacks a fixed-width row belongs in a test at
+    #: all.
     items = _preview_items(
-        [(0.0, 0.0, "card", "left"), (10.0, 0.0, "card", "right")]
+        [
+            (0.0, 0.0, "card", "left", None, 100.0, 60.0),
+            (10.0, 0.0, "card", "right", None, 100.0, 60.0),
+        ]
     )
     assert items[0]["x"] == 0.0 and items[0]["label"] == "left"
     assert items[1]["x"] == 1.0 and items[1]["label"] == "right"

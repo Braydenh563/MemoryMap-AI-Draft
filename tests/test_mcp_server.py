@@ -1,6 +1,6 @@
 """The stdio MCP server (mcp_server.py, ROADMAP.md item 38).
 
-`handle_request` is pure — no stdio touched — so every case here calls it
+`handle_request` is pure, no stdio touched, so every case here calls it
 directly rather than spawning a subprocess. `serve()`'s own line-reading
 loop gets one end-to-end test over real StringIO streams.
 """

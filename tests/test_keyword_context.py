@@ -1,5 +1,5 @@
 """`_keyword_context`: the text around a search hit, not the start of the
-document — the "or something simpler" asked for directly: *"if the ai is
+document: the "or something simpler" asked for directly: *"if the ai is
 searching for something, might keywords be flagged in certain pages of a
 file document in the actual document and/or extracted text, then it can use
 a tool or smth simpler to get the full text from those areas??"*
@@ -7,7 +7,7 @@ a tool or smth simpler to get the full text from those areas??"*
 `get_document`'s existing `query` argument already does this well when
 embeddings are available (ranks paragraphs by cosine similarity); this is
 the plain-substring fallback for the common case this project runs in on
-purpose — no torch, no sentence-transformers (CLAUDE.md) — and the one
+purpose, no torch, no sentence-transformers (CLAUDE.md), and the one
 `search_files`/`read_file` never had at all.
 """
 
@@ -32,7 +32,7 @@ def test_the_match_is_actually_in_the_result():
     text = f"{filler}the password is hunter2{filler}"
     out = _keyword_context(text, "password", radius=50)
     assert "password is hunter2" in out
-    # And it is not the whole 3,600-character document — the point of this
+    # And it is not the whole 3,600-character document, the point of this
     # over a plain head clip is that it is short and centred.
     assert len(out) < 300
 
@@ -70,7 +70,7 @@ def test_distant_hits_stay_as_separate_snippets():
 
 def test_a_hit_limit_of_zero_hits_is_never_produced():
     """max_hits caps how many locations are found, not how many survive
-    merging — this just pins that a sane max_hits always returns something
+    merging: this just pins that a sane max_hits always returns something
     when there is a match."""
     text = "keyword " * 10
     out = _keyword_context(text, "keyword", radius=5, max_hits=2)

@@ -1,4 +1,4 @@
-"""The Notes tab's Ask box interrogates the notebook — and nothing else (§35A).
+"""The Notes tab's Ask box interrogates the notebook, and nothing else (§35A).
 
 Asked for directly, and at length:
 
@@ -10,7 +10,7 @@ Asked for directly, and at length:
 Two reports, one surface, and the fixes are opposite in kind.
 
 **"hey" got a chatbot answer.** Both surfaces share `/chat/stream`, and
-`intent.classify` correctly routes small talk away from retrieval — so the Ask
+`intent.classify` correctly routes small talk away from retrieval, so the Ask
 box dutifully chatted back. The fix is deliberately *not* a better classifier:
 the classifier is right, and what was missing is that one of the two callers
 does not want the conversational path to exist at all. A flag on the request
@@ -20,7 +20,7 @@ costs no model round and cannot misfire.
 makes clipping safe was not there: a clipped note told the model to "call
 get_note(12) to read it in full" on a turn where it had been offered no tools.
 The missing text was simply missing and the instruction was noise. So the
-marker stops naming a tool that isn't there, and the allowance grows — this
+marker stops naming a tool that isn't there, and the allowance grows, this
 turn is not paying for any tool schemas, which is budget the box had and was
 not spending.
 """
@@ -60,7 +60,7 @@ def test_a_greeting_gets_a_hint_not_an_answer(ai_client, fake_ollama):
 
 def test_the_hint_carries_questions_you_can_click(ai_client, fake_ollama):
     """A way forward from the same place, rather than a description of what
-    you did wrong — and it teaches the shape of a question that works better
+    you did wrong: and it teaches the shape of a question that works better
     than prose about one does."""
     hint = next(e for e in _events(ai_client, "hey", notes_only=True) if e["type"] == "hint")
     assert len(hint["examples"]) >= 2
@@ -91,7 +91,7 @@ def test_the_reply_points_somewhere_rather_than_scolding():
 
 
 def test_the_chat_tab_is_completely_unaffected(ai_client, fake_ollama):
-    """The flag is set by one caller. Without it, nothing changes — which is
+    """The flag is set by one caller. Without it, nothing changes, which is
     what makes this safe to add to a shared endpoint."""
     fake_ollama.librarian_reply = "Hello there! How are you today?"
     text = _text(_events(ai_client, "hey"))
@@ -99,7 +99,7 @@ def test_the_chat_tab_is_completely_unaffected(ai_client, fake_ollama):
 
 
 def test_a_real_question_still_searches(ai_client, fake_ollama, session):
-    """The flag must not turn the box off — only the chatting half."""
+    """The flag must not turn the box off, only the chatting half."""
     from memorymap.entry import manager
 
     manager.create_entry(session, "The beans need netting next week")
@@ -111,7 +111,7 @@ def test_a_real_question_still_searches(ai_client, fake_ollama, session):
 
 
 def test_the_non_streaming_endpoint_agrees(ai_client, fake_ollama):
-    """Both chat endpoints share `_prepare` and must not drift — the whole
+    """Both chat endpoints share `_prepare` and must not drift, the whole
     reason `build_messages` is shared in the first place."""
     body = ai_client.post("/chat", json={"question": "hey", "notes_only": True}).json()
     assert body["ai_response"] == librarian.ASK_IS_FOR_NOTES
@@ -143,7 +143,7 @@ def test_a_cut_never_names_a_tool_the_turn_does_not_have():
 
 def test_the_agent_keeps_its_escape_hatch():
     """Where the tool *is* offered, naming it is the thing that makes cutting
-    safe — this must not be lost while fixing the other path."""
+    safe: this must not be lost while fixing the other path."""
     note = {"id": 12, "content": "y" * 2_000}
     assert "get_note(12)" in librarian.note_for_prompt(note)
 

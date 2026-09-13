@@ -4,7 +4,7 @@ Everything else about MemoryMap is local by construction: the server binds to
 localhost, the database is a file, nothing phones home. §6 made the *chat
 backend* an address the user types, and the server posts their notes to
 whatever it names on every turn. That is a new outbound surface and it needs a
-rule — but the opposite rule from the web reader's.
+rule: but the opposite rule from the web reader's.
 
 `websearch._assert_external` refuses anything that ISN'T public, because it
 follows untrusted links and must never probe this machine. This is the mirror
@@ -33,7 +33,7 @@ def _no_real_dns(monkeypatch):
     """Answer hostname lookups from a table instead of the network.
 
     These tests were resolving `api.openai.com` and `*.invalid` for real. That
-    made them depend on the machine's resolver — fast here, unbounded on a CI
+    made them depend on the machine's resolver: fast here, unbounded on a CI
     runner whose DNS is slow or absent, and `getaddrinfo` takes no timeout. A
     test suite that is "fully offline" (the project's own rule, and the reason
     CI needs no network beyond pip) should not have been asking DNS anything.
@@ -204,7 +204,7 @@ def test_an_empty_address_is_judged_by_the_default_it_will_use(ai_client):
 def test_the_warning_persists_across_reloads(ai_client, app_state):
     """A warning that shows once when you press Connect and vanishes on the
     next reload is a warning about a condition that has not gone away. The
-    status poll — which is what redraws the screen — has to carry it too.
+    status poll, which is what redraws the screen, has to carry it too.
 
     The lock is turned off first, and that is the point rather than test
     scaffolding: with it on this state cannot exist at all, because the remote
@@ -259,7 +259,7 @@ def test_the_lock_refuses_a_name_it_cannot_verify():
     resolve yet could be anything, and the whole point is not finding out the
     hard way."""
     assert not check_backend_url("http://unknown.invalid/v1", local_only=True)[0]
-    # Without the lock it stays allowed — "set the address, then start the
+    # Without the lock it stays allowed, "set the address, then start the
     # server" is still the normal order.
     assert check_backend_url("http://unknown.invalid/v1", local_only=False)[0]
 
@@ -282,7 +282,7 @@ def test_the_endpoint_refuses_a_remote_backend_while_locked(ai_client, app_state
 
 def test_turning_the_lock_off_allows_it(ai_client, app_state):
     """A deliberate act with a visible switch. Someone who genuinely wants a
-    hosted API is not blocked — they are asked to say so first."""
+    hosted API is not blocked, they are asked to say so first."""
     app_state.set_preference("local_only_ai", False)
     response = ai_client.post(
         "/models/provider",
@@ -295,7 +295,7 @@ def test_turning_the_lock_off_allows_it(ai_client, app_state):
 def test_a_hand_edited_preferences_file_cannot_bypass_the_lock(app_state):
     """`preferences.json` is a plain file, and it is what a restored backup or
     a copied config brings with it. Checking only at the endpoint would mean an
-    address that never passed through it is used anyway — silently, every turn.
+    address that never passed through it is used anyway, silently, every turn.
     """
     from memorymap.core import deps
 

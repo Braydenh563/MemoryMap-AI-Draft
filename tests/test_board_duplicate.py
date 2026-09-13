@@ -1,4 +1,4 @@
-"""Duplicating a board — ROADMAP.md item 8, "managing concept maps".
+"""Duplicating a board: ROADMAP.md item 8, "managing concept maps".
 
 Creating a map works, and so do listing and renaming. Duplicating did not
 exist on either side, and it is the one that makes a map reusable: a map you
@@ -35,7 +35,7 @@ def test_a_duplicate_carries_the_cards_and_their_positions(client):
     assert copy["title"] == "Study plan (copy)"
     assert copy["node_count"] == 1
 
-    # State comes from `GET /whiteboard/`, not a `/nodes` collection — there
+    # State comes from `GET /whiteboard/`, not a `/nodes` collection: there
     # is no such endpoint, which the first draft of this test assumed.
     state = client.get(f"/whiteboard/?board_id={copy['id']}").json()
     assert len(state["nodes"]) == 1

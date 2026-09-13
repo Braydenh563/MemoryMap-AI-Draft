@@ -24,7 +24,7 @@ from memorymap.entry import manager, paths
 router = APIRouter(prefix="/insights", tags=["insights"])
 
 ACTIVITY_DAYS = 14  # the dashboard's little activity strip
-HEATMAP_DAYS = 371  # 53 whole weeks — the contribution-style heatmap
+HEATMAP_DAYS = 371  # 53 whole weeks, the contribution-style heatmap
 
 
 @router.get("/stats")
@@ -95,7 +95,7 @@ GREETING_PROMPT = (
 
 # When the user has set a display name we usually ask the model to weave it in,
 # so the greeting reads naturally ("Morning, Sam!") instead of always being a
-# phrase with a name bolted on. The name comes from preferences — never
+# phrase with a name bolted on. The name comes from preferences, never
 # hardcoded. Not every greeting uses it, so it doesn't get repetitive.
 GREETING_PROMPT_NAMED = (
     "Write ONE short greeting for {name}, who is opening their personal "
@@ -116,7 +116,7 @@ _TERMINAL_MARKS = ".!?"
 
 
 def _clean_greeting(raw: str) -> tuple[str, str] | None:
-    """Return (phrase, terminal mark) — or None if the reply is unusable."""
+    """Return (phrase, terminal mark): or None if the reply is unusable."""
     text = (raw or "").strip().splitlines()[0] if (raw or "").strip() else ""
     text = text.strip().strip("\"'`*").strip()
     mark = "."
@@ -144,7 +144,7 @@ def _sentence_case(text: str) -> str:
 def greeting(block: str = "morning") -> dict:
     """A short greeting phrase for the dashboard banner.
 
-    AI-written when the local model is up, otherwise a handwritten fallback —
+    AI-written when the local model is up, otherwise a handwritten fallback, 
     the banner must never depend on Ollama being available. The phrase never
     contains a name; the frontend adds one from preferences.
     """
@@ -164,15 +164,15 @@ def greeting(block: str = "morning") -> dict:
     # The name is read from preferences here rather than trusted from the
     # client, so there is exactly one source of truth for it.
     name = str(config.get_preference("display_name", "") or "").strip()
-    # Most greetings use the name, but not all — variety matters more than
+    # Most greetings use the name, but not all, variety matters more than
     # rigid consistency here.
     use_name = bool(name) and random.random() < NAME_USE_CHANCE
     flavour = random.choice(GREETING_FLAVOURS)
     # dashboard_persona is an independent override (asked for directly: the
     # dashboard greeting shouldn't have to match whichever persona is active
     # for Chat/search). Empty/unset falls through to that same active
-    # persona — resolve_persona_prompt's own `name or active_persona`
-    # default — so nothing changes for anyone who hasn't set one.
+    # persona: resolve_persona_prompt's own `name or active_persona`
+    # default: so nothing changes for anyone who hasn't set one.
     dashboard_persona_name = str(config.get_preference("dashboard_persona", "") or "").strip() or None
     persona = librarian.resolve_persona_prompt(dashboard_persona_name, config)
     system = (
@@ -191,7 +191,7 @@ def greeting(block: str = "morning") -> dict:
                 {"role": "user", "content": ask},
             ],
         )
-    except Exception:  # noqa: BLE001 — any model failure degrades to fallback
+    except Exception:  # noqa: BLE001  # any model failure degrades to fallback
         return fallback
 
     cleaned = _clean_greeting(reply.get("content", "") if isinstance(reply, dict) else "")
@@ -201,7 +201,7 @@ def greeting(block: str = "morning") -> dict:
 
     # `append_name` tells the frontend whether to add the name itself. It only
     # does so when we asked for a named greeting and the model failed to use
-    # one — so the name appears exactly once when wanted, and not at all on the
+    # one: so the name appears exactly once when wanted, and not at all on the
     # deliberately nameless ones.
     append_name = use_name
     if name:
@@ -219,14 +219,14 @@ def greeting(block: str = "morning") -> dict:
     # **A greeting must never call the user by a name they did not save.**
     # Reported: "the model spelt my name wrong in the dashboard welcome
     # message." The exact-match normalisation above is the only thing that ever
-    # touched the model's spelling, so a near miss — "Braden" for "Brayden" —
+    # touched the model's spelling, so a near miss, "Braden" for "Brayden" , 
     # sailed straight through it, and `append_name` stayed True on top, which
     # is how the banner ends up greeting two people.
     #
     # `_repair_misspelt_name` catches the near misses. This catches the rest: a
     # model that invents a different name entirely, or addresses someone when
     # no name is saved at all. There is no repairing that, so the handwritten
-    # greeting is used instead — being greeted impersonally is a non-event, and
+    # greeting is used instead, being greeted impersonally is a non-event, and
     # being greeted by the wrong name is the kind of small wrongness that makes
     # a person stop trusting everything else the app says.
     if _greets_a_stranger(phrase, name):
@@ -243,7 +243,7 @@ def greeting(block: str = "morning") -> dict:
 #: How close a word has to be to the saved name before it is treated as the
 #: model's attempt at it rather than as a different word. 0.72 accepts
 #: "Braden"/"Brayden" (0.77) and "Sammy"/"Sam" (0.75) while refusing ordinary
-#: words that merely share letters — "Sunday"/"Sam" scores 0.44.
+#: words that merely share letters, "Sunday"/"Sam" scores 0.44.
 NAME_SIMILARITY = 0.72
 
 
@@ -281,7 +281,7 @@ def _greets_a_stranger(phrase: str, name: str) -> bool:
     """True when the greeting addresses a name that is not the saved one.
 
     A vocative only: "Hello, Dave" and "Welcome back, Dave!" address someone,
-    while "Time to write" and "Morning — Tuesday already" do not. Matching on
+    while "Time to write" and "Morning: Tuesday already" do not. Matching on
     the comma is what keeps ordinary capitalised words (a weekday, a place a
     persona mentions) from being read as names.
     """
@@ -325,10 +325,10 @@ def heatmap(session: Session = Depends(get_session)) -> dict:
 
 @router.get("/tag-cloud")
 def tag_cloud(session: Session = Depends(get_session)) -> list[dict]:
-    """Every tag with its frequency, most-used first — for a weighted cloud.
+    """Every tag with its frequency, most-used first, for a weighted cloud.
 
     Was its own independent full-entry scan + tag-JSON decode, duplicating
-    `manager.all_tags` — the same computation, run twice in two places.
+    `manager.all_tags`, the same computation, run twice in two places.
     """
     ordered = manager.all_tags(session).items()
     return [{"tag": tag, "count": count} for tag, count in list(ordered)[:60]]
@@ -336,13 +336,13 @@ def tag_cloud(session: Session = Depends(get_session)) -> list[dict]:
 
 @router.get("/on-this-day")
 def on_this_day(session: Session = Depends(get_session)) -> list[dict]:
-    """Notes captured on today's date in earlier months/years — a gentle
+    """Notes captured on today's date in earlier months/years, a gentle
     resurfacing of old thoughts (from the original idea doc).
 
     The day-of-month and "at least 28 days old" checks used to load every
     non-deleted entry and filter in a Python loop; SQLite does both in the
     WHERE clause instead now, so only matching rows are ever hydrated into
-    ORM objects. Also now excludes private notes — every other view in this
+    ORM objects. Also now excludes private notes, every other view in this
     app does (search, timeline, embeddings...), and this one, uniquely,
     read `entry.content` straight off the column, which is ciphertext for a
     private note, not the private-note placeholder every other surface uses.
@@ -374,7 +374,7 @@ def on_this_day(session: Session = Depends(get_session)) -> list[dict]:
 
 
 DIGEST_QUESTION = (
-    "Give me a short digest of what I saved this week — group by topic and "
+    "Give me a short digest of what I saved this week, group by topic and "
     "call out anything that looks important or unfinished."
 )
 
@@ -382,11 +382,11 @@ DIGEST_QUESTION = (
 def _digest_notes(session: Session) -> list[dict]:
     cutoff = utcnow() - timedelta(days=7)
     # `is_private == False`: this content is handed straight to the AI, and a
-    # private note's `content` column is ciphertext at rest — sending it here
+    # private note's `content` column is ciphertext at rest, sending it here
     # put encrypted bytes in the model's prompt (and, since the model doesn't
     # know that, sometimes into the digest text a user then reads). Every
     # other surface that feeds the AI already excludes private notes;
-    # `digest_structure_note` below does too for its own sentence — this was
+    # `digest_structure_note` below does too for its own sentence, this was
     # the one place a private note's row still reached the model.
     entries = list(
         session.scalars(
@@ -411,14 +411,14 @@ def digest_structure_note(session: Session) -> str:
     """One sentence about how this week's notes sit in the notebook, or "".
 
     The digest could see the week's notes and their categories and nothing
-    else — which means it could summarise *what* you wrote and never notice
+    else: which means it could summarise *what* you wrote and never notice
     that five of those notes are joined to nothing, or that three of them
     landed in the same corner of the notebook. That is the thing a weekly recap
     is actually for, and it is exactly what the graph knows.
 
     Deliberately **facts, not adjectives**: counts the model can repeat and the
     user can verify by clicking, rather than a judgement it would have to take
-    on trust. And deliberately one sentence — this rides in the prompt of a
+    on trust. And deliberately one sentence, this rides in the prompt of a
     background job on a utility model, and §11a's budget applies here as much
     as anywhere.
     """
@@ -440,12 +440,12 @@ def digest_structure_note(session: Session) -> str:
     if not unconnected:
         return (
             f" Every one of this week's {len(fresh)} notes is connected to "
-            "something else in the notebook — say so briefly, it is worth "
+            "something else in the notebook, say so briefly, it is worth "
             "knowing."
         )
     return (
         f" Of this week's {len(fresh)} notes, {len(unconnected)} are connected "
-        "to nothing else in the notebook — no link, no reply, no shared tag. "
+        "to nothing else in the notebook, no link, no reply, no shared tag. "
         "Mention that count and name one or two of them, so they can be tied "
         "in. Do not guess at connections that are not there."
     )
@@ -455,7 +455,7 @@ def digest_structure_note(session: Session) -> str:
 def weekly_digest_stream(session: Session = Depends(get_session)) -> StreamingResponse:
     """The weekly digest, streamed token by token (NDJSON).
 
-    Same content as POST /digest — this one just arrives progressively, so a
+    Same content as POST /digest, this one just arrives progressively, so a
     slow local model shows words instead of a spinner.
     """
     notes = _digest_notes(session)
@@ -487,7 +487,7 @@ def weekly_digest_stream(session: Session = Depends(get_session)) -> StreamingRe
             # The digest is the worst case for an unbudgeted prompt: it hands
             # over a week of notes at once, so "however many turned up" was
             # never a number anyone checked. Budgeted against the utility
-            # model, which is what streams it below — and which is often the
+            # model, which is what streams it below, and which is often the
             # *small* model, with the smallest window in the app.
             budget=librarian.plan_budget(
                 model_manager.utility_model(), ollama, digest_style, "", digest_persona
@@ -512,7 +512,7 @@ def weekly_digest_stream(session: Session = Depends(get_session)) -> StreamingRe
 def weekly_digest(session: Session = Depends(get_session)) -> dict:
     """An on-demand AI recap of the last 7 days (reads only)."""
     cutoff = utcnow() - timedelta(days=7)
-    # See _digest_notes' comment above — a private note's `content` is
+    # See _digest_notes' comment above: a private note's `content` is
     # ciphertext at rest and must never reach the model's prompt.
     entries = list(
         session.scalars(
@@ -527,7 +527,7 @@ def weekly_digest(session: Session = Depends(get_session)) -> dict:
         )
     )
     if not entries:
-        # A real, stable fact — safe for the UI to cache for the day.
+        # A real, stable fact, safe for the UI to cache for the day.
         return {
             "digest": "Nothing was saved in the last 7 days.",
             "thinking": None,
@@ -540,7 +540,7 @@ def weekly_digest(session: Session = Depends(get_session)) -> dict:
         for e in entries
     ]
     config = deps.get_config()
-    # Only a genuine AI answer is worth caching — if Ollama is down the
+    # Only a genuine AI answer is worth caching, if Ollama is down the
     # digest is just the offline notice, which should be retried, not
     # frozen for the day.
     ollama_running = deps.get_ollama().is_running()
@@ -551,6 +551,6 @@ def weekly_digest(session: Session = Depends(get_session)) -> dict:
         deps.get_ollama(),
         style=config.get_preference("communication_style", "friendly"),
         persona_prompt=None,
-        use_utility_model=True,  # a background job — keep the chat model free
+        use_utility_model=True,  # a background job, keep the chat model free
     )
     return {"digest": digest, "thinking": thinking, "cacheable": ollama_running}

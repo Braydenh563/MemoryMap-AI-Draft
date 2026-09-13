@@ -1,7 +1,7 @@
 """The four boundaries between "local-only" and "actually private".
 
 Each of these guards something that is invisible while it works and expensive
-once it does not, and none of them is exercised by using the app normally —
+once it does not, and none of them is exercised by using the app normally, 
 which is the whole reason they are pinned here. The roadmap's security tier
 asked for all four; two of its seven items turned out to be built already
 (WAL mode, and the unlock-gate backoff), and those live with their own code.
@@ -50,7 +50,7 @@ def test_a_token_left_alone_too_long_stops_working(client, monkeypatch):
     """The notebook locks itself, the way a phone does.
 
     Restarting the app already cleared every token, which sounds like it
-    covers this — but this app is a desktop notebook that stays open for
+    covers this: but this app is a desktop notebook that stays open for
     weeks, so "until the next restart" is not a limit.
     """
     token = _unlocked(client)
@@ -211,7 +211,7 @@ def test_every_response_carries_the_policy(client):
 
 
 def test_the_policy_names_no_remote_host():
-    """Affordable only because nothing here comes from a CDN — d3 and p5 are
+    """Affordable only because nothing here comes from a CDN, d3 and p5 are
     vendored. A policy this tight is normally the expensive part of adding one.
     """
     policy = security.build_csp([])
@@ -233,7 +233,7 @@ def test_the_policy_closes_the_usual_bypasses():
 
 def test_custom_css_does_not_inject_a_style_tag():
     """The one feature the strict policy broke, and the only thing that found
-    it was a browser — 757 green tests said nothing.
+    it was a browser, 757 green tests said nothing.
 
     Settings → Appearance lets the user write their own CSS. It was applied by
     creating a <style> element, which is exactly what style-src 'self' refuses,
@@ -259,8 +259,8 @@ def test_custom_css_does_not_inject_a_style_tag():
 def test_the_real_page_needs_no_hash_at_all():
     """**This assertion is the reverse of what it used to be, on purpose.**
 
-    index.html carried exactly one inline script — the pre-paint theme block
-    — allowed by a hash computed from the file. It was believed to have to
+    index.html carried exactly one inline script, the pre-paint theme block
+    - allowed by a hash computed from the file. It was believed to have to
     stay inline, because app.js loads at the end of the body, far too late to
     stop the flash. That was true of app.js and false of the requirement: a
     plain `<script src>` in the head runs before first paint just as well,
@@ -271,7 +271,7 @@ def test_the_real_page_needs_no_hash_at_all():
 
         [browser/csp] blocked script-src-elem: inline
 
-    is what a browser says when the two copies disagree — which lands on the
+    is what a browser says when the two copies disagree, which lands on the
     user as the app opening in its default look with their saved theme never
     applied. `CspForPage` already closed the stale-server cause of that
     disagreement; this closes the rest of them, because `script-src 'self'`
@@ -305,14 +305,14 @@ def test_the_frontend_has_no_inline_style_attributes():
 
     **app.js is checked too, and that is the half this test used to miss.**
     A `style="…"` inside a template literal that app.js hands to `innerHTML`
-    is refused by the CSP exactly as one written into index.html is — the
+    is refused by the CSP exactly as one written into index.html is, the
     browser does not care which file the markup came from. Only index.html was
     read here, so five of them sat in app.js unnoticed and their elements
     rendered unstyled: most visibly the agent's edit preview, which lost the
     red/green that is the entire point of showing a diff.
 
     Setting `el.style.someProperty` from JS is fine and is not what this
-    matches — the CSP blocks the *attribute*, not the CSSOM.
+    matches: the CSP blocks the *attribute*, not the CSSOM.
     """
     from memorymap.api.app import FRONTEND_DIR
 
@@ -320,13 +320,13 @@ def test_the_frontend_has_no_inline_style_attributes():
     # move/resize code that used to be the back half of app.js (ROADMAP.md
     # Priority 0 item 2), and graph.js carries the force-directed map, its
     # layouts, tracing and node popup (frontend refactor path, the step
-    # after whiteboard) — the same innerHTML-template-literal risk applies
+    # after whiteboard): the same innerHTML-template-literal risk applies
     # there as anywhere else in the frontend, so both are checked too.
     for name in ("index.html", "app.js", "whiteboard.js", "graph.js"):
         source = (FRONTEND_DIR / name).read_text(encoding="utf-8")
         assert 'style="' not in source and "style='" not in source, (
             f"{name} carries an inline style attribute. The CSP refuses it, so it "
-            "renders as no styling at all — move it into style.css as a class."
+            "renders as no styling at all, move it into style.css as a class."
         )
 
 
@@ -407,7 +407,7 @@ def test_an_unreadable_container_is_not_destroyed_on_a_guess(monkeypatch):
 
 
 def test_a_container_with_no_recorded_host_ip_counts_as_exposed(monkeypatch):
-    """An empty HostIp is how docker records "all interfaces" — the same thing
+    """An empty HostIp is how docker records "all interfaces", the same thing
     the bare `-p 8888:8080` form produces."""
     from memorymap.search import searxng_manager
 
@@ -428,7 +428,7 @@ def test_a_container_with_no_recorded_host_ip_counts_as_exposed(monkeypatch):
 
 
 def test_sqlite_runs_in_wal_mode(app_state):
-    """Without it, one background write blocks every read — and FastAPI serves
+    """Without it, one background write blocks every read, and FastAPI serves
     from a threadpool, so the janitor filing a note during a page load is
     routine rather than rare."""
     from memorymap.core import deps
@@ -440,7 +440,7 @@ def test_sqlite_runs_in_wal_mode(app_state):
 
 def test_the_private_note_key_uses_a_slow_kdf():
     """The difference only matters if the database file is ever copied off the
-    machine — which is exactly the scenario private notes exist for."""
+    machine: which is exactly the scenario private notes exist for."""
     from memorymap.core import crypto
 
     assert crypto.SCRYPT_N >= 2**14
@@ -462,7 +462,7 @@ def test_wrong_passwords_earn_a_growing_wait(client):
 # --- the inline-script reader (CodeQL py/bad-tag-filter) ---------------------
 #
 # CodeQL flagged this pattern as a "bad HTML filtering regexp". The reported
-# risk — an attacker crafting markup that slips past a sanitiser — does not
+# risk, an attacker crafting markup that slips past a sanitiser, does not
 # apply: this reads `frontend/index.html`, a file shipped with the app, to hash
 # its own pre-paint theme script. Nothing user-supplied reaches it.
 #
@@ -513,7 +513,7 @@ def test_a_comment_mentioning_a_script_tag_yields_nothing(tmp_path):
     """Found live, and it hid a real tag while it did it.
 
     `_INLINE_SCRIPT` is a regex, so a comment that merely *writes out* a
-    script tag opens a match — and the pattern then runs to the next
+    script tag opens a match, and the pattern then runs to the next
     `</script`, swallowing whatever real tags lie between. index.html's own
     comment explaining why the theme bootstrap is a file did exactly that: it
     produced a phantom hash and consumed the `<script src>` it was written
@@ -539,7 +539,7 @@ def test_csp_follows_the_page_when_it_changes_under_a_running_server(tmp_path):
     once at startup while `index.html` is read from disk on every request, so
     any edit to the page under a running server served a new inline script
     against the *previous* script's hash. The browser blocks it, and what is
-    lost is the anti-flash theme bootstrap in the page head — the app paints
+    lost is the anti-flash theme bootstrap in the page head, the app paints
     its default look instead of the user's. Restarting fixed it, which is why
     it kept coming back.
     """

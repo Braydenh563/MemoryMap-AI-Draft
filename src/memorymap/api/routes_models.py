@@ -43,7 +43,7 @@ class UtilityModelBody(BaseModel):
 
 
 class VisionModelBody(BaseModel):
-    # "" means "auto-detect" — the first installed model that declares the
+    # "" means "auto-detect", the first installed model that declares the
     # "vision" capability. See ModelManager.resolve_vision_model.
     name: str = ""
 
@@ -100,13 +100,13 @@ def status() -> dict:
     manager = deps.get_model_manager()
     embeddings = deps.get_embeddings()
 
-    # is_running() and list_models() both hit Ollama's own /api/tags —
+    # is_running() and list_models() both hit Ollama's own /api/tags: 
     # calling both in sequence (as this used to) can take up to 7s (2s + 5s)
     # for one poll, which used to be longer than the frontend's
-    # AbortSignal.timeout on this exact call (app.js refreshModelStatus) —
+    # AbortSignal.timeout on this exact call (app.js refreshModelStatus): 
     # since raised from 5s to 8s, but still worth beating rather than
     # trusting that margin. That mismatch read as "AI unavailable" on a
-    # backend that is genuinely up but momentarily slow to answer — one
+    # backend that is genuinely up but momentarily slow to answer, one
     # round-trip now serves both purposes.
     try:
         installed = [
@@ -126,14 +126,14 @@ def status() -> dict:
     provider = str(config.get_preference("llm_provider", "ollama") or "ollama")
     # Judged on every status poll, not only when the address is changed. A
     # warning that appears once and vanishes on the next reload is a warning
-    # about a condition that has not gone away — and this one is about notes
+    # about a condition that has not gone away, and this one is about notes
     # leaving the machine, which is the app's central promise.
     local_only = bool(config.get_preference("local_only_ai", True))
     _, privacy_note, is_local = security.check_backend_url(ollama.base_url)
 
     return {
         # Named for Ollama because the whole UI is, and it means "the chat
-        # backend is answering" — which is the question the pill asks whoever
+        # backend is answering", which is the question the pill asks whoever
         # is answering it.
         "ollama_running": running,
         # Which dialect is actually in use (§6), so the UI can say so rather
@@ -157,14 +157,14 @@ def status() -> dict:
         # "" means "same as chat model" (utility model).
         "utility_model": manager._config.get_preference("utility_model", ""),
         # "" means "auto-detect" (vision model). The resolved field is what
-        # an image-carrying turn would actually use right now — None if
-        # nothing installed declares vision and no explicit choice is set —
-        # so Settings can show "auto — currently: llama3.2-vision" rather
+        # an image-carrying turn would actually use right now, None if
+        # nothing installed declares vision and no explicit choice is set, 
+        # so Settings can show "auto: currently: llama3.2-vision" rather
         # than making the user guess what auto-detect will do.
         "vision_model": manager.vision_model(),
         "vision_model_resolved": resolved_vision,
         "ocr_model": manager.ocr_model(),
-        # Derived from the vision answer rather than resolved again — see
+        # Derived from the vision answer rather than resolved again, see
         # `resolve_ocr_model`. Doing both independently walked every installed
         # model twice and pushed this poll past the frontend's 5s abort.
         "ocr_model_resolved": (
@@ -173,7 +173,7 @@ def status() -> dict:
             else None
         ),
         "embedding_backend": manager.embedding_backend(),
-        # The Ollama model *setting* — only meaningful on that backend.
+        # The Ollama model *setting*, only meaningful on that backend.
         "embedding_model": manager.embedding_model(),
         # What is actually embedding right now, whichever backend that is.
         # The UI used to hard-code the built-in name and was two model
@@ -186,7 +186,7 @@ def status() -> dict:
         "embedding_error": embeddings.last_error,
         "reindex": jobs.reindex_status(),
         #: How many notes have arrived or gone in bulk since the index was
-        #: last rebuilt — asked for as "suggest rebuilding the search index
+        #: last rebuilt: asked for as "suggest rebuilding the search index
         #: upon large changes". The status poll already runs; a second
         #: endpoint for one integer would be a second thing to keep in step.
         "index_stale_notes": deps.index_stale_notes(),
@@ -194,7 +194,7 @@ def status() -> dict:
         "pulls": jobs.pull_statuses(),
         # Reported directly: the local-OCR button ("Read text offline") was
         # always shown enabled, so pressing it without the `tesseract` system
-        # binary installed (never automatable the way the pip half is — see
+        # binary installed (never automatable the way the pip half is, see
         # core/ocr.py's own module docstring) just silently produced nothing,
         # with no way to tell "it ran and found no text" from "it never ran
         # at all". A `shutil.which` check, cheap enough for every poll.
@@ -204,17 +204,17 @@ def status() -> dict:
 
 @router.get("/spec")
 def model_spec(name: str = "") -> dict:
-    """What the backend says about one model — size, quantisation, window,
+    """What the backend says about one model, size, quantisation, window,
     and what it can actually do.
 
     The app read a context length and nothing else, so Settings → Models could
     not tell you how big a model was, how it was quantised, or whether it
-    supports tool calls — which is the first thing worth knowing when "agent
+    supports tool calls: which is the first thing worth knowing when "agent
     mode does nothing", and until now was only discoverable by trying it and
     reading the failure.
 
     `supports_tools` and `supports_thinking` are deliberately tri-state: True,
-    False, or null for "this backend doesn't say". Null is not False — an older
+    False, or null for "this backend doesn't say". Null is not False, an older
     Ollama reports no capability list at all, and rendering its silence as
     "can't use tools" would be a confident lie about a model that works fine.
     """
@@ -229,7 +229,7 @@ def model_spec(name: str = "") -> dict:
 class SamplingBody(BaseModel):
     """Only the fields the user actually changed.
 
-    Sparse on purpose — see `ai/sampling.py`. Storing a full set the moment the
+    Sparse on purpose: see `ai/sampling.py`. Storing a full set the moment the
     panel opens would pin one model's recommendations onto every other model
     the user ever runs, which is the exact failure the auto-detection exists to
     avoid.
@@ -260,13 +260,13 @@ def sampling_settings(name: str = "") -> dict:
     model = name.strip() or deps.get_model_manager().chat_model()
     try:
         shown = client.show(model) if hasattr(client, "show") else {}
-    except Exception:  # noqa: BLE001 — an unreachable backend is not an error here
+    except Exception:  # noqa: BLE001  # an unreachable backend is not an error here
         shown = {}
     model_defaults = sampling.parse_model_parameters(shown)
     # Read from settings here rather than through the provider. The provider
     # has its own accessor because every generation path goes through
     # `runtime_options` and threading a settings dict through all of them would
-    # mean each one could forget — but this route is *about* the setting, and
+    # mean each one could forget, but this route is *about* the setting, and
     # asking the backend for it would couple a settings screen to whichever
     # client happens to be configured.
     overrides = deps.get_config().get_preference("sampling_overrides", {})
@@ -289,7 +289,7 @@ def sampling_settings(name: str = "") -> dict:
 @router.put("/sampling")
 def save_sampling_settings(body: SamplingBody) -> dict:
     """Replace the overrides. An empty dict is how "use the model's own
-    recommendations again" is expressed — there is no separate reset route,
+    recommendations again" is expressed: there is no separate reset route,
     because reset *is* having no override."""
     clean = {
         key: value
@@ -305,8 +305,8 @@ def suggested() -> dict:
     """The shortlist, with the real download size wherever we know it.
 
     Reported: "the approximate sizes for the suggested models are not
-    correct" (§35J). They are hand-written — §33 defends the hand-written
-    *list* against odysseus's Cookbook, and that argument still holds — but a
+    correct" (§35J). They are hand-written: §33 defends the hand-written
+    *list* against odysseus's Cookbook, and that argument still holds, but a
     hand-written *number* is a different thing: it goes stale every time a
     publisher re-quantises a tag, and a wrong number is worse than none, since
     it is the figure someone checks their free disk against.
@@ -314,7 +314,7 @@ def suggested() -> dict:
     Two halves, and only one of them is guessable. For a model that is
     installed, the backend knows exactly how many bytes it took, so that
     number replaces the guess and is marked `measured`. For one that is not,
-    there is no local source of truth — so the shipped figure is passed
+    there is no local source of truth, so the shipped figure is passed
     through and marked `approximate` rather than quietly presented as fact.
     The alternative, asking a registry over the network, is a call this app
     should not make just to draw a settings list.
@@ -325,7 +325,7 @@ def suggested() -> dict:
             size = model.get("size")
             if size:
                 installed[str(model.get("name", ""))] = int(size)
-    except Exception:  # noqa: BLE001 — the backend being off is not an error here
+    except Exception:  # noqa: BLE001  # the backend being off is not an error here
         installed = {}
 
     def described(entry: dict) -> dict:
@@ -346,7 +346,7 @@ def _human_bytes(count: int) -> str:
 
 @router.post("/chat-model")
 def set_chat_model(body: ChatModelBody, session: Session = Depends(get_session)) -> dict:
-    """Switching the chat model applies immediately — no re-index (§6.5)."""
+    """Switching the chat model applies immediately, no re-index (§6.5)."""
     ollama = deps.get_ollama()
     if not ollama.is_running():
         raise HTTPException(
@@ -402,7 +402,7 @@ def set_vision_model(body: VisionModelBody, session: Session = Depends(get_sessi
 def set_ocr_model(body: VisionModelBody, session: Session = Depends(get_session)) -> dict:
     """Which model reads text off an image or a rasterised PDF page.
 
-    Empty name falls back to the vision model, and then to auto-detect — see
+    Empty name falls back to the vision model, and then to auto-detect, see
     `ModelManager.ocr_model` for why reading a page and describing a picture
     deserve separate settings even though both take an image.
     """
@@ -423,13 +423,13 @@ def set_ocr_model(body: VisionModelBody, session: Session = Depends(get_session)
 def set_provider(body: ProviderBody, session: Session = Depends(get_session)) -> dict:
     """Point the app at a different chat backend (§6).
 
-    Applies immediately rather than at the next restart — switching backend is
+    Applies immediately rather than at the next restart, switching backend is
     exactly the moment someone wants to see whether it worked, and "restart the
     app to find out" turns one question into three.
 
     The probe result is reported, not enforced. A server that is down right now
-    is a perfectly reasonable thing to configure — you set the URL, then you
-    start LM Studio — so this saves the setting either way and tells the UI
+    is a perfectly reasonable thing to configure, you set the URL, then you
+    start LM Studio: so this saves the setting either way and tells the UI
     what it found, rather than refusing a setting that will be correct in
     thirty seconds.
     """
@@ -438,8 +438,8 @@ def set_provider(body: ProviderBody, session: Session = Depends(get_session)) ->
 
     # A backend address is a new outbound surface: the server posts the user's
     # notes to whatever it names, on every turn. Private and loopback
-    # addresses are the *normal* case here and are allowed — that is the whole
-    # product — but the narrow set nobody serves a model from is refused, and
+    # addresses are the *normal* case here and are allowed, that is the whole
+    # product: but the narrow set nobody serves a model from is refused, and
     # a backend that would take notes off this machine is reported rather than
     # blocked. See core.security.check_backend_url.
     effective = base_url or deps.DEFAULT_BASE_URLS.get(body.provider, "")
@@ -504,7 +504,7 @@ def cancel_job(kind: str, name: str = "") -> dict:
 def set_embedding_backend(
     body: EmbeddingBackendBody, session: Session = Depends(get_session)
 ) -> dict:
-    """Switch how notes are embedded, then re-index everything — vectors
+    """Switch how notes are embedded, then re-index everything, vectors
     from different models must never be compared (§6.5)."""
     if body.backend == "ollama" and not body.model:
         raise HTTPException(status_code=400, detail="Pick an Ollama embedding model")
@@ -533,12 +533,12 @@ def set_embedding_backend(
 
 
 @router.post("/reindex")
-def rebuild_search_index() -> dict:  # noqa: D401 — see the long docstring below
+def rebuild_search_index() -> dict:  # noqa: D401  # see the long docstring below
     """Re-embed every note with the current backend, on demand.
 
     **Until now the only way to rebuild the index was to switch embedding
     backend and switch back.** `set_embedding_backend` above starts a
-    re-index because it must — vectors from two models cannot be compared —
+    re-index because it must, vectors from two models cannot be compared , 
     and that side effect was the *whole* mechanism: nothing else in the app
     could ask for one.
 
@@ -592,7 +592,7 @@ def delete_model(body: PullBody, session: Session = Depends(get_session)) -> dic
     if body.name in in_use or base in {m.split(":")[0] for m in in_use}:
         raise HTTPException(
             status_code=409,
-            detail=f"'{body.name}' is in use — switch to another model first, then remove it.",
+            detail=f"'{body.name}' is in use: switch to another model first, then remove it.",
         )
     try:
         ollama.delete(body.name)

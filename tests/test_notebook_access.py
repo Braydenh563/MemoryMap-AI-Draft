@@ -2,7 +2,7 @@
 
 Before this, the model only ever saw the five similarity hits retrieval
 handed it: it couldn't count, couldn't work through a category, and couldn't
-be pointed at one note. These tests cover the tools that fixed that — and,
+be pointed at one note. These tests cover the tools that fixed that, and,
 more importantly, the two things that make them safe to hand to a model:
 
   1. a context budget, so a large notebook can't flood a small window;
@@ -97,7 +97,7 @@ def test_list_notes_filters_by_category_and_tag(ai_client, session):
     assert recipes["total_matching"] == 2
     assert all(n["category"] == "Recipes" for n in recipes["notes"])
 
-    # Case shouldn't matter — a model won't reliably match the user's casing.
+    # Case shouldn't matter: a model won't reliably match the user's casing.
     lowered = tools.execute_tool(session, "list_notes", {"category": "recipes"})
     assert lowered["total_matching"] == 2
 
@@ -134,7 +134,7 @@ def test_since_accepts_days_or_an_iso_date(ai_client, session):
         ]
         == 1
     )
-    # Unparseable means "no time filter", not an error — a wider answer beats
+    # Unparseable means "no time filter", not an error: a wider answer beats
     # a burnt round.
     assert (
         tools.execute_tool(session, "list_notes", {"since": "recently"})[
@@ -157,7 +157,7 @@ def test_count_notes_by_tag_and_category(ai_client, session):
     assert tools.execute_tool(session, "count_notes", {"tag": "urgent"})["count"] == 3
     both = tools.execute_tool(session, "count_notes", {"tag": "urgent", "category": "Work"})
     assert both["count"] == 2
-    # No note content in a count — that's the point of it being cheap.
+    # No note content in a count, that's the point of it being cheap.
     assert "notes" not in both
 
 
@@ -222,7 +222,7 @@ def test_no_reading_tool_can_see_a_private_note(ai_client, session, unlocked_vau
     """One test over every read path, deliberately: the risk isn't that a
     handler is wrong today, it's that the next one added forgets the rule."""
     # The query deliberately shares no words with the secret, so finding it in
-    # a result can only mean the note leaked — not that the query echoed.
+    # a result can only mean the note leaked, not that the query echoed.
     secret = "submarine plans: codeword ELDERFLOWER opens the safe"
     private = _make_private(ai_client, secret)
     _save(ai_client, "an ordinary public note", category="Open")
@@ -237,7 +237,7 @@ def test_no_reading_tool_can_see_a_private_note(ai_client, session, unlocked_vau
         assert "ELDERFLOWER" not in blob, f"{name} leaked a private note"
         assert private["id"] not in [n["id"] for n in result["notes"]], name
 
-    # Counts must not include it either — "you have 2 notes" is itself a leak
+    # Counts must not include it either, "you have 2 notes" is itself a leak
     # about a note the AI is not allowed to know exists.
     assert tools.execute_tool(session, "count_notes", {})["total"] == 1
     assert tools.execute_tool(session, "list_categories", {})["total_notes"] == 1
@@ -268,7 +268,7 @@ def test_write_tools_refuse_private_notes_too(ai_client, session, unlocked_vault
 
 def test_restore_note_refuses_a_deleted_private_note(ai_client, session, unlocked_vault):
     """A private note soft-deleted from the UI must stay unreadable through
-    restore too — `restore_note` has to reach a *deleted* note where
+    restore too: `restore_note` has to reach a *deleted* note where
     `_require_note` normally refuses one, so it cannot just call
     `_require_note` unmodified. It still has to refuse a *private* one, same
     as every other write tool, or restoring becomes a way to read a private
@@ -281,7 +281,7 @@ def test_restore_note_refuses_a_deleted_private_note(ai_client, session, unlocke
     assert "error" in result and "private" in result["error"].lower()
     assert "ELDERFLOWER" not in json.dumps(result)
 
-    # And it must actually still be deleted — refusing to read it should not
+    # And it must actually still be deleted, refusing to read it should not
     # have restored it as a side effect.
     from memorymap.entry import manager as entry_manager
 
@@ -333,7 +333,7 @@ def test_the_agent_stops_adding_tool_results_once_the_budget_is_spent(
         )
     )
     # The agent streams, so the answer arrives as one or more "answer" deltas
-    # followed by the round's "stats" — it is no longer the single last event.
+    # followed by the round's "stats", it is no longer the single last event.
     # What matters is that the turn ends by answering rather than looping.
     assert "answer" in [e["type"] for e in events]
     assert [e["type"] for e in events if e["type"] in ("answer", "tool")][-1] == "answer"

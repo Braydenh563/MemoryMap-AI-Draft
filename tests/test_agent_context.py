@@ -3,12 +3,12 @@
 Two reported failures, both about a turn that costs more than it should:
 
 *"It often calls the same tools to read all notes or to read the same note's
-context in full after no changes."* — a repeated read returns identical data
+context in full after no changes."*, a repeated read returns identical data
 and appends it to the prompt a second time, so the round costs the window twice
 and brings back nothing.
 
 *"It thinks up this whole plan, then it does a tool call and either loses track
-or has to rethink up the plan again."* — the reasoning was streamed to the user
+or has to rethink up the plan again."*, the reasoning was streamed to the user
 and then dropped from the messages, so the next round saw its own tool calls
 with no record of why it made them.
 """
@@ -77,7 +77,7 @@ def _drive(monkeypatch, rounds, results, thinking=None):
 
 def test_an_identical_read_is_not_run_again(monkeypatch, app_state):
     """The reported waste. Same tool, same arguments, nothing written in
-    between — the second call is answered from what the turn already has."""
+    between: the second call is answered from what the turn already has."""
     same = {"name": "list_notes", "arguments": {"limit": 10}}
     _sent, executed, _events = _drive(
         monkeypatch,
@@ -85,7 +85,7 @@ def test_an_identical_read_is_not_run_again(monkeypatch, app_state):
         [{"notes": [], "label": "Listed notes"}],  # only ONE result available
     )
     assert executed == [("list_notes", {"limit": 10})], (
-        "the second identical read should never have reached the tool — if it "
+        "the second identical read should never have reached the tool, if it "
         "did, this would have raised on the empty results list"
     )
 
@@ -93,7 +93,7 @@ def test_an_identical_read_is_not_run_again(monkeypatch, app_state):
 def test_the_model_is_told_it_already_has_that_result(monkeypatch, app_state):
     """Suppressing the call silently would leave the model waiting for data it
     is never handed. It gets a pointer instead, and the pointer says what to do
-    next — otherwise the obvious next move is to call it a third time."""
+    next: otherwise the obvious next move is to call it a third time."""
     same = {"name": "get_note", "arguments": {"note_id": 4}}
     sent, _executed, _events = _drive(
         monkeypatch,
@@ -126,7 +126,7 @@ def test_a_read_is_run_again_after_something_is_written(monkeypatch, app_state):
 def test_a_repeated_write_still_earns_nothing(monkeypatch, app_state):
     """The trap in the fix. The freshness cache is cleared by a write, and if
     that cleared the earned-round ledger too, a model repeating one identical
-    write would buy itself a fresh round every time — which is the exact loop
+    write would buy itself a fresh round every time, which is the exact loop
     EARNED_ROUNDS exists to starve."""
     write = {"name": "tag_note", "arguments": {"note_id": 1, "tags": ["x"]}}
     rounds = [[write] for _ in range(agent.MAX_ROUNDS + agent.EARNED_ROUNDS + 4)]
@@ -139,7 +139,7 @@ def test_a_repeated_write_still_earns_nothing(monkeypatch, app_state):
     # identical one after it earns nothing, so the turn stops at the granted
     # cap plus that one rather than climbing to the ceiling.
     assert len(executed) <= agent.MAX_ROUNDS + 1, (
-        "a turn repeating one identical write must not keep earning rounds — "
+        "a turn repeating one identical write must not keep earning rounds, "
         f"it ran {len(executed)} times against a ceiling of "
         f"{agent.MAX_ROUNDS + agent.EARNED_ROUNDS}"
     )

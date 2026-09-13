@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 router = APIRouter(tags=["Spaces"])
 
 # "all" is the frontend's "show every space" sentinel and "default" is the
-# fallback delete_space reassigns orphaned rows to — a user-created space
+# fallback delete_space reassigns orphaned rows to, a user-created space
 # with either id would break both, so neither can ever be created or deleted.
 RESERVED_SPACE_IDS = {"all", "default"}
 
@@ -65,7 +65,7 @@ def get_spaces(session: Session = Depends(get_session)):
 
 @router.post("/spaces", response_model=SpaceResponse)
 def create_space(space_in: SpaceCreate, session: Session = Depends(get_session)):
-    # space_in.id is intentionally never read — see SpaceCreate.id's docstring.
+    # space_in.id is intentionally never read, see SpaceCreate.id's docstring.
     name = _validate_name(space_in.name)
     icon = _validate_icon(space_in.icon)
     space_id = _generate_space_id(name, session)
@@ -89,7 +89,7 @@ def update_space(space_id: str, space_in: SpaceUpdate, session: Session = Depend
     if "hidden_from_all" in provided:
         # "default" is where a deleted space's notes land, so hiding it would
         # quietly empty the everything-view of anything that ever fell back
-        # to it — refused for the same reason it cannot be deleted.
+        # to it: refused for the same reason it cannot be deleted.
         if space.id == "default" and provided["hidden_from_all"]:
             raise HTTPException(
                 status_code=400,
@@ -116,7 +116,7 @@ def delete_space(space_id: str, session: Session = Depends(get_session)):
     # sure that if a specific space is deleted too, that all the content
     # including notes files and images etc originating in that specific
     # space get deleted with it as well." This used to *reassign* every row
-    # to "default", which is the opposite of what the word means — the notes
+    # to "default", which is the opposite of what the word means, the notes
     # did not go away, they turned up in another space.
     #
     # impersonate_workspace(..., "all") disables the session's ambient
@@ -207,7 +207,7 @@ def delete_space(space_id: str, session: Session = Depends(get_session)):
             rows(model).delete(synchronize_session=False)
 
         # Anything with WorkspaceMixin that the ordered list above does not
-        # name — a model added later must not survive its space.
+        # name: a model added later must not survive its space.
         for model in workspace_scoped_models():
             rows(model).delete(synchronize_session=False)
 

@@ -1,5 +1,5 @@
 """Archiving a document (BACKLOG §30b's named remaining scope, after notes
-got this first) — same shape as `test_archive.py`'s entry tests: kept,
+got this first): same shape as `test_archive.py`'s entry tests: kept,
 never deleted, out of the way, reachable again from the Library's Shelved
 filter."""
 

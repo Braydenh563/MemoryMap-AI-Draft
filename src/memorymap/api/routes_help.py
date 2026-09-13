@@ -1,5 +1,5 @@
 """The Help mini AI chat (ROADMAP.md item 40): app-guidance-only Q&A,
-never touching the database — see `ai/help_chat.py` for why."""
+never touching the database, see `ai/help_chat.py` for why."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ class HistoryTurn(BaseModel):
 
 class AskBody(BaseModel):
     question: str = Field(min_length=1, max_length=help_chat.MAX_MESSAGE_CHARS)
-    # Held by the client only (sessionStorage/module state) — see
+    # Held by the client only (sessionStorage/module state): see
     # `ai/help_chat.py`'s docstring for why nothing here persists it.
     history: list[HistoryTurn] = Field(default_factory=list, max_length=help_chat.MAX_HISTORY_TURNS)
 

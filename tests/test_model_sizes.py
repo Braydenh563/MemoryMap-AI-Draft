@@ -2,7 +2,7 @@
 
 Reported: "the approximate sizes for the suggested models are not correct".
 They are hand-written, and §33 defends the hand-written *list* against
-odysseus's Cookbook — a curated model database that has to be maintained or it
+odysseus's Cookbook: a curated model database that has to be maintained or it
 rots. That argument still holds for the list.
 
 A hand-written *number* is a different thing. It goes stale every time a

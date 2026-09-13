@@ -1,7 +1,7 @@
 """Reminders: CRUD, priority/recurring, and Magic Add's parsing.
 
 (The clock/timezone bug behind Magic Add's rule engine has its own focused
-file, test_reminder_times.py — kept separate rather than merged in here so
+file, test_reminder_times.py: kept separate rather than merged in here so
 that narrative stays readable on its own.)
 """
 
@@ -42,12 +42,12 @@ def test_reminder_lifecycle(client):
 
 def test_reminder_preview_does_not_leak_private_note_ciphertext(client):
     """`entry_preview` used to read the raw `content` column, which is
-    ciphertext at rest for a private note — showing a garbled blob instead of
+    ciphertext at rest for a private note, showing a garbled blob instead of
     the locked-vault placeholder every other preview surface uses (graph,
     library...). `readable_content` decides by the `crypto.PREFIX` marker on
     the stored text, not the `is_private` flag, so a fake-but-marked
     ciphertext string is enough to prove the preview goes through it rather
-    than the raw column — a real encrypt/decrypt round-trip is covered
+    than the raw column, a real encrypt/decrypt round-trip is covered
     elsewhere (crypto/vault tests)."""
     from memorymap.core import crypto, deps
     from memorymap.core.database import Entry
@@ -64,12 +64,12 @@ def test_reminder_preview_does_not_leak_private_note_ciphertext(client):
         "/reminders", json={"text": "check this", "due_at": due, "entry_id": entry_id}
     ).json()
     # No vault open in this test, so `readable_content` gives the standard
-    # locked placeholder — never the raw ciphertext-shaped column value.
-    assert created["entry_preview"] == "Private note — unlock to read it."
+    # locked placeholder: never the raw ciphertext-shaped column value.
+    assert created["entry_preview"] == "Private note: unlock to read it."
 
 
 def test_a_reminder_cannot_be_set_in_the_past(client):
-    """A reminder due before now will never usefully fire — asked for
+    """A reminder due before now will never usefully fire, asked for
     directly. Covers both create and edit, since a due date can slip into
     the past through either."""
     past = (utcnow() - timedelta(hours=1)).isoformat()
@@ -125,7 +125,7 @@ def test_reminder_times_come_back_marked_as_utc(client):
 
     SQLite has no timezone type, so a plain DateTime column handed back a NAIVE
     datetime. FastAPI serialised it with no offset, and JavaScript parses a
-    timezone-less date-time string as LOCAL — so a user in UTC+10 saw every
+    timezone-less date-time string as LOCAL, so a user in UTC+10 saw every
     stored UTC time ten hours in the past.
 
     The trap was that it looked fine at first: the POST response carried the
@@ -146,7 +146,7 @@ def test_reminder_times_come_back_marked_as_utc(client):
     assert abs((parsed - datetime.now(timezone.utc)).total_seconds() - 300) < 30
 
 
-# --- Magic Add's JSON parsing (success/fallback) — the clock rules that back
+# --- Magic Add's JSON parsing (success/fallback): the clock rules that back
 # it live in test_reminder_times.py ---------------------------------------
 
 
@@ -200,3 +200,74 @@ def test_magic_add_honours_an_offset_the_model_supplies(ai_client, fake_ollama):
 def test_magic_add_needs_ai_running(ai_client, fake_ollama):
     fake_ollama.running = False
     assert ai_client.post("/reminders/parse", json={"text": "x"}).status_code == 503
+
+
+# --- pagination (INBOX 117: this list used to hand back the whole table,
+# 300 reminders measured at 52.5 KB in one response) -----------------------
+
+
+def test_reminders_page_and_report_the_real_total(client):
+    due = utcnow() + timedelta(days=1)
+    for i in range(5):
+        client.post(
+            "/reminders",
+            json={"text": f"thing {i}", "due_at": (due + timedelta(minutes=i)).isoformat()},
+        )
+
+    first = client.get("/reminders", params={"limit": 2, "offset": 0})
+    assert first.status_code == 200
+    assert len(first.json()) == 2
+    assert first.headers["X-Total-Count"] == "5"
+
+    second = client.get("/reminders", params={"limit": 2, "offset": 2})
+    assert len(second.json()) == 2
+
+    last = client.get("/reminders", params={"limit": 2, "offset": 4})
+    assert len(last.json()) == 1
+    assert last.headers["X-Total-Count"] == "5"
+
+    # Every reminder is reachable exactly once by paging: a cap without a
+    # working offset would make everything past the first page invisible.
+    paged = [r["id"] for r in first.json() + second.json() + last.json()]
+    assert len(set(paged)) == 5
+    assert set(paged) == {r["id"] for r in client.get("/reminders", params={"limit": 100}).json()}
+
+
+def test_reminders_past_the_page_size_are_still_reachable(client):
+    """The page size is a bound on one response, never on how many
+    reminders can exist: `X-Total-Count` says how many there are and
+    `offset` fetches the rest."""
+    from memorymap.api import routes_reminders
+
+    size = routes_reminders.REMINDERS_PAGE_SIZE
+    due = utcnow() + timedelta(days=1)
+    from memorymap.core import deps
+    from memorymap.core.database import Reminder
+
+    # Seeded through the model rather than the endpoint: 200-odd POSTs is a
+    # slow way to say "more rows than one page", and this test is about the
+    # reading, not the writing.
+    session = deps.get_db().session()
+    session.add_all(
+        Reminder(text=f"thing {i}", due_at=due + timedelta(minutes=i)) for i in range(size + 5)
+    )
+    session.commit()
+    session.close()
+
+    first = client.get("/reminders")
+    assert len(first.json()) == size
+    assert first.headers["X-Total-Count"] == str(size + 5)
+
+    rest = client.get("/reminders", params={"offset": size})
+    assert len(rest.json()) == 5
+    seen = {r["id"] for r in first.json()} | {r["id"] for r in rest.json()}
+    assert len(seen) == size + 5
+
+
+def test_reminders_limit_is_validated(client):
+    from memorymap.api import routes_reminders
+
+    assert client.get("/reminders", params={"limit": 0}).status_code == 422
+    assert client.get("/reminders", params={"offset": -1}).status_code == 422
+    over = routes_reminders.REMINDERS_PAGE_SIZE_MAX + 1
+    assert client.get("/reminders", params={"limit": over}).status_code == 422

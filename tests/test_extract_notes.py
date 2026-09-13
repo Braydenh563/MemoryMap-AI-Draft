@@ -2,7 +2,7 @@
 AI-filed notes, auto-linked with real reasons.
 
 The rule that matters most, mirrored from `test_link_reasons.py`: a link
-this feature makes must never carry `manager.AUTO_REASON_TEXT` — every
+this feature makes must never carry `manager.AUTO_REASON_TEXT`, every
 assertion about a link's reason checks it is real text from
 `generate_link_reason`, not the generic guessed placeholder.
 """

@@ -1,18 +1,18 @@
 """Reading an attached file as text, for the in-app viewer.
 
-The property worth guarding here is not any one file type — it is that the
+The property worth guarding here is not any one file type, it is that the
 viewer is fed *text* and never a file. `routes_files.media_file` carries the
 reason at length (an inline PDF viewer is a script host, and the folder it
 serves is not guaranteed to hold only what this app wrote), and a viewer built
 by widening an allowlist would re-earn that problem once per type added. So
 `GET /files/{id}/text` returns extracted text and `download_file` keeps
-handing over bytes as an attachment — and the test that matters most is the
+handing over bytes as an attachment, and the test that matters most is the
 one asserting a file with no viewer still gets a 200 and a message rather than
 an error, because a 4xx there would make the UI show a failure for a file that
 is perfectly fine.
 
 markitdown is not installed in this environment, so the .docx/.pptx/.xlsx
-branch is exercised through its own seam rather than end to end — the standing
+branch is exercised through its own seam rather than end to end, the standing
 caveat about reasoning versus reproducing applies to that branch and is said
 here rather than left implicit.
 """
@@ -65,7 +65,7 @@ def test_a_file_with_no_viewer_says_so_rather_than_failing(tmp_path):
 
 
 def test_a_missing_file_says_so_rather_than_raising(tmp_path):
-    """The row can outlive the bytes — a synced data directory, a restore
+    """The row can outlive the bytes, a synced data directory, a restore
     that missed the uploads folder. A viewer must not 500 on that."""
     viewed = docview.extract(tmp_path / "gone.txt")
     assert viewed.text == ""
@@ -73,7 +73,7 @@ def test_a_missing_file_says_so_rather_than_raising(tmp_path):
 
 
 def test_a_long_file_is_clipped_and_says_it_was(tmp_path):
-    """A megabyte of extracted text is not read — it is scrolled past once
+    """A megabyte of extracted text is not read, it is scrolled past once
     and paid for on every open."""
     path = _write(tmp_path, "huge.txt", "x" * (docview.MAX_VIEW_CHARS + 500))
     viewed = docview.extract(path)
@@ -83,7 +83,7 @@ def test_a_long_file_is_clipped_and_says_it_was(tmp_path):
 
 def test_a_bad_byte_does_not_lose_the_whole_file(tmp_path):
     """A log written by two tools routinely has one. Refusing the file over
-    it is the wrong trade — the replacement character is visible, so nothing
+    it is the wrong trade, the replacement character is visible, so nothing
     is silently altered."""
     path = tmp_path / "mixed.log"
     path.write_bytes(b"before \xff\xfe after")
@@ -105,7 +105,7 @@ def test_the_viewable_set_is_the_union_of_the_four_groups():
 def test_a_converted_document_reports_the_install_hint_when_markitdown_is_absent(
     tmp_path, monkeypatch
 ):
-    """Not an error — an answer. The package is installable from inside the
+    """Not an error: an answer. The package is installable from inside the
     app (Settings → Optional extras), so the hint is the useful thing to say."""
     from memorymap.entry import importer
 
@@ -148,7 +148,7 @@ def test_a_file_markitdown_cannot_parse_is_a_message_not_a_500(tmp_path, monkeyp
 
 
 def test_a_scanned_pdf_falls_through_to_the_vision_reader(tmp_path, monkeypatch):
-    """The seam for the scanned-page case. Nothing here touches Tesseract —
+    """The seam for the scanned-page case. Nothing here touches Tesseract, 
     by direct instruction, scanned pages are the vision model's job."""
     from memorymap.core import pdfpages
     from memorymap.entry import importer
@@ -157,7 +157,7 @@ def test_a_scanned_pdf_falls_through_to_the_vision_reader(tmp_path, monkeypatch)
     # What markitdown gives back for a scan: a line of metadata, not nothing,
     # which is why the check is a length floor rather than `if not text`.
     monkeypatch.setattr(importer, "convert_to_markdown", lambda p: "scan.pdf")
-    # A real scan has real pages — pdfium can open it fine, it just has no
+    # A real scan has real pages, pdfium can open it fine, it just has no
     # text layer. Monkeypatched rather than left to whatever is actually
     # installed in this environment (a real PDF fixture would make this
     # test's outcome depend on pypdfium2 being present), and explicit so it
@@ -172,8 +172,8 @@ def test_a_scanned_pdf_falls_through_to_the_vision_reader(tmp_path, monkeypatch)
 
 
 def test_a_scanned_pdf_with_no_vision_reader_says_what_is_missing(tmp_path, monkeypatch):
-    """The honest state: the hook exists, and the piece that goes in it —
-    something to turn PDF pages into images — does not ship with this app."""
+    """The honest state: the hook exists, and the piece that goes in it, 
+    something to turn PDF pages into images, does not ship with this app."""
     from memorymap.core import pdfpages
     from memorymap.entry import importer
 
@@ -191,8 +191,8 @@ def test_a_scanned_pdf_with_no_vision_reader_says_what_is_missing(tmp_path, monk
 def test_a_pdf_pdfium_cannot_open_says_so_not_probably_a_scan(tmp_path, monkeypatch):
     """The misdiagnosis a real user's own log caught: PDFium refusing a
     corrupted/truncated/encrypted PDF ("Failed to load document (PDFium: Data
-    format error)") looks identical to a scan up to this point — markitdown
-    also returns nothing useful for it — but sending someone to install a
+    format error)") looks identical to a scan up to this point, markitdown
+    also returns nothing useful for it, but sending someone to install a
     vision model does not help a file that cannot be decoded at all."""
     from memorymap.core import pdfpages
     from memorymap.entry import importer
@@ -205,7 +205,7 @@ def test_a_pdf_pdfium_cannot_open_says_so_not_probably_a_scan(tmp_path, monkeypa
     path.write_bytes(b"%PDF-1.4 not actually valid")
 
     # Even with a vision reader on hand, a file PDFium can't open is never
-    # reached — there's no image for it to describe.
+    # reached: there's no image for it to describe.
     called = []
     viewed = docview.extract(path, vision_reader=lambda p: called.append(p) or "text")
 
@@ -224,7 +224,7 @@ def test_a_vision_reader_that_throws_does_not_break_the_view(tmp_path, monkeypat
 
     monkeypatch.setattr(importer, "markitdown_available", lambda: True)
     monkeypatch.setattr(importer, "convert_to_markdown", lambda p: "scan.pdf")
-    # A real, openable scan — so this test actually reaches `boom()` rather
+    # A real, openable scan, so this test actually reaches `boom()` rather
     # than being pre-empted by the "PDFium can't open this at all" branch.
     monkeypatch.setattr(pdfpages, "available", lambda: True)
     monkeypatch.setattr(pdfpages, "page_count", lambda p: 1)
@@ -264,7 +264,7 @@ def test_reading_an_attached_code_file_says_to_render_it_as_code(client):
 
 def test_a_type_with_no_viewer_is_a_200_with_a_message(client):
     """A 4xx here would make the viewer show a failure for a file that is
-    perfectly fine — it is attached, it downloads, it just has no reader."""
+    perfectly fine: it is attached, it downloads, it just has no reader."""
     attachment_id = _attach(client, "bundle.zip", b"PK\x03\x04")
     response = client.get(f"/files/{attachment_id}/text")
     assert response.status_code == 200
@@ -350,7 +350,7 @@ def test_a_short_word_document_is_not_mistaken_for_a_scan(tmp_path, monkeypatch)
 
 def test_the_chat_composers_file_picker_matches_what_import_actually_reads():
     """`POST /documents/import` (routes_documents.py) 415s anything not in
-    VIEWABLE_SUFFIXES — caught out of sync during a live audit: the chat
+    VIEWABLE_SUFFIXES: caught out of sync during a live audit: the chat
     composer's own `accept=` attribute (index.html's `#chat-image-input`)
     offered `.cs`, which the picker would let through only for the upload to
     then 415, and left out over ten extensions (`.mjs`, `.scss`, `.ppt`,

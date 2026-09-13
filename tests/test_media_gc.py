@@ -1,7 +1,7 @@
 """Orphaned `/media/` garbage collection (ROADMAP.md item 20a).
 
-An upload is orphaned when nothing left in the notebook — a note, a
-document, or a whiteboard image object — still points at it. The one case
+An upload is orphaned when nothing left in the notebook, a note, a
+document, or a whiteboard image object, still points at it. The one case
 worth getting exactly right: a private note's content is encrypted, so an
 image referenced only from a currently-locked private note must never be
 treated as unreferenced.
@@ -72,7 +72,7 @@ def test_clean_deletes_only_orphans(ai_client):
 
 def test_a_locked_private_note_blocks_deletion_of_everything(ai_client, session):
     """The risky case: an image referenced only inside a private note whose
-    vault is currently locked must never be deleted — nor may any other
+    vault is currently locked must never be deleted, nor may any other
     orphan, since the pass as a whole can no longer prove the list is
     complete.
     """
@@ -90,7 +90,7 @@ def test_a_locked_private_note_blocks_deletion_of_everything(ai_client, session)
     ).json()
     ai_client.post(f"/entries/{created['id']}/privacy", json={"private": True})
 
-    vault.close()  # lock it — the state a real "left the app open" session ends in
+    vault.close()  # lock it: the state a real "left the app open" session ends in
 
     dry_run = ai_client.get("/media/orphans").json()
     assert dry_run["skipped_private"] is True
@@ -109,7 +109,7 @@ def test_a_locked_private_note_blocks_deletion_of_everything(ai_client, session)
 def test_an_upload_attached_to_a_saved_chat_turn_is_not_orphaned(ai_client):
     """A conversation stores its images as ids
     (TurnBody.image_media_ids), not `/media/…` markdown text, so this is a
-    separate check from the note/document/whiteboard cases above — without
+    separate check from the note/document/whiteboard cases above, without
     it, every image ever sent in chat read as orphaned and "Clean orphaned
     media" would have deleted a real, sent attachment's file."""
     uploaded = _upload(ai_client)
@@ -129,7 +129,7 @@ def test_an_upload_attached_to_a_saved_chat_turn_is_not_orphaned(ai_client):
 def test_an_upload_only_ever_staged_for_chat_and_never_sent_is_still_orphaned(ai_client):
     """The other side of the fix above: an upload nothing has actually
     referenced yet (staged in the composer, never sent) must still show up
-    as orphaned — this is not a blanket exemption for every image that
+    as orphaned: this is not a blanket exemption for every image that
     passed through /media/upload."""
     uploaded = _upload(ai_client)
 
@@ -166,7 +166,7 @@ def test_orphans_route_is_not_shadowed_by_the_upload_id_route(ai_client):
 # --- the reverse question: where is this file used? -------------------------
 #
 # The Library's Files & Images gallery showed a thumbnail, a filename and two
-# empty prompts, and could not answer the only question anyone brings to it —
+# empty prompts, and could not answer the only question anyone brings to it, 
 # what is this attached to? `usage_map` inverts the orphan scan to answer it.
 # It shares `referenced_names` with that scan deliberately: a file the gallery
 # called "used" while the collector called it orphaned would be a file deleted
@@ -205,7 +205,7 @@ def test_a_file_used_in_two_places_reports_both(ai_client):
 
 def test_an_unused_file_reports_no_usage(ai_client):
     """And says so as an empty list rather than omitting the field, so the UI
-    can tell "not used" from "not checked" — which is the distinction that
+    can tell "not used" from "not checked", which is the distinction that
     stops it inviting someone to delete a file that a locked private note is
     still using."""
     uploaded = _upload(ai_client)
@@ -234,7 +234,7 @@ def test_usage_and_the_orphan_check_agree(ai_client):
 
 @pytest.fixture
 def open_vault(session):
-    """A note can only be made private once a vault exists — `POST
+    """A note can only be made private once a vault exists, `POST
     /entries/{id}/privacy` answers 409 otherwise, which is what an earlier
     version of the test below actually hit. Opened by hand because these tests
     do not go through setup/unlock, and closed again so the state cannot leak
@@ -252,7 +252,7 @@ def test_a_private_note_contributes_the_link_but_not_its_words(ai_client, sessio
     and the content perfectly readable to the server.
 
     The connection itself is still reported: knowing *that* a file is in use is
-    what stops it being deleted as an orphan. Only the wording is withheld —
+    what stops it being deleted as an orphan. Only the wording is withheld, 
     the same answer `routes_documents._linked_notes` already gives a document's
     linked private notes.
 

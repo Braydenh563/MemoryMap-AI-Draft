@@ -1,0 +1,111 @@
+295	<p class="muted" id=""> (199)
+	It can read and search your notes, write and file new ones, set reminders, and answer from what you have written — the same tools the Chat tab uses. It remembers this conversation until you clear it.
+404	<p class="muted" id=""> (168)
+	Every document is saved automatically as you type — there's no save button to forget. They live in your notebook's database file on this machine, along with your notes:
+410	<p class="muted" id=""> (160)
+	Nothing is ever uploaded. Use ⬇ .md to keep a copy as an ordinary file anywhere you like, or Settings → Import & export to back up or export everything at once.
+456	<p class="muted tensions-intro" id=""> (187)
+	Your notes are read here, on this machine, looking for pairs that can't both be right — a decision you reversed, a date that moved, a view you changed. Nothing is linked until you say so.
+925	<p class="muted" id=""> (180)
+	Answers come from your notebook and cite the notes they came from — nothing leaves this machine. The matching notes appear beside the answer so you can check it against the source.
+2673	<p class="muted" id=""> (207)
+	Every version this document has had. Editing for a while counts as one entry, so this reads as sittings rather than keystrokes — and restoring one keeps the version it replaced, so nothing here is ever lost.
+4867	<p class="muted hidden" id="ollama-help"> (173)
+	Ollama powers the chat answers and auto-filing. Install it from ollama.com, start it, and this screen will light up. Capturing notes and keyword search work fine without it.
+4889	<p class="muted" id="llm-provider-note"> (291)
+	The second option covers any server speaking the OpenAI API — LM Studio, llama.cpp's server, Jan and vLLM are all the same choice, differing only by address. Leave the address blank for the usual one (Ollama :11434, LM Studio :1234/v1); fill it in if you started the server on your own port.
+4942	<p class="muted" id=""> (244)
+	Quick background jobs run on this model, so a big slow chat model isn't tied up categorising every note. Point it at a small fast model (e.g. llama3.2) and let a bigger one answer your questions. Leave as “Same as chat model” to keep it simple.
+4959	<p class="muted" id=""> (164)
+	“Auto-detect” uses the first installed model that reports it can see images. Pick one by hand if you have several, or if auto-detect isn't finding the one you want.
+4979	<p class="muted" id=""> (229)
+	Left on “Automatic”, this prefers a document reader (GLM-OCR, DeepSeek-OCR, PaddleOCR-VL) when you have one installed, then falls back to your vision model. Scanned PDFs also need the “Read scanned PDFs” extra, below in Packages.
+5009	<p class="muted" id="embedding-ollama-note"> (239)
+	Pick a dedicated embedding model (e.g. nomic-embed-text) — chat models can't create embeddings. Changing this re-reads every note so search keeps making sense — it runs in the background and search falls back to keywords until it finishes.
+5037	<p class="muted text-sm" id="reindex-blurb"> (202)
+	Rebuilds what semantic search matches on. Worth doing after an update, or if searching stops finding notes you know are there — it re-reads every note with its category, tags and attached text included.
+5065	<p class="muted" id=""> (151)
+	How the model picks its words. Each row starts at what this model recommends for itself — change one only if you have a reason, and Reset puts it back.
+5124	<p class="muted" id=""> (336)
+	A skill is a job you can run with one click from the Chat tab: what to do, the steps to do it in, the tools it's allowed to use, and anything it should ask you for first. Naming its tools is what makes a small model actually reach for them — and only those tools are offered while it runs. Destructiv
+5147	<p class="muted" id=""> (229)
+	Leave everything unticked to let it use whatever is switched on in Settings → Tools. Ticking a few is both safer and more reliable: they're the only ones offered for the run, which leaves far more room in a small model's context.
+5175	<p class="muted" id=""> (280)
+	A template fills the Capture box with a starting shape — a recipe's ingredient list, a meeting's agenda. The built-in ones can't be edited or removed; your own can. Picking one from the Capture tab's dropdown never throws away text you've already typed there without asking first.
+5202	<p class="muted" id=""> (217)
+	The AI can keep standing instructions — say "always answer in British English" and it will keep doing that in every conversation from then on. This is the whole list, and you can switch any of them off or delete them.
+5208	<p class="muted" id=""> (243)
+	When the AI spots one of these in conversation it suggests it rather than saving it: the suggestion appears in the chat with a yes/no, and again at the top of this list until you answer. Nothing reaches the AI's instructions until you say yes.
+5232	<p class="muted" id=""> (193)
+	When Agent mode is on in the Chat tab, these are the actions the AI may take. Turn any of them off and it won't be offered that tool at all. Destructive actions always ask you to confirm first.
+5240	<p class="muted" id=""> (281)
+	Every tool the AI is offered is described to it again on every round of every message — all of them together are about three quarters of what a small model reads before it even sees your question. Sending only the ones a message plausibly needs leaves far more room for your notes.
+5266	<p class="muted" id=""> (214)
+	A model under about 8 billion parameters does far better with one tool in front of it than with twenty. In this mode each step of a skill is offered only the tool that step needs, with a worked example of the call.
+5275	<small class="muted" id=""> (160)
+	Auto reads the size out of the chat model's own name (qwen3:4b is small, llama3.3:70b is not). A name with no size in it means "no idea", and no idea means off.
+5317	<p class="muted" id=""> (167)
+	A theme sets everything below in one go. Anything you then change by hand sits on top of it and wins — so you can pick a theme and still choose your own accent colour.
+5632	<small class="muted" id=""> (143)
+	Thinking and writing dots. These are feedback rather than decoration, so they keep moving through Reduce motion below unless you say otherwise.
+5729	<p class="muted" id=""> (231)
+	What shows in the strip along the bottom. The offline and power-saver badges and the running-job slot aren't listed: they appear only when there's something to say, and hiding a warning you asked for is a different kind of setting.
+5760	<p class="muted" id=""> (132)
+	For tinkerers: these rules are applied on top of the app's own styles. Bad CSS only affects how things look — clear the box to undo.
+5792	<p class="muted" id=""> (242)
+	Things MemoryMap can do with one more package installed. Nothing here is needed to write, search, tag or organise your notes — each one turns on a feature that is otherwise switched off, and everything is downloaded from PyPI to this machine.
+5830	<p class="muted" id=""> (221)
+	What “search by meaning” uses to understand a note. The model is downloaded once and kept on this machine — the HuggingFace requests in the log on every start are checking the copy you already have, not fetching it again.
+5859	<p class="muted" id=""> (166)
+	These follow the conventions every app shares, so they aren't rebindable — being unable to press Escape in the dialog you rebound it in is not a state worth allowing.
+5979	<p class="muted" id=""> (146)
+	Quiets the toasts and the notifications panel for background jobs, agent runs and general activity — a due reminder still gets through either way.
+6016	<p class="muted" id=""> (160)
+	This is the one part of MemoryMap that goes online. It is off until you turn it on, and even then only your search words leave this computer — never your notes.
+6042	<p class="muted" id=""> (501)
+	SearXNG is the recommended way to search. It is a self-hosted search engine that MemoryMap can install and run for you in one click — you don't need Docker, an account, or any setup of your own. It gives better results than scraping DuckDuckGo, it can't be rate-limited the way scraping can, and the 
+6058	<p class="muted" id=""> (130)
+	MemoryMap can start and stop SearXNG for you — settings and the JSON API are configured automatically, so there's nothing to edit.
+6138	<p class="muted" id=""> (232)
+	Everything the app is doing in the background right now — re-indexing your notes, downloading a model, loading the embedding model, setting up SearXNG. Jobs that can be stopped safely have a Quit button; the rest are left to finish.
+6163	<p class="muted" id=""> (139)
+	Have the agent automatically optimize your notes in the background — tagging untagged notes, finding duplicates, and linking related items.
+6273	<p class="muted" id=""> (176)
+	Pause background AI tasks and heavy graph calculations to save power. When enabled, autonomous background tasks will not run, and the graph may be slower to update connections.
+6283	<p class="muted" id=""> (123)
+	Stops the app and its server properly, so nothing is left running in the background and the next start finds its port free.
+6302	<p class="muted" id=""> (132)
+	JSON/CSV/Markdown exports include everything, even binned notes. Full Backup is a portable zip of the raw database and media folder.
+6335	<p class="muted" id=""> (181)
+	Finds notes that say much the same thing, by comparing their words — no AI needed. Merging keeps every tag, and the notes it replaces go to the recycle bin, so nothing is destroyed.
+6389	<p class="muted" id=""> (158)
+	Turns a PDF, Word file or slide deck into notes — one per chapter or slide when the file has that shape, one note otherwise. Needs the markitdown extra below.
+6413	<p class="muted" id=""> (213)
+	A backup is also taken automatically once a day when the app starts. Restoring first snapshots the current state, so even a restore can be undone. Backups live in your data folder — they never leave this computer.
+6425	<p class="muted" id=""> (179)
+	MemoryMap is a single-user app: one notebook, one password, all on this machine. To keep separate notebooks, run the app with a different data folder rather than a second account.
+6439	<p class="muted" id=""> (188)
+	Your current password is asked for even though you're already unlocked — being at an unlocked screen isn't proof of knowing it. Private notes move across to the new password automatically.
+6462	<p class="muted" id=""> (138)
+	Unlocking issues a token that lives in memory only, so restarting the app locks it again. Changing your password ends every other session.
+6486	<p class="muted" id=""> (158)
+	There is no reset link, on purpose — one inside an app you're locked out of would just be a way in for anyone at the keyboard. Run this in a terminal instead:
+6492	<p class="muted" id=""> (334)
+	It asks you to confirm, then clears the password so you can set a new one. Your ordinary notes are not encrypted and come back untouched. Private notes are — their key is derived from your password, so without it they cannot be recovered by anyone, and the reset loses them. The command tells you how
+6541	<p class="muted hidden" id="log-terminal-hint"> (132)
+	Approximates what would print to the console window — not a byte-for-byte capture, since nothing here runs a real terminal emulator.
+6639	<div class="settings-group help-chat-group" id=""> (145)
+	Ask the guide New chat Quick "how do I…" answers about MemoryMap itself, from your utility model — not your notes, and nothing here is saved. Ask
+6665	<p class="muted" id=""> (145)
+	A 100% offline, local-first notebook where a local AI files your thoughts and answers questions about them. Your data never leaves this computer.
+6719	<small class="muted" id=""> (123)
+	How long each kind of job has been taking on this machine — the median and the slow end, from the last forty finished jobs.
+6819	<p class="muted hidden" id="desktop-console-hint"> (298)
+	On by default. Turn it off for "User view" — the app runs with no console window at all, just this app window and a system tray icon. You can also switch live from the tray icon's own menu, which remembers your choice for next time too, and the app briefly restarts itself when you switch this way.
+6839	<p class="muted hidden" id="desktop-tray-hint"> (249)
+	With this on, the X button hides the window and the app keeps running behind the tray icon — click it to bring the window back, or right-click → Quit to close it properly (which also stops any background work). With it off, closing the window quits.
+7030	<p class="muted" id=""> (166)
+	These follow the conventions every app shares, so they aren't rebindable — being unable to press Escape in the dialog you rebound it in is not a state worth allowing.
+7181	<p class="muted" id=""> (169)
+	Record a meeting, a lecture, or anything longer than a quick note — transcribed locally with Whisper, the same engine behind the mic button. Nothing leaves this machine.
+TOTAL 55

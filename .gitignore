@@ -23,3 +23,10 @@ uploads/
 # Editor state — machine-local, not project config
 .vscode/
 .idea/
+
+# Subagent worktrees (session-local)
+.claude/worktrees/
+
+# Playwright probe screenshots (scratchpad/ui-sweeps write here when SCRATCH is unset)
+shots/
+.gate/

@@ -4,7 +4,7 @@
 and its own one-line answer to "any features overlooked?"): *"nothing in this
 app turns an offhand mention in ordinary chat into a filed note"*. MemoryMap
 files a note on an explicit instruction or an explicit tool call and never
-otherwise — which is a strange gap for an app whose pitch is "a local AI files
+otherwise: which is a strange gap for an app whose pitch is "a local AI files
 your notes". Odysseus's `services/memory/memory_extractor.py` sends the last
 few turns to the model after each reply and asks it what is worth remembering.
 
@@ -24,12 +24,12 @@ the first draft of the Settings copy claimed more than was true: a draft is
 **not** currently excluded from `search_manager` or from the AI's retrieved
 context. Only the graph, the Library list and the notes list filter it. That
 is a pre-existing property of drafts generally (the text-selection popup makes
-them too), not something this job introduced — but the wording next to the
+them too), not something this job introduced, but the wording next to the
 toggle promises only what actually holds.
 
 **2. A fingerprint short-circuit, before anything else.** Odysseus learned this
-the expensive way — their own comment records 30–120s per call before they
-added one — and the shape here is the same: a SHA-256 of exactly the turns
+the expensive way: their own comment records 30–120s per call before they
+added one: and the shape here is the same: a SHA-256 of exactly the turns
 about to be considered. An unchanged conversation costs one hash and no model
 call at all, which matters because this runs on every interval for as long as
 the app is open.
@@ -72,14 +72,14 @@ CAPTURE_TAG = "auto-captured"
 
 #: Where the per-conversation fingerprints live. A preference key rather than
 #: a new table: it is one small dict, nothing ever queries it, and a migration
-#: for it would cost more than it is worth. (`UserPreference` is *not* this —
+#: for it would cost more than it is worth. (`UserPreference` is *not* this: 
 #: that table is the agent's memory stream, a list of sentences the model has
 #: learned, with no key column at all.)
 FINGERPRINT_KEY = "auto_capture_fingerprints"
 
 _SYSTEM = (
     "You read a few turns of someone talking to their notebook and pick out "
-    "facts about THEM worth keeping — a decision they made, a preference, a "
+    "facts about THEM worth keeping, a decision they made, a preference, a "
     "commitment, a detail about their life or work. Reply with a JSON array of "
     "short strings, one fact per string, written in the third person. Reply "
     "with [] if there is nothing worth keeping, which is the common case. "
@@ -88,9 +88,9 @@ _SYSTEM = (
 )
 
 
-def _fingerprints(config) -> dict[str, str]:  # noqa: ANN001 — core.config.Config
+def _fingerprints(config) -> dict[str, str]:  # noqa: ANN001  # core.config.Config
     stored = config.get_preference(FINGERPRINT_KEY, None)
-    # Unreadable or absent storage costs the short-circuit, not the pass —
+    # Unreadable or absent storage costs the short-circuit, not the pass, 
     # every conversation simply looks new once, and the next write repairs it.
     return dict(stored) if isinstance(stored, dict) else {}
 
@@ -162,7 +162,7 @@ def capture_pass(
     session: Session,
     model_manager: ModelManager,
     ollama: OllamaClient,
-    config,  # noqa: ANN001 — core.config.Config, holds the fingerprints
+    config,  # noqa: ANN001  # core.config.Config, holds the fingerprints
     limit: int = MAX_CAPTURES_PER_PASS,
 ) -> int:
     """One pass over recent conversations. Returns how many drafts it wrote."""
@@ -200,7 +200,7 @@ def capture_pass(
                     {"role": "user", "content": "\n".join(f"- {q}" for q in questions)},
                 ],
             )
-        except Exception as exc:  # noqa: BLE001 — a backend failure skips, never stops
+        except Exception as exc:  # noqa: BLE001  # a backend failure skips, never stops
             logger.info("passive capture skipped a conversation: %s", exc)
             continue
 

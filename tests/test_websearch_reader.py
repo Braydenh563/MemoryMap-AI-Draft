@@ -1,5 +1,5 @@
 """The page reader: HTML → structured blocks, and the SSRF guards on
-`/websearch/read` (CodeQL findings — a search result must not be able to
+`/websearch/read` (CodeQL findings: a search result must not be able to
 make the app fetch its own network)."""
 
 from __future__ import annotations
@@ -80,7 +80,7 @@ def test_reader_refuses_a_link_that_points_at_this_machine(client, monkeypatch):
     """A search result must not be able to make the app fetch localhost."""
     from memorymap.search import websearch
 
-    def boom(*args, **kwargs):  # pragma: no cover — must never be reached
+    def boom(*args, **kwargs):  # pragma: no cover: must never be reached
         raise AssertionError("the guard should have stopped this request")
 
     monkeypatch.setattr(websearch.requests, "get", boom)
@@ -94,7 +94,7 @@ def test_reader_refuses_a_url_carrying_credentials(client, monkeypatch):
     """"http://ok.example@evil.example/" reads as one host and resolves to another."""
     from memorymap.search import websearch
 
-    def boom(*args, **kwargs):  # pragma: no cover — must never be reached
+    def boom(*args, **kwargs):  # pragma: no cover: must never be reached
         raise AssertionError("the guard should have stopped this request")
 
     monkeypatch.setattr(websearch.requests, "get", boom)
@@ -136,7 +136,7 @@ def test_reader_refuses_a_redirect_into_the_local_network(client, monkeypatch):
     assert response.status_code == 502
     assert "local address" in response.json()["detail"]
     # One hop was fetched and the redirect target never was. The fetched URL
-    # carries the resolved IP rather than the hostname — each hop connects to
+    # carries the resolved IP rather than the hostname, each hop connects to
     # the address that passed the check, so a nameserver can't answer the
     # check and the connection differently (DNS rebinding).
     assert len(seen) == 1

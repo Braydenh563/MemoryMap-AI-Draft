@@ -7,7 +7,7 @@ was two faults at once.
 `resolve_ocr_model` prefers a model built to transcribe a page (GLM-OCR,
 DeepSeek-OCR, PaddleOCR-VL) and falls back to a general vision model;
 `resolve_vision_model` answers "can anything here see an image". On a machine
-with both installed they return different models — and the workspace offered a
+with both installed they return different models, and the workspace offered a
 single option, labelled "AI vision model", naming whichever of the two the
 picker resolved. The other model could not be reached from the UI at all.
 

@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "memorymap"
-version = "0.2.2"
+version = "0.3.0"
 description = "MemoryMap AI — a 100% offline, local-first AI notebook"
 readme = "README.md"
 requires-python = ">=3.11"

@@ -2,8 +2,8 @@
 registry (ROADMAP.md item 38, ANALYSIS.md §60).
 
 Why expose rather than consume: this app already has a local-process trust
-boundary — anyone who can run a process on this machine can already open
-`memorymap.db` directly — so a *stdio* server needs no new trust model, it's
+boundary: anyone who can run a process on this machine can already open
+`memorymap.db` directly: so a *stdio* server needs no new trust model, it's
 the same boundary the app's own SQLite file already sits behind. Consuming
 an external MCP server is the harder half (BACKLOG.md §29's missing trust
 model for tool calls arriving *from* somewhere else) and is deliberately
@@ -11,7 +11,7 @@ not attempted here.
 
 Only non-destructive, currently-enabled tools are offered. `ai.tools`'s own
 `destructive` flag exists because a destructive tool needs a human to see
-and confirm it before it runs — the chat UI does that with a confirm card
+and confirm it before it runs, the chat UI does that with a confirm card
 (`agent.py`'s tool loop parks it rather than running it), but a bare
 `execute_tool()` call has no such gate built in, and an MCP client (Claude
 Desktop, or anything else) has no confirm card to show. So the safe default
@@ -22,7 +22,7 @@ in Settings -> Tools (including the `web_search`/`read_url` online opt-in)
 is invisible here too, the same as it already is to the in-app chat model.
 
 Run with `python -m memorymap.mcp_server`, with `MEMORYMAP_DATA_DIR` set the
-same way the main app expects — it operates on the same notebook, not a
+same way the main app expects, it operates on the same notebook, not a
 second one.
 """
 
@@ -74,9 +74,9 @@ def _call_tool(name: str, arguments: dict) -> dict:
 
 
 def handle_request(message: dict) -> dict | None:
-    """One JSON-RPC message in, one response out — or `None` for a
+    """One JSON-RPC message in, one response out, or `None` for a
     notification, which gets no reply at all (a bare `id`-less message, per
-    JSON-RPC 2.0). Kept pure — no stdio touched here — so the protocol
+    JSON-RPC 2.0). Kept pure, no stdio touched here, so the protocol
     logic is directly testable without a real subprocess or a live client.
     """
     method = message.get("method")
@@ -113,7 +113,7 @@ def handle_request(message: dict) -> dict | None:
 
 
 def serve(stdin: TextIO = sys.stdin, stdout: TextIO = sys.stdout) -> None:
-    """The stdio loop: one JSON-RPC message per line in, one per line out —
+    """The stdio loop: one JSON-RPC message per line in, one per line out, 
     MCP's stdio transport, no `Content-Length` framing. A line that isn't
     valid JSON is dropped rather than crashing the server; a client sending
     garbage shouldn't take down an otherwise-working session.

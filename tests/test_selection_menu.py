@@ -1,6 +1,6 @@
 """The text-selection kebab, and the DOM-weight fix beside it.
 
-These are lints over `frontend/app.js`, not behaviour tests — the same kind
+These are lints over `frontend/app.js`, not behaviour tests: the same kind
 `test_frontend_handlers.py` and `test_frontend_ids.py` already are, and for the
 same reason: this Python suite cannot see a DOM, so the only thing it can
 usefully guard is that the source still has the shape the live verification
@@ -32,7 +32,7 @@ def _all_css() -> str:
 def test_the_note_menu_is_not_built_until_it_is_opened():
     """The whole point of the change. `entryItem` builds one overflow menu per
     note and the Notes list renders the entire notebook, so an eagerly-built
-    menu is ~68 DOM nodes times every note you own — measured live at 1,501
+    menu is ~68 DOM nodes times every note you own, measured live at 1,501
     notes as 133,748 nodes eager against 31,680 lazy.
 
     Guarded by shape rather than by count: the opener's handler has to call
@@ -69,7 +69,7 @@ def test_the_selection_popup_can_be_reached_without_a_mouse():
 
 
 def test_the_new_shortcut_does_not_collide_with_an_existing_one():
-    """Two features sharing one shortcut has happened here before — Ctrl+K was
+    """Two features sharing one shortcut has happened here before, Ctrl+K was
     bound twice (ROADMAP Tier 1, item 13)."""
     source = _app_js()
     block = source[source.index("const DEFAULT_SHORTCUTS = {") :]
@@ -89,7 +89,7 @@ def test_both_ends_of_a_selection_are_checked_against_the_denylist():
 
 def test_menu_keyboard_navigation_is_shared_rather_than_owned_by_one_menu():
     """It lived inline inside `entryOverflowMenu`, so every menu built by
-    `kebabMenu` — conversations, sidebars, and the selection menu — had no
+    `kebabMenu`, conversations, sidebars, and the selection menu, had no
     arrow keys at all. Found by driving the selection menu from the keyboard."""
     source = _app_js()
     assert "function wireMenuKeyboard(" in source
@@ -131,7 +131,7 @@ def test_the_clipping_helper_quotes_and_attributes():
 
 def test_every_shortcut_has_something_to_run():
     """A binding with no entry in `runShortcut` is CLAUDE.md's shape 2 exactly:
-    not buggy, never executed — `actions[id]?.()` swallows it in silence, so
+    not buggy, never executed, `actions[id]?.()` swallows it in silence, so
     the key appears in the Settings list, rebinds happily, and does nothing.
     Checked here because the section was expanded from ten bindings to
     seventeen in one sitting."""

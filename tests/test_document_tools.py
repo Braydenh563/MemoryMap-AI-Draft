@@ -6,7 +6,7 @@ Reported directly: "if the ai is searching for something, might keywords be
 flagged in certain pages of a file document in the actual document and/or
 extracted text, then it can use a tool or smth simpler to get the full text
 from those areas??" `list_documents` already found the right document (a
-plain SQL `ILIKE` over the whole body) — the preview it handed back was
+plain SQL `ILIKE` over the whole body), the preview it handed back was
 always the document's first `PREVIEW_CHARS` characters regardless of where
 the match was, and `get_document`'s own `query` argument only ranked
 paragraphs when a working embedding backend was present, which CLAUDE.md
@@ -25,11 +25,11 @@ from memorymap.core.database import Document
 
 class _NoEmbeddings:
     """Stands in for `deps.get_embeddings()` on an install with no working
-    backend — exactly the case CLAUDE.md says this project runs in by
+    backend: exactly the case CLAUDE.md says this project runs in by
     default (no torch, no sentence-transformers). The suite's own fixture
     backend (`tests/fakes.py`) is real enough to rank paragraphs, which
     would take the *better* path (`used_snippets=True`) rather than the one
-    these two tests exist to pin — so it is swapped out deliberately, once,
+    these two tests exist to pin, so it is swapped out deliberately, once,
     for the tests that need the fallback specifically."""
 
     def embed_text(self, text: str):  # noqa: ANN001, D102
@@ -67,7 +67,7 @@ def test_list_documents_with_no_query_keeps_the_head_of_document_preview(session
 def test_get_document_with_a_query_falls_back_to_the_matched_passage(session, monkeypatch):
     """The case CLAUDE.md describes as the project's default (no embedding
     backend): `q_vec` comes back `None`, and before this fix that meant a
-    plain head-of-document clip with no regard for where — or whether — the
+    plain head-of-document clip with no regard for where, or whether, the
     term actually appeared."""
     monkeypatch.setattr(deps, "get_embeddings", _NoEmbeddings)
     filler = "the quick brown fox jumps over the lazy dog. " * 300
@@ -82,7 +82,7 @@ def test_get_document_with_a_query_falls_back_to_the_matched_passage(session, mo
 
 def test_get_document_with_a_query_that_does_not_appear_keeps_the_old_behaviour(session, monkeypatch):
     """A query for a word that is not in the document must not pretend it
-    found something — falls back to the plain head-of-document clip, same
+    found something: falls back to the plain head-of-document clip, same
     as if no query had been given at all."""
     monkeypatch.setattr(deps, "get_embeddings", _NoEmbeddings)
     doc = _doc(session, "Doc", "Nothing relevant is written here at all.")

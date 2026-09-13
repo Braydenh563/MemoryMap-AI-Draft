@@ -1,4 +1,4 @@
-"""Voice endpoints — graceful without Whisper, working with it."""
+"""Voice endpoints: graceful without Whisper, working with it."""
 
 from __future__ import annotations
 
@@ -49,7 +49,7 @@ def test_transcribe_model_load_failure_is_503_not_422(client, monkeypatch):
     # faster-whisper installed but the model download failing (offline,
     # blocked, corporate proxy), the old code let the exception fall
     # through to the route's catch-all and reported "Couldn't transcribe
-    # that recording" — indistinguishable from a genuinely bad clip. It
+    # that recording", indistinguishable from a genuinely bad clip. It
     # should instead say the model couldn't load, as a 503 (retry later),
     # not a 422 (this specific recording is the problem).
     monkeypatch.setattr(voice, "whisper_available", lambda: True)
@@ -114,7 +114,7 @@ def test_transcribe_meeting_rejects_empty_recording(client, monkeypatch):
 
 
 def test_transcribe_meeting_rejects_oversized_recording(client, monkeypatch):
-    # The real ceiling is 300MB — too large to actually upload in a test, so
+    # The real ceiling is 300MB, too large to actually upload in a test, so
     # the ceiling itself is lowered instead of the payload being enlarged.
     from memorymap.api import routes_voice
 
@@ -148,7 +148,7 @@ def test_transcribe_meeting_has_its_own_higher_ceiling_than_transcribe(client, m
 # --- the dictation model-size preference ---------------------------------------
 #
 # `voice_model` was read by this route from the moment it shipped, but had no
-# field in `PreferencesBody` and nothing in Settings ever wrote it — every
+# field in `PreferencesBody` and nothing in Settings ever wrote it, every
 # install silently ran "base" regardless of what a user picked, because there
 # was no way to pick anything.
 

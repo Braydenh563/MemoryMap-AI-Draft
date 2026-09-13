@@ -2,9 +2,9 @@
 
 Asked for twice: *"is there a way to improve the backend and function of the
 notebook further?? better grouping, better linking, better ai understanding of
-all features??"* Every other part of the app was reachable by the model —
+all features??"* Every other part of the app was reachable by the model, 
 notes, categories, tags, documents, whiteboards, reminders, past chats, skills
-— and files were not, so "what was in that PDF I uploaded?" could not be
+- and files were not, so "what was in that PDF I uploaded?" could not be
 answered even though the app had already read the file.
 """
 
@@ -60,7 +60,7 @@ def test_an_empty_query_lists_what_there_is(session):
 
 
 def test_a_private_notes_attachment_is_not_searchable(session):
-    """The same refusal a private note gets everywhere else — its attachments
+    """The same refusal a private note gets everywhere else, its attachments
     are part of it."""
     from memorymap.entry import manager
 
@@ -91,7 +91,7 @@ def test_reading_a_private_notes_attachment_is_refused(session):
 
 
 def test_read_file_returns_more_text_than_search_does(session):
-    """Search is a list — it shows a preview; reading one file is the step
+    """Search is a list, it shows a preview; reading one file is the step
     that pays for the whole page of text."""
     long_text = "word " * 400
     upload = _upload(session, "long.png", text=long_text)
@@ -145,8 +145,8 @@ def test_an_unknown_kind_is_refused_rather_than_guessed(session):
 # file document in the actual document and/or extracted text, then it can use
 # a tool or smth simpler to get the full text from those areas??" Before this,
 # `search_files` correctly found a file whose *reading* contained the word
-# (it scans the whole text), but the `text` field it returned — and even
-# `read_file`'s own full-text field, capped at 2000 characters — always
+# (it scans the whole text), but the `text` field it returned: and even
+# `read_file`'s own full-text field, capped at 2000 characters, always
 # started from the top of the reading, so a match past that point was never
 # actually visible to the model, however precisely it had been located.
 
@@ -162,7 +162,7 @@ def test_the_search_preview_contains_the_word_that_matched(session):
 def test_read_file_with_a_query_returns_text_past_the_old_cap(session):
     """The concrete failure this fixes: a reading longer than FILE_TEXT_CHARS
     (2000) whose match sits past that point used to be unreachable through
-    this tool no matter what — the read always started at character zero and
+    this tool no matter what, the read always started at character zero and
     stopped at 2000, so `search_files` could point at the file correctly and
     `read_file` would still come back with nothing useful."""
     from memorymap.ai.tools.files import FILE_TEXT_CHARS
@@ -180,7 +180,7 @@ def test_read_file_with_a_query_returns_text_past_the_old_cap(session):
 
 
 def test_read_file_with_no_query_keeps_the_old_head_of_text_behaviour(session):
-    """No query, no change — this is additive, not a replacement for the
+    """No query, no change, this is additive, not a replacement for the
     plain "just read it" case."""
     upload = _upload(session, "short.png", text="Hello, this is a short reading.")
     read = tools.TOOLS["read_file"].handler(session, {"kind": "upload", "file_id": upload.id})

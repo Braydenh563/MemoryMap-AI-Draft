@@ -1,5 +1,5 @@
 """Archiving a saved chat (BACKLOG §30b's named remaining scope, after
-notes got this first) — same shape as `test_archive.py`'s entry tests:
+notes got this first), same shape as `test_archive.py`'s entry tests:
 kept, never deleted, out of the way, reachable again from the Library's
 Shelved filter."""
 
@@ -26,7 +26,7 @@ def test_archiving_a_chat_is_not_deleting_it(client):
     chat = _chat(client)
     client.put(f"/conversations/{chat['id']}/archive")
 
-    # Still fetchable directly — it never left the database.
+    # Still fetchable directly: it never left the database.
     body = client.get(f"/conversations/{chat['id']}").json()
     assert body["archived_at"] is not None
 

@@ -120,7 +120,7 @@ def test_searxng_is_used_when_configured(client, monkeypatch):
 
     monkeypatch.setattr(websearch, "_private_session", FakeSession)
     body = client.get("/websearch?q=hello").json()
-    # The request goes to the address the guard checked, not to the name —
+    # The request goes to the address the guard checked, not to the name, 
     # re-resolving between the check and the connection is the rebinding hole
     # the reader path already closed. `localhost` can be 127.0.0.1 or ::1
     # depending on the machine, so assert the shape rather than one of them.
@@ -159,7 +159,7 @@ def test_searxng_failure_falls_back_to_duckduckgo(client, monkeypatch):
         websearch, "_search_duckduckgo", lambda q, limit: websearch._parse_results(FAKE_DDG_PAGE, limit)
     )
     body = client.get("/websearch?q=anything").json()
-    # SearXNG failing must not break search — DuckDuckGo answers instead.
+    # SearXNG failing must not break search, DuckDuckGo answers instead.
     assert body["results"][0]["engine"] == "duckduckgo"
 
 

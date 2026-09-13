@@ -4,7 +4,7 @@ Reported: *"the model spelt my name wrong in the dashboard welcome message."*
 
 The greeting is written by a local model, and the only thing that ever touched
 its spelling was an exact, case-insensitive match against the saved name. A near
-miss — "Braden" for "Brayden" — sailed straight through it, and because that
+miss, "Braden" for "Brayden", sailed straight through it, and because that
 match is also what clears `append_name`, the frontend then appended the correct
 name on top: the banner greeted two people, one of them misspelt.
 
@@ -42,9 +42,9 @@ def test_a_near_miss_is_repaired(phrase, expected):
 
 def test_an_ordinary_word_is_not_mistaken_for_the_name():
     """The repair must not rewrite words that merely share letters."""
-    phrase, changed = _repair_misspelt_name("Morning — Sunday already", "Sam")
+    phrase, changed = _repair_misspelt_name("Morning: Sunday already", "Sam")
     assert not changed
-    assert phrase == "Morning — Sunday already"
+    assert phrase == "Morning: Sunday already"
 
 
 def test_the_opening_word_is_never_treated_as_a_name():
@@ -63,7 +63,7 @@ def test_the_right_name_is_not_refused():
 
 def test_a_nameless_greeting_is_fine():
     assert _greets_a_stranger("Time to write something down.", "Brayden") is False
-    assert _greets_a_stranger("Morning — Tuesday already", "Brayden") is False
+    assert _greets_a_stranger("Morning: Tuesday already", "Brayden") is False
 
 
 def test_any_name_is_refused_when_none_is_saved():

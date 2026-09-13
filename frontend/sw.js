@@ -1,4 +1,4 @@
-// Service worker — **network-only, and deliberately so.**
+// Service worker: **network-only, and deliberately so.**
 //
 // Asked for directly: *"if the backend is closed the ui should fail to load
 // or connect on browsers until started back up again."*
@@ -6,7 +6,7 @@
 // This file used to precache the app shell (`/`, app.js, the eight CSS
 // files, the icon font, d3, p5) so MemoryMap would "open instantly and still
 // open while the local server is briefly down". That second half is the
-// problem. MemoryMap is not a web app that degrades gracefully offline — it
+// problem. MemoryMap is not a web app that degrades gracefully offline, it
 // is a front end for a local server that holds every note, every file and
 // every model call. With the server down, the shell still painted: tabs,
 // toolbars, empty lists, a capture box you could type into. It looked like a
@@ -16,7 +16,7 @@
 // So the shell is not cached any more, and this worker now does exactly one
 // useful thing: it gets out of the way, and it **deletes the caches earlier
 // versions left behind**. That second part is why the file still exists
-// rather than being removed outright — a worker that is simply deleted is
+// rather than being removed outright, a worker that is simply deleted is
 // not fetched again, so every browser that already installed v10 would keep
 // serving that stale shell forever, including the stale `app.js` that this
 // project's own CLAUDE.md records as having cost two sessions of debugging.
@@ -51,7 +51,7 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-// No `fetch` handler at all. A service worker without one is transparent —
+// No `fetch` handler at all. A service worker without one is transparent, 
 // every request goes to the network exactly as if this worker were not
 // installed, which is precisely the behaviour asked for. An empty handler
 // that called `fetch(event.request)` would be the same thing with an extra

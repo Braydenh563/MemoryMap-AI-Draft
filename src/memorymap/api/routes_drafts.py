@@ -1,7 +1,7 @@
 """Thoughts → note drafts (the writing room).
 
 Write loose thoughts, get a draft, edit it, add more thoughts, repeat until
-it's right — then save it as a note like any other.
+it's right: then save it as a note like any other.
 
 There's no draft table: the draft lives in the browser until you save it. A
 half-finished draft isn't a note, and quietly filling the notebook with them

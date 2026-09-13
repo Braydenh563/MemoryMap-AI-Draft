@@ -9,8 +9,8 @@ Two separate faults, and the phrase was the smaller one.
 **The timezone frame.** The route built the user's clock as `utcnow() + offset`,
 which is an aware datetime TAGGED UTC that actually holds local wall-clock. The
 model was therefore told "now is 2026-08-01T23:30:00+00:00" when that +00:00 was
-a fiction. A model that answered with an offset of its own — the natural thing
-to do, having been handed one — was then trusted and skipped the correction, so
+a fiction. A model that answered with an offset of its own, the natural thing
+to do, having been handed one, was then trusted and skipped the correction, so
 the reminder landed out by exactly the user's UTC offset. At UTC+10 that turns
 "half an hour" into ten and a half hours: 10am the next day, exactly as
 reported.
@@ -31,7 +31,7 @@ from memorymap.ai import reminder_parser
 
 # --- the reported sentence --------------------------------------------------
 
-BRISBANE = 600  # UTC+10, minutes east — the sign the frontend sends
+BRISBANE = 600  # UTC+10, minutes east, the sign the frontend sends
 
 
 def _due(client, text: str, offset: int = BRISBANE) -> datetime:
@@ -81,7 +81,7 @@ def test_the_time_phrase_is_taken_out_of_the_reminder_text(client):
 def test_the_offset_does_not_move_a_relative_reminder(client, offset):
     """"In 30 minutes" is 30 minutes away from whichever chair you are sitting
     in. Before the fix the error was exactly the offset, so a user in UTC+10
-    saw ten hours of it and a user in UTC saw none — which is why this went
+    saw ten hours of it and a user in UTC saw none, which is why this went
     unnoticed for so long."""
     due = _due(client, "do the thing in 30 minutes", offset=offset)
     assert 28 <= _minutes_away(due) <= 32
@@ -211,7 +211,7 @@ def test_a_relative_reminder_works_with_ollama_off(client):
 
 
 def test_a_phrase_needing_the_model_still_says_so_when_it_is_off(client):
-    """Degrading gracefully is not the same as pretending — a wall-clock
+    """Degrading gracefully is not the same as pretending, a wall-clock
     phrase with no model behind it has to be refused, and usefully."""
     response = client.post(
         "/reminders/parse",

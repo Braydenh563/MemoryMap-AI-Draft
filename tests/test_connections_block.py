@@ -1,4 +1,4 @@
-"""The Connections block — REDESIGN.md §R7.3 item 1, ROADMAP.md item 5.
+"""The Connections block: REDESIGN.md §R7.3 item 1, ROADMAP.md item 5.
 
 > *"I really like kortex's use of backlinking and elements for structured
 > documents as well."*
@@ -6,7 +6,7 @@
 Every join tested here already existed in the database before this endpoint:
 `EntryLink` in both directions, `DocumentLink`, `WhiteboardNode`, and
 `/media/<name>` references inside the body. What did not exist was any one
-place that answered "what is this note joined to" — links were chips on the
+place that answered "what is this note joined to", links were chips on the
 card, documents were a separate list, and boards were surfaced nowhere at
 all, so a note could sit on three boards and show none of them.
 
@@ -73,7 +73,7 @@ def test_documents_and_boards_are_connections_too(client):
 
 def test_the_unnamed_scratch_board_is_a_real_board(client):
     """`board_id IS NULL` is the board every notebook starts with, not a
-    missing one — a card placed there must still show up as a connection."""
+    missing one: a card placed there must still show up as a connection."""
     entry = client.post("/entries", json={"content": "Loose thought"}).json()
     client.post("/whiteboard/nodes", json={"entry_id": entry["id"], "x": 0.0, "y": 0.0})
 
@@ -133,7 +133,7 @@ def test_a_document_lists_its_notes_bookmarks_and_files(client):
 
 @pytest.fixture
 def open_vault(session):
-    """A note can only be made private once a vault exists — `POST
+    """A note can only be made private once a vault exists, `POST
     /entries/{id}/privacy` answers 409 otherwise. Opened by hand because
     these tests do not go through setup/unlock, and closed again so the
     state cannot leak into the next test."""

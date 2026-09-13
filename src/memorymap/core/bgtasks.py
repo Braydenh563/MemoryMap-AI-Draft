@@ -1,14 +1,14 @@
-"""Quitting background work — one job, or all of it at once.
+"""Quitting background work: one job, or all of it at once.
 
 Two requests, one mechanism, and they turned out to be the same mechanism:
 
-- *"allow the quitting/killing of background tasks as well"* — the Tasks panel
+- *"allow the quitting/killing of background tasks as well"*, the Tasks panel
   listed eight kinds of job and offered a Quit button on exactly two of them
-  (a re-index and a model pull). Everything else — a pip install minutes into
+  (a re-index and a model pull). Everything else: a pip install minutes into
   building a wheel, a multi-hundred-megabyte model download, a SearXNG source
-  build, an autonomous pass rewriting tags — could be watched and not stopped.
+  build, an autonomous pass rewriting tags, could be watched and not stopped.
 - *"make sure that if the app is quit, all ai tasks and bg tasks stop as
-  well"* — and nothing stopped them, because there was no shutdown handler at
+  well"*, and nothing stopped them, because there was no shutdown handler at
   all. Daemon threads die with the process, but a pip subprocess is not a
   daemon thread: it is a child that outlives its parent, and a SearXNG
   install killed halfway by a process exit leaves a half-written checkout.
@@ -19,8 +19,8 @@ So this module is the dispatch table both need. `cancel(kind)` is one job;
 **Why a table rather than a method on each job.** The kinds do not share an
 implementation and should not be made to: a pull is an HTTP stream this app
 drives, an install is someone else's process, an autonomous pass is a
-generator this app consumes. What they share is a *name* — the `kind` string
-`/tasks` already uses — so that is what the table is keyed on. Adding a
+generator this app consumes. What they share is a *name*, the `kind` string
+`/tasks` already uses: so that is what the table is keyed on. Adding a
 background job means adding one line here, and the panel's Quit button starts
 working without touching the frontend.
 
@@ -32,8 +32,8 @@ an error.
 **Nothing here kills a thread.** Python cannot do it safely and this app
 writes to a notebook the user cares about; a stop is always either a
 cooperative flag checked at the next boundary or a `terminate()` on a child
-process that owns nothing of ours. The one cost is latency — up to one model
-call for an agent pass — and that is the right trade.
+process that owns nothing of ours. The one cost is latency, up to one model
+call for an agent pass, and that is the right trade.
 """
 
 from __future__ import annotations
@@ -80,7 +80,7 @@ def _cancel_autonomous(_name: str) -> tuple[bool, str]:
             f"{hours}h {minutes}m" if hours else f"{minutes} minutes"
         )
         # Reported: *"The auto ai optimisation didnt instantly quit?? what
-        # does quitting safely mean??"* — a fair complaint about both the
+        # does quitting safely mean??"*, a fair complaint about both the
         # behaviour and the sentence. "The next safe point" named nothing a
         # user could picture, so a stop that took twenty seconds looked like a
         # button that had not worked.
@@ -93,7 +93,7 @@ def _cancel_autonomous(_name: str) -> tuple[bool, str]:
         # killed mid-flight because the thread may be part-way through writing
         # to the notebook, and a half-applied edit is worse than a slow stop.
         return True, (
-            "Stopping — nothing more will be asked of the model. The reply "
+            "Stopping: nothing more will be asked of the model. The reply "
             "already in flight has to arrive first, so this can take a few "
             f"seconds. It won't start again for {when}."
         )
@@ -135,9 +135,9 @@ def _cancel_searxng_start(_name: str) -> tuple[bool, str]:
         return False, "SearXNG isn't starting."
     try:
         searxng_manager.stop(deps.get_config().data_dir)
-    except Exception as exc:  # noqa: BLE001 — a stop that fails is not a 500
+    except Exception as exc:  # noqa: BLE001  # a stop that fails is not a 500
         logger.warning("couldn't stop SearXNG: %s", exc)
-        return False, "Couldn't stop it — see Settings → Logs."
+        return False, "Couldn't stop it: see Settings → Logs."
     return True, "Stopped SearXNG."
 
 
@@ -157,27 +157,27 @@ CANCELLERS: dict[str, Callable[[str], tuple[bool, str]]] = {
 
 #: What the Tasks panel puts a Quit button on. Derived from the table rather
 #: than repeated in `routes_tasks.collect()`, where it had drifted out of date
-#: twice — every job there hard-coded its own `"cancellable"` bool.
+#: twice: every job there hard-coded its own `"cancellable"` bool.
 CANCELLABLE_KINDS = frozenset(CANCELLERS)
 
 
 def cancel(kind: str, name: str = "") -> tuple[bool, str]:
-    """Stop one job. Returns (acted, message) — never raises."""
+    """Stop one job. Returns (acted, message): never raises."""
     canceller = CANCELLERS.get(kind)
     if canceller is None:
         return False, "That job can't be stopped."
     try:
         return canceller(name)
-    except Exception as exc:  # noqa: BLE001 — a failed stop is a message
+    except Exception as exc:  # noqa: BLE001  # a failed stop is a message
         # `kind` arrives in a request body, so it is untrusted text going into
-        # a log line — CodeQL's py/log-injection, and a real one: a value
+        # a log line: CodeQL's py/log-injection, and a real one: a value
         # carrying a newline can forge a whole extra log record, which is
         # exactly the kind of thing the log viewer in Settings is read to
         # investigate. Stripped rather than escaped, because a job kind never
         # legitimately contains a line break.
         safe_kind = kind.replace("\r", "").replace("\n", "")
         logger.warning("couldn't stop the %s job: %s", safe_kind, exc, exc_info=True)
-        return False, "Couldn't stop that job — see Settings → Logs."
+        return False, "Couldn't stop that job, see Settings → Logs."
 
 
 def stop_all() -> list[str]:
@@ -187,7 +187,7 @@ def stop_all() -> list[str]:
     raise: a shutdown that hangs on a stuck job is the thing it exists to
     prevent, and the process is going away regardless.
 
-    The autonomous scheduler is stopped as well as its current pass — the
+    The autonomous scheduler is stopped as well as its current pass, the
     thread is a daemon and would die anyway, but joining it here means a pass
     part-way through a write finishes that write rather than being cut off at
     an arbitrary bytecode.
@@ -209,7 +209,7 @@ def stop_all() -> list[str]:
 
     # SearXNG is the one background thing that is a real OS process this app
     # started, and leaving it behind is the orphan `/shutdown` was written to
-    # avoid — a second launch then finds the port taken by the first.
+    # avoid: a second launch then finds the port taken by the first.
     try:
         from memorymap.core import deps
         from memorymap.search import searxng_manager

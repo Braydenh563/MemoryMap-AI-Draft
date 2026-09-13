@@ -51,7 +51,7 @@ def test_set_preference_survives_a_write_failure_without_corrupting_the_file(
     """A crash mid-write must leave the old file intact, not a truncated one.
 
     Simulates the failure by making the fsync step raise partway through an
-    atomic write — the shape a real crash/power-loss would hit — and asserts
+    atomic write, the shape a real crash/power-loss would hit, and asserts
     the previously-saved preferences are still readable afterwards.
     """
     config = ConfigManager(data_dir=tmp_path / "data")
@@ -70,7 +70,7 @@ def test_set_preference_survives_a_write_failure_without_corrupting_the_file(
         # Expected in this test: simulated fsync failure during atomic write.
         _ = exc
 
-    # The on-disk file must be exactly what it was before the failed write —
+    # The on-disk file must be exactly what it was before the failed write, 
     # never truncated, never half-written.
     assert config.preferences_path.read_text() == before
     assert json.loads(before)["chat_model"] == "first-good-value"
@@ -104,7 +104,7 @@ def test_blank_lines_before_the_heading_are_skipped():
 
 def test_a_heading_partway_through_the_note_is_not_the_title():
     """A `#` three paragraphs in is a section break, not what the note is
-    called — only the first non-blank line counts."""
+    called: only the first non-blank line counts."""
     assert manager.extract_title("some thoughts first\n# a heading later") is None
 
 

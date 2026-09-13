@@ -1,5 +1,7 @@
 # The redesign: making this feel like an application
 
+> **Superseded.** Kept because code comments and HISTORY.md cite its sections. Its open items live in [UI_MODERNISATION_PLAN.md](UI_MODERNISATION_PLAN.md) and [WORLD_CLASS_PLAN.md](WORLD_CLASS_PLAN.md) §1 and §7. Do not start work from this file.
+
 > *"the app is really glitchy, it feels fake and unprofessional but I cant
 > place it… it still feels like a beta and not an actual professionally
 > designed and usable application. it feels like it will break any second…

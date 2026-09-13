@@ -53,7 +53,7 @@ def _requested_worker_count() -> int | None:
     to refuse rather than warn.
 
     Read from the command line and from WEB_CONCURRENCY, which is the
-    environment variable uvicorn and gunicorn both honour — between them those
+    environment variable uvicorn and gunicorn both honour, between them those
     are the ways someone actually turns this up.
     """
     argv = sys.argv[1:]
@@ -87,14 +87,14 @@ def refuse_multiple_workers() -> None:
     if workers is None or workers <= 1:
         return
     raise MultipleWorkersError(
-        f"MemoryMap cannot run with {workers} workers — it is a single-user "
+        f"MemoryMap cannot run with {workers} workers: it is a single-user "
         "app, and its configuration, database handle, log buffer, unlock "
         "sessions and SearXNG subprocess are one-per-process. With more than "
         "one worker each of those silently becomes per-worker: logs would show "
         "a fraction of what happened, unlocking would work only sometimes, and "
         "two workers would each think they own the SearXNG they started.\n\n"
         "Start it with one worker (`python -m memorymap`). If you are trying "
-        "to make it faster, more workers is not the lever — the slow paths are "
+        "to make it faster, more workers is not the lever, the slow paths are "
         "Ollama and embedding, and both are already off the request thread."
     )
 
@@ -114,7 +114,7 @@ def build_llm_client(config: ConfigManager) -> Provider:
 
     Two dialects, not four products: `openai` covers LM Studio, llama.cpp, Jan
     and vLLM alike, because the only thing that differs between them is the
-    base URL. Everything downstream — the agent, the librarian, the janitor —
+    base URL. Everything downstream, the agent, the librarian, the janitor , 
     is written against `Provider` and never asks which one it got.
 
     An unrecognised provider name falls back to Ollama rather than raising. The
@@ -128,7 +128,7 @@ def build_llm_client(config: ConfigManager) -> Provider:
     # belt-and-braces for its own sake: `preferences.json` is a plain file the
     # user is invited to edit by hand, and it is what a restored backup or a
     # copied config brings with it. Checking only on the way in would mean a
-    # remote address that never passed through the endpoint is used anyway —
+    # remote address that never passed through the endpoint is used anyway, 
     # silently, and on every turn.
     #
     # Falling back to the provider's local default rather than refusing to
@@ -140,7 +140,7 @@ def build_llm_client(config: ConfigManager) -> Provider:
         if not allowed:
             logging.getLogger("memorymap.config").warning(
                 "refusing the saved AI backend %r and using the local default "
-                "instead — %s",
+                "instead: %s",
                 base_url,
                 reason,
             )
@@ -152,7 +152,7 @@ def build_llm_client(config: ConfigManager) -> Provider:
             api_key=str(config.get_preference("llm_api_key", "") or ""),
         )
     # `config.ollama_url` carries the OLLAMA_URL environment variable, which
-    # predates this setting — so it stays the default for the Ollama path
+    # predates this setting: so it stays the default for the Ollama path
     # rather than being overwritten by an empty preference.
     return OllamaClient(base_url=base_url or config.ollama_url)
 
@@ -175,7 +175,7 @@ def init_app_state(data_dir: str | Path | None = None) -> None:
     #
     # Even a submodule-direct, function-scoped import of it was still flagged
     # as beginning a cycle (CodeQL's cyclic-import query counts a function
-    # body's imports too, not just module-level ones) — so this is imported
+    # body's imports too, not just module-level ones), so this is imported
     # by name through `importlib` instead of a `from`/`import` statement,
     # which is the same runtime lookup with nothing for the static check to
     # see as an edge.
@@ -191,7 +191,7 @@ def init_app_state(data_dir: str | Path | None = None) -> None:
 
 
 def reload_db() -> None:
-    """Close every connection and reopen the database file — needed
+    """Close every connection and reopen the database file, needed
     after a backup restore replaces the file underneath us."""
     global _db
     assert _config is not None
@@ -205,7 +205,7 @@ def reload_db() -> None:
 #: Anything holding values derived from *this* notebook registers here. The
 #: graph's PageRank and similarity caches were the first, and they were
 #: originally cleared by importing `api.routes_graph` from inside
-#: `reset_app_state` — which works, and inverts the layering: `core/` is the
+#: `reset_app_state`, which works, and inverts the layering: `core/` is the
 #: bottom of this app and must not know the API layer exists. CodeQL called it
 #: what it was, a cycle.
 #:
@@ -214,14 +214,14 @@ def reload_db() -> None:
 _cache_resets: list = []
 
 
-def register_cache_reset(drop) -> None:  # noqa: ANN001 — any zero-arg callable
+def register_cache_reset(drop) -> None:  # noqa: ANN001  # any zero-arg callable
     """Have `drop()` called whenever the app's singletons are reset."""
     if drop not in _cache_resets:
         _cache_resets.append(drop)
 
 
 def reset_app_state() -> None:
-    """Throw the singletons away — used between tests, never in the app."""
+    """Throw the singletons away, used between tests, never in the app."""
     global _config, _db, _ollama, _model_manager, _embeddings
     if _db is not None:
         _db.engine.dispose()
@@ -239,7 +239,7 @@ def reload_llm_client() -> None:
 
     Settings → Models can switch between Ollama and an OpenAI-compatible
     server, and the whole point of doing it there is not having to restart the
-    app. The embedding service holds the same client, so it is rebuilt too —
+    app. The embedding service holds the same client, so it is rebuilt too, 
     otherwise switching backend would leave embeddings still talking to the old
     one, which presents as semantic search quietly using a server the user
     thinks they turned off.
@@ -254,7 +254,7 @@ def override_ai(
     ollama: Provider | None = None,
     embeddings: EmbeddingService | None = None,
 ) -> None:
-    """Swap in fakes — tests only. Real code never calls this."""
+    """Swap in fakes: tests only. Real code never calls this."""
     global _ollama, _embeddings
     if ollama is not None:
         _ollama = ollama
@@ -328,7 +328,7 @@ def get_or_404(
     """Fetch a row by primary key, or raise the 404 the route wants.
 
     Every route file had its own copy of `row = session.get(Model, id); if
-    row is None: raise HTTPException(404, "...")` — ~39 of them across 12
+    row is None: raise HTTPException(404, "...")`, ~39 of them across 12
     files, found by grep, all the same three lines with a different model
     and message. This is the plain "look up by id, 404 if missing" shape
     only; a lookup that also checks something else about the row (soft
@@ -339,7 +339,7 @@ def get_or_404(
     `detail` is required rather than derived from `model.__name__`, because
     the existing messages are user-facing text ("No such preference",
     "Attachment not found", "No note with id 5") that this refactor is not
-    meant to alter — passing it explicitly is what keeps that text byte-for-
+    meant to alter: passing it explicitly is what keeps that text byte-for-
     byte the same as before.
     """
     obj = session.get(model, obj_id)
@@ -353,21 +353,21 @@ def store_quietly(session: Session, entry: Entry) -> bool:
 
     Every caller wants the same two things: never fail the user's save because
     the embedding backend is unhappy, and never lose the reason it was unhappy.
-    The bare ``except Exception: pass`` this replaces delivered only the first —
+    The bare ``except Exception: pass`` this replaces delivered only the first, 
     so a backend that had stopped working produced notes that quietly dropped
     out of semantic search with nothing anywhere to say why.
 
     It lives here, and not in `ai/embeddings.py` where it reads like it
     belongs, for one reason: it needs the shared `EmbeddingService`, and this
     module is the only thing allowed to hand that out. From inside `embeddings`
-    it could only be reached by importing this module back — a real cycle,
+    it could only be reached by importing this module back, a real cycle,
     which a function-local import defers rather than removes.
 
     Returns True if a vector was stored.
     """
     try:
         return get_embeddings().store_for_entry(session, entry)
-    except Exception:  # noqa: BLE001 — the whole point is that nothing escapes
+    except Exception:  # noqa: BLE001  # the whole point is that nothing escapes
         logging.getLogger("memorymap.embeddings").warning(
             "couldn't embed entry %s; it stays keyword-searchable only",
             getattr(entry, "id", "?"),
@@ -377,7 +377,7 @@ def store_quietly(session: Session, entry: Entry) -> bool:
 
 #: How many notes have to arrive or vanish at once before the app says the
 #: search index is worth rebuilding. Twenty is roughly "an import or a restore
-#: happened", not "you had a productive afternoon" — a suggestion that fires
+#: happened", not "you had a productive afternoon", a suggestion that fires
 #: on ordinary use is a suggestion people learn to ignore.
 INDEX_STALE_SUGGEST_AT = 20
 
@@ -388,7 +388,7 @@ def mark_index_stale(count: int) -> None:
     Asked for directly: *"suggest rebuilding the search index upon large
     changes."* A note saved through the app embeds itself as it goes
     (`store_quietly` above); a note that arrives by bulk import or comes back
-    from a backup restore does not always, and nothing anywhere said so — the
+    from a backup restore does not always, and nothing anywhere said so, the
     only symptom was semantic search quietly missing things it should have
     found.
 

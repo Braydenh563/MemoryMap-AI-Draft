@@ -8,9 +8,9 @@ answer is the reason this file is small:
 
 **No.** `sentence_transformers.SentenceTransformer("BAAI/bge-small-en-v1.5")`
 resolves through the HuggingFace hub cache, which is a directory on disk. On
-every start it makes a handful of *metadata* requests — the `HEAD .../config.json`
+every start it makes a handful of *metadata* requests, the `HEAD .../config.json`
 and `GET .../api/models/...` lines that show up in Settings → Logs and look
-alarming — and then loads the weights it already has. The weights are fetched
+alarming: and then loads the weights it already has. The weights are fetched
 once. With no network it falls back to `local_files_only=True`, which is the
 same cache with the metadata check skipped.
 
@@ -22,7 +22,7 @@ cache. Hence: a list, a size, and install / reinstall / remove.
 **The security property is `extras.py`'s, and for the same reason.** A repo id
 from an HTTP request is a path fetched and written to disk, so the request
 names an entry in the allowlist below and the repo id is never anything the
-client sent. Removal deletes a directory — which is *why* the id may not be
+client sent. Removal deletes a directory, which is *why* the id may not be
 client text, because a path from a request is a path traversal waiting to
 happen. Every deletion is checked to be inside the cache root as well.
 """
@@ -60,7 +60,7 @@ class EmbedModel:
 
 #: The allowlist. Three, not thirty: this is a personal notebook, and a list
 #: long enough to need its own search is a list nobody can choose from. Each
-#: entry is here because it answers a different question — "the sane default",
+#: entry is here because it answers a different question, "the sane default",
 #: "I have very little disk", "I want the best matches and have the RAM".
 EMBED_MODELS: tuple[EmbedModel, ...] = (
     EmbedModel(
@@ -103,7 +103,7 @@ class DownloadState:
     log: list[str] = field(default_factory=list)
     started: float = 0.0
     outcome: str = ""  # "" while running, then completed | failed
-    #: Someone pressed Quit. Checked between download attempts — see
+    #: Someone pressed Quit. Checked between download attempts, see
     #: `cancel()` for why that is the only place it can be checked.
     cancel_requested: bool = False
 
@@ -134,7 +134,7 @@ def cache_root() -> Path:
 
 def _model_dir(model: EmbedModel) -> Path:
     """The cache directory for one repo. `org/name` becomes `models--org--name`
-    — HuggingFace's own scheme, and the reason this is a function rather than
+    - HuggingFace's own scheme, and the reason this is a function rather than
     a string in the dataclass: it is their layout, not ours, and if it ever
     changes there is one place to say so."""
     return cache_root() / ("models--" + model.repo.replace("/", "--"))
@@ -168,7 +168,7 @@ def can_download() -> bool:
     """Whether anything here can actually fetch a model.
 
     `huggingface_hub` arrives with `sentence-transformers`, so on a notebook
-    that never installed the semantic-search extra the answer is no — and
+    that never installed the semantic-search extra the answer is no, and
     saying so is much better than a download that fails with an ImportError
     the user has no way to read.
     """
@@ -209,7 +209,7 @@ def cancel() -> tuple[bool, str]:
     cancellation token and no way to interrupt it short of killing the
     process, so what this can honestly promise is: no further retry, and no
     "completed" for a download nobody wants any more. A part-downloaded model
-    is not wasted — the cache is resumable, which is why the wording says the
+    is not wasted: the cache is resumable, which is why the wording says the
     bytes are kept rather than implying they were thrown away.
 
     Claiming more than that would be the worse outcome: a Quit button that
@@ -220,7 +220,7 @@ def cancel() -> tuple[bool, str]:
         return False, "Nothing is downloading."
     _state.cancel_requested = True
     _state.step = "Stopping after the current file…"
-    return True, "It will stop after the file it is on — what's downloaded is kept."
+    return True, "It will stop after the file it is on, what's downloaded is kept."
 
 
 def _log(line: str) -> None:
@@ -233,7 +233,7 @@ def _log(line: str) -> None:
 #:
 #: Reported from a real download: *"[WinError 10054] An existing connection was
 #: forcibly closed by the remote host."* That is not a broken install or a
-#: wrong repo — it is one TCP connection dying part-way through several
+#: wrong repo: it is one TCP connection dying part-way through several
 #: hundred megabytes, which on a domestic line is ordinary. `snapshot_download`
 #: resumes from what is already in the cache, so a retry costs the bytes since
 #: the last completed file rather than starting again.
@@ -241,7 +241,7 @@ DOWNLOAD_ATTEMPTS = 3
 
 #: What a dropped connection looks like, in the words the user will see. The
 #: raw exception names a Windows error code and then tells them to "check your
-#: internet connection and try again" — which is advice, not an explanation,
+#: internet connection and try again", which is advice, not an explanation,
 #: and it is the *second* half of a two-part message whose first half was a
 #: socket error. Worth replacing, because the two failures behind it need
 #: opposite responses: a drop is worth retrying, and a genuinely offline
@@ -275,20 +275,20 @@ def _run_download(model: EmbedModel) -> None:
                 _log(
                     f"Fetching {model.repo}…"
                     if attempt == 1
-                    else f"Connection dropped — resuming ({attempt} of {DOWNLOAD_ATTEMPTS})…"
+                    else f"Connection dropped: resuming ({attempt} of {DOWNLOAD_ATTEMPTS})…"
                 )
                 snapshot_download(repo_id=model.repo)
                 if _state.cancel_requested:
                     _state.outcome = "cancelled"
-                    _state.step = "Stopped just as it finished — the files are on disk."
+                    _state.step = "Stopped just as it finished, the files are on disk."
                     return
                 _state.outcome = "completed"
                 _state.step = (
                     f"{model.label} is on this machine. Searching by meaning "
-                    "uses it from here on — no restart needed."
+                    "uses it from here on, no restart needed."
                 )
                 return
-            except Exception as exc:  # noqa: BLE001 — retry decides, not the type
+            except Exception as exc:  # noqa: BLE001  # retry decides, not the type
                 last = exc
                 if not _looks_like_a_dropped_connection(exc):
                     raise
@@ -299,7 +299,7 @@ def _run_download(model: EmbedModel) -> None:
             "downloaded is kept, so pressing Download again resumes rather "
             f"than starting over. ({last})"
         )
-    except Exception as exc:  # noqa: BLE001 — any other failure is one report
+    except Exception as exc:  # noqa: BLE001  # any other failure is one report
         _state.outcome = "failed"
         _state.step = f"Couldn't download {model.label}: {exc}"
     finally:
@@ -315,6 +315,7 @@ def _run_download(model: EmbedModel) -> None:
             _state.outcome,
             _state.step,
             name=model.id,
+            duration_ms=(time.time() - _state.started) * 1000 if _state.started else None,
         )
 
 
@@ -346,7 +347,7 @@ def start(model_id: str) -> tuple[bool, str]:
 def remove(model_id: str) -> tuple[bool, str]:
     """Delete one model from the cache.
 
-    No undo and none implied — it is a re-download, which is why the wording
+    No undo and none implied, it is a re-download, which is why the wording
     says so rather than warning about loss. What it must never be is a way to
     delete something else: the id is an allowlist key, and the path is checked
     to be under the cache root before anything is removed. Both, because the
@@ -379,14 +380,14 @@ def remove(model_id: str) -> tuple[bool, str]:
     except OSError:
         logger.warning("couldn't remove %s from the cache", model.id, exc_info=True)
         return False, (
-            f"Couldn't remove {model.label} — see Settings → Logs for why. "
+            f"Couldn't remove {model.label}: see Settings → Logs for why. "
             "It may be in use by a running model."
         )
     return True, f"{model.label} removed. Downloading it again is one click."
 
 
 def reset_for_tests() -> None:
-    """Process-global state, like the extras installer — tests have to clear it
+    """Process-global state, like the extras installer, tests have to clear it
     or one test's download leaks into the next one's assertions."""
     global _state
     _state = DownloadState()

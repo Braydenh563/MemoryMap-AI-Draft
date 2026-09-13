@@ -1,7 +1,7 @@
 """The Windows PyInstaller spec's `hiddenimports` list, kept honest against
 the source it's meant to cover.
 
-Nothing here can run PyInstaller itself — that only happens in CI, on
+Nothing here can run PyInstaller itself, that only happens in CI, on
 windows-latest (packaging/windows/memorymap.spec's own header comment says
 so). What this guards against is cheaper and just as real: a module reached
 only through `importlib.import_module` (searxng_manager.py's `__getattr__`

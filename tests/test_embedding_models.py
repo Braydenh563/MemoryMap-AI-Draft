@@ -2,7 +2,7 @@
 
 The question that prompted this is worth keeping, because the answer is not
 obvious from the logs: *"the embedding model doesn't redownload every time I
-load up the app right?"* — no. `SentenceTransformer(repo)` resolves through the
+load up the app right?"*, no. `SentenceTransformer(repo)` resolves through the
 HuggingFace cache directory; the requests visible on every start are metadata
 checks against a copy that is already there.
 
@@ -48,8 +48,8 @@ def test_an_unknown_model_is_refused_rather_than_fetched(client):
 
 def test_a_repo_id_in_the_url_is_not_a_repo_id(client):
     """The whole security property. A path in the URL must be read as an
-    allowlist key that does not match, never as somewhere to fetch from or —
-    far worse, since remove deletes a directory — somewhere to delete."""
+    allowlist key that does not match, never as somewhere to fetch from or, 
+    far worse, since remove deletes a directory, somewhere to delete."""
     for attempt in ["BAAI/bge-small-en-v1.5", "..%2F..%2Fetc", "../../etc", "%2Fetc%2Fpasswd"]:
         got = client.post(f"/embedding-models/{attempt}/download")
         # 404/405 is the router refusing to read a path as one segment; 200
@@ -86,7 +86,7 @@ def test_only_one_download_runs_at_a_time(client, monkeypatch):
 
 # --- visible outside this one screen (Tier 1 §6) -------------------------------
 #
-# `DownloadState`'s own docstring says "for /tasks and the panel" — the panel
+# `DownloadState`'s own docstring says "for /tasks and the panel", the panel
 # half (this file's own screen) was built, /tasks never was. A multi-hundred-MB
 # download with its own dropped-connection retry logic was invisible the
 # instant you clicked away from Settings → Optional extras.
@@ -136,7 +136,7 @@ def test_a_failed_download_is_recorded_in_task_history(monkeypatch):
 
 
 def test_a_repo_id_can_never_name_a_directory_outside_the_cache(tmp_path, monkeypatch):
-    """The `/` → `--` substitution is not cosmetic — it is the defence.
+    """The `/` → `--` substitution is not cosmetic, it is the defence.
 
     HuggingFace's own layout flattens `org/name` to `models--org--name`, which
     means a repo id full of `../` becomes one harmless directory name inside
@@ -172,7 +172,7 @@ def test_a_directory_outside_the_cache_root_is_never_deleted(tmp_path, monkeypat
 
 
 def test_the_size_on_disk_ignores_the_cache_symlinks(tmp_path, monkeypatch):
-    """The hub cache is made of symlinks — `snapshots/` links into `blobs/` —
+    """The hub cache is made of symlinks, `snapshots/` links into `blobs/` , 
     so a walk that follows them reports twice the real size, and this screen
     exists to tell the truth about disk."""
     monkeypatch.setattr(embedmodels, "cache_root", lambda: tmp_path)
@@ -191,7 +191,7 @@ def test_the_size_on_disk_ignores_the_cache_symlinks(tmp_path, monkeypatch):
 def test_a_dropped_connection_is_retried_and_then_explained(monkeypatch):
     """Reported from a real download: `[WinError 10054] An existing connection
     was forcibly closed by the remote host`. That is one TCP connection dying
-    part-way through several hundred megabytes, not a broken install — and
+    part-way through several hundred megabytes, not a broken install, and
     `snapshot_download` resumes from the cache, so a retry costs the bytes
     since the last completed file rather than starting again."""
     calls = []

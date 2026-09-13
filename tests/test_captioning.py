@@ -2,7 +2,7 @@
 
 Same shape as test_ocr.py, deliberately: caption_text/caption_and_store
 mirror extract_text/extract_and_store, and this suite exercises the same
-contract — never raises, write-once unless forced, does nothing gracefully
+contract: never raises, write-once unless forced, does nothing gracefully
 when the upload row is gone.
 """
 
@@ -181,7 +181,7 @@ def test_caption_and_store_records_a_failed_task_when_the_model_produces_nothing
 def test_caption_and_store_does_not_record_a_task_with_no_vision_model(
     app_state, session, fake_ollama, tmp_path
 ):
-    """Not a failure worth a history entry — every upload on a notebook
+    """Not a failure worth a history entry, every upload on a notebook
     with no vision model installed would otherwise fill the ring with the
     same expected, non-actionable line."""
     from memorymap.core import taskhistory
@@ -198,7 +198,7 @@ def test_caption_and_store_does_not_record_a_task_with_no_vision_model(
 
 
 def test_caption_and_store_force_clears_the_edited_flag(app_state, session, fake_ollama, tmp_path):
-    """A fresh AI write always supersedes a manual edit — the badge should
+    """A fresh AI write always supersedes a manual edit, the badge should
     say the model wrote the current text, not that a person's old edit is
     still what's showing."""
     upload_id = _upload(session)
@@ -221,7 +221,7 @@ def test_caption_and_store_force_clears_the_edited_flag(app_state, session, fake
 
 
 def test_running_captions_is_empty_when_nothing_is_captioning():
-    """ROADMAP §89.6 — the Tasks panel's own empty case."""
+    """ROADMAP §89.6: the Tasks panel's own empty case."""
     assert captioning.running_captions() == []
 
 

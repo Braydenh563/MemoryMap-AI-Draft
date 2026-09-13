@@ -6,7 +6,7 @@ related to the notes if no notes are found?? like similar items??"*
 
 Retrieval only ever searched notes, so a question whose answer sits in a
 document, a saved chat or a reminder came back as a flat "I couldn't find any
-saved notes matching that question" — true, useless, and misleading about how
+saved notes matching that question", true, useless, and misleading about how
 much the app actually holds.
 """
 
@@ -167,3 +167,34 @@ def test_no_related_event_when_nothing_else_matches_either(ai_client, monkeypatc
         },
     )
     assert '"type": "related"' not in response.text
+
+
+def test_one_query_per_kind_however_many_words_the_question_has(session, monkeypatch):
+    """The panel costs three scans, not three per word.
+
+    `ILIKE '%word%'` has a leading wildcard, so no index can serve it and each
+    one is a full scan of `documents.content` or `conversations.messages`, the
+    two widest text columns in the schema. This used to run inside the word
+    loop: six usable words meant eighteen scans on the path every chat answer
+    takes when no note answered. The count is the assertion because the timing
+    is the sandbox's, not the user's: measured here at 145.3 ms before and
+    118.8 ms after on 2,000 documents, 2,000 chats and 2,000 reminders.
+    """
+    from sqlalchemy import event
+
+    from memorymap.api.routes_chat import _related_elsewhere
+
+    statements: list[str] = []
+
+    def _record(conn, cursor, statement, parameters, context, executemany):
+        statements.append(statement)
+
+    engine = session.get_bind()
+    event.listen(engine, "before_cursor_execute", _record)
+    try:
+        _related_elsewhere(session, "nightly batch retry budget priya ingest parse store")
+    finally:
+        event.remove(engine, "before_cursor_execute", _record)
+
+    selects = [s for s in statements if s.lstrip().upper().startswith("SELECT")]
+    assert len(selects) == 3, f"expected one query per kind, got {len(selects)}: {selects}"

@@ -2,21 +2,21 @@
 
 Every chat message used to take the same path: retrieve five notes, then tell
 the model to answer "using ONLY the notes provided". For a real question that
-is exactly right. For "hey" it is not — the model dutifully answers a greeting
+is exactly right. For "hey" it is not: the model dutifully answers a greeting
 with a summary of your notebook, which is why saying hello felt like being
 handed a filing cabinet.
 
 So messages are sorted first, and only the ones that are actually about the
 notebook go through retrieval:
 
-- ``smalltalk``  — greetings, thanks, goodbyes. Answer as an assistant would.
-- ``about_app``  — "what can you do?". Answer from what the app can do.
-- ``notes``      — everything else: retrieve, and ground the answer in notes.
+- ``smalltalk``, greetings, thanks, goodbyes. Answer as an assistant would.
+- ``about_app``, "what can you do?". Answer from what the app can do.
+- ``notes``, everything else: retrieve, and ground the answer in notes.
 
 The classifier is deliberately a heuristic rather than a model call. It runs on
 every message, so it has to be instant and predictable; a local model would add
 latency to every turn and could itself misfire. Anything it isn't sure about
-falls through to ``notes``, which is the behaviour that was there before — the
+falls through to ``notes``, which is the behaviour that was there before, the
 worst case is the old behaviour, never something worse.
 """
 
@@ -45,7 +45,7 @@ _SMALLTALK_PATTERNS = (
     r"are you (?:there|awake|ok|okay|alive)",
 )
 
-# "What can you do?" — questions about the assistant rather than the notebook.
+# "What can you do?", questions about the assistant rather than the notebook.
 _ABOUT_APP_PATTERNS = (
     r"what can (?:you|this|the app|memorymap) do",
     r"what (?:are|do) (?:you|your) (?:capable of|abilities|features|tools)",

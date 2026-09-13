@@ -4,7 +4,7 @@ A notebook you actually use accumulates near-duplicates: the same thought
 captured on two days, a note re-typed because the first one was hard to find,
 a shopping list rewritten rather than edited.
 
-Detection here is deliberately arithmetic rather than AI — normalise the text
+Detection here is deliberately arithmetic rather than AI, normalise the text
 and compare word overlap. That means it works with nothing running, it's
 instant, and it's explainable: the score is a percentage of shared words, not
 a black box. The AI's job comes later and is optional, at merge time, where

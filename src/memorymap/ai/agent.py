@@ -5,7 +5,7 @@ the results back → repeat (bounded) → its final text is the answer.
 Yields NDJSON-ready event dicts; the chat route just serialises them.
 
 Safety lives here and in tools.py: destructive calls are never executed
-in this loop — a "confirm" event goes to the UI instead, and the model
+in this loop: a "confirm" event goes to the UI instead, and the model
 is told the action is waiting on the user.
 """
 
@@ -18,7 +18,7 @@ from collections.abc import Iterator
 
 from sqlalchemy.orm import Session
 
-from memorymap.ai import context, librarian, memory, tools
+from memorymap.ai import budget as run_budget, cards, context, librarian, memory, tools
 from memorymap.ai.model_manager import ModelManager
 from memorymap.ai.ollama_client import (
     OllamaClient,
@@ -38,7 +38,7 @@ MAX_ROUNDS = 6
 # these eight notes" costs one search, a read and eight writes, and the model
 # is cut off after six with the work half done and a note saying so.
 #
-# The flat cap was never really measuring "runaway" — it was counting rounds,
+# The flat cap was never really measuring "runaway", it was counting rounds,
 # and a model doing steady useful work spends rounds for the same reason a
 # looping one does. What separates them is whether anything *new* happened: a
 # round in which at least one tool call succeeded and was not a repeat of one
@@ -47,7 +47,7 @@ MAX_ROUNDS = 6
 # nothing and still stops at MAX_ROUNDS.
 #
 # So the ceiling is `MAX_ROUNDS + EARNED_ROUNDS` and it is only reachable by a
-# turn that did twelve distinct, successful things — which is a long job, not a
+# turn that did twelve distinct, successful things, which is a long job, not a
 # loop. A loop still stops at six.
 EARNED_ROUNDS = 6
 
@@ -55,7 +55,7 @@ EARNED_ROUNDS = 6
 #
 # Asked for directly, and the reasoning behind the number: a plan is worth a
 # paragraph, not a page. Carrying the whole of a thinking model's output would
-# double the prompt every round — the thing §11a exists to prevent — and the
+# double the prompt every round, the thing §11a exists to prevent, and the
 # part that stops the model re-deriving its plan is the plan, which is short.
 # What gets clipped is the end, because a reasoning trace states its
 # conclusion last only when it is finished; here it was interrupted by a tool
@@ -68,7 +68,7 @@ THINKING_CARRIED_CHARS = 700
 # context, and the model then answers something nobody asked. The per-call
 # caps in tools.py bound one result; this bounds the whole turn.
 #
-# Characters, not tokens, on purpose — a real tokeniser would mean loading one
+# Characters, not tokens, on purpose, a real tokeniser would mean loading one
 # per model just to count, and ~4 chars/token is close enough for a stop rule.
 #
 # **A ceiling now, not the budget.** As the only rule it was the single worst
@@ -92,20 +92,20 @@ BUDGET_EXHAUSTED = {
 }
 
 # The system prompt is resent in full on every round of every turn, alongside
-# the tool schemas — see PROSE_BUDGET_CHARS below for why that matters more
+# the tool schemas: see PROSE_BUDGET_CHARS below for why that matters more
 # than it looks. Everything here earned its place by fixing an observed
 # failure, so it is not padding; but anything that is *also* said by a tool
 # schema or by a tool result is padding, and has been cut.
 TOOLS_GUIDE = (
-    "You can use tools to act on the notebook — create, edit, tag, pin, "
+    "You can use tools to act on the notebook, create, edit, tag, pin, "
     "link, or delete notes, and manage reminders. Only make changes the "
     "user actually asked for; when they just ask a question, answer it "
     "without tools. "
-    "The notes quoted below are only what search found for this question — "
+    "The notes quoted below are only what search found for this question, "
     "they are NOT the whole notebook. To see more: count_notes to answer "
     "'how many', list_categories / list_tags to see what exists, list_notes "
     "to walk through notes, get_note to read one in full. Never state a "
-    "total from a page of results — count_notes is the only thing that knows "
+    "total from a page of results, count_notes is the only thing that knows "
     "the real number. "
     # Was two clauses saying the same thing ("not available to you at all" /
     # "say you can't see private notes"). One says it; the saving paid for the
@@ -116,15 +116,15 @@ TOOLS_GUIDE = (
     # when the instruction *names* it. Without this the structural tools sit
     # unused and "tidy my notebook" gets answered from category names, which
     # describe the filing and say nothing about how the notes relate.
-    "For how two notes relate, path_between; for the notebook's shape — "
-    "clusters, hubs, notes joined to nothing — notebook_structure. "
+    "For how two notes relate, path_between; for the notebook's shape: "
+    "clusters, hubs, notes joined to nothing, notebook_structure. "
     "You can also reach the user's long-form documents (list_documents / "
-    "get_document — never searched automatically, so go and look when a "
-    "question is about something they wrote up — and create_document to write "
-    "a new one — where an essay or report belongs, not in a note), their "
+    "get_document: never searched automatically, so go and look when a "
+    "question is about something they wrote up, and create_document to write "
+    "a new one: where an essay or report belongs, not in a note), their "
     "earlier conversations "
     "with you (search_chat_history, for when they refer to something 'we "
-    "talked about' that isn't in this thread — say when you're relying on "
+    "talked about' that isn't in this thread, say when you're relying on "
     "it), and their saved skills (list_skills, save_skill; run_skill starts "
     "one and takes over from you, so use it when a saved skill already "
     "describes the job). "
@@ -142,7 +142,7 @@ TOOLS_GUIDE = (
     # it never did. They are opposite failures and the pair is the fix.
     "After acting, tell the user briefly what you did. NEVER say you created, "
     "saved, edited, deleted, tagged, linked or unlinked anything unless you "
-    "called the tool — \"we linked…\" is claiming it just as much as \"I "
+    "called the tool: \"we linked…\" is claiming it just as much as \"I "
     "linked…\", and a list of work you did not do is the worst thing you can "
     "write. Planning is fine: say it in the future tense, then call the tools. "
     # Asked for directly: "I need agents to use tools more and better if they
@@ -154,21 +154,21 @@ TOOLS_GUIDE = (
     "rush to an answer while something you were asked about is still "
     "unchecked. "
     # §35K: "I will say fix my categories and it will only merge two categories
-    # and leave it at that." Short because the schema carries the rest — this
+    # and leave it at that." Short because the schema carries the rest, this
     # is only here because the *trigger* is a property of the request, and the
     # model has to be told to look for it.
     "If a request covers many notes, make_plan first. "
     # It under-used read_url badly: a result snippet is a sentence, and the
     # model treated it as the page.
-    "A web search result is a title and one clipped sentence — enough to "
+    "A web search result is a title and one clipped sentence, enough to "
     "choose a page, never enough to answer from. Call read_url on a result "
     "that matters before relying on it, and name the sites you actually read. "
     # It re-narrated the step timeline the user was already watching.
     "The user can already see which tools you ran, in order. Do not narrate "
-    "your process back to them ('let me search…', 'I will now check…') — just "
+    "your process back to them ('let me search…', 'I will now check…'), just "
     "do it, then give the answer. "
     # Reported: "I don't know what 'Note #12' is when the ai refers to it."
-    # Ids are the app's handle, not the user's — nothing in the interface shows
+    # Ids are the app's handle, not the user's: nothing in the interface shows
     # one, so a bare id names a note the user has no way to identify.
     "Users never see note ids: name a note by a few of its own words (\"your "
     "gym routine note\"), not \"note 28\". "
@@ -189,8 +189,8 @@ SMALL_WINDOW_TOKENS = 8_192
 #: The load-bearing half of TOOLS_GUIDE, for a model that cannot afford the
 #: whole thing.
 #:
-#: Measured on a real turn: TOOLS_GUIDE is 2,807 characters — about 700 tokens
-#: — and it is re-sent on **every round** of an agent loop. On a 4k-window
+#: Measured on a real turn: TOOLS_GUIDE is 2,807 characters, about 700 tokens
+#:, and it is re-sent on **every round** of an agent loop. On a 4k-window
 #: model that is 17% of the entire context spent, per round, on static prose,
 #: which is a large part of the reported *"agent mode and chats are too heavy
 #: for small models and have a too small context window"*.
@@ -199,7 +199,7 @@ SMALL_WINDOW_TOKENS = 8_192
 #: cannot be recovered from: claiming work it never did, treating a page of
 #: search results as the whole notebook, quoting note ids at the user, and
 #: repeating a call that just failed. What is dropped is elaboration the tool
-#: schemas already carry — which tool to reach for is in each tool's own
+#: schemas already carry: which tool to reach for is in each tool's own
 #: description, and a small window is exactly the case where saying it twice
 #: is unaffordable.
 #:
@@ -209,17 +209,17 @@ SMALL_WINDOW_TOKENS = 8_192
 COMPACT_TOOLS_GUIDE = (
     "You can use tools to act on the notebook. Only make changes the user "
     "actually asked for; answer plain questions without tools. "
-    "The notes quoted below are only what search found — NOT the whole "
+    "The notes quoted below are only what search found, NOT the whole "
     "notebook. Use count_notes for totals, list_notes to walk through, "
     "get_note to read one in full. Never state a total from a page of "
     "results. Private notes are invisible to you; say so if asked. "
     "For reminders, compute due_at from the current time below as ISO 8601. "
     "NEVER say you created, saved, edited, deleted, tagged or linked "
-    "anything unless you actually called the tool — claiming work you did "
+    "anything unless you actually called the tool, claiming work you did "
     "not do is the worst thing you can write. Planning ahead is fine: say "
     "it in the future tense, then call the tools. "
     "Taking several turns is normal: look something up, read it, then "
-    "answer. Do not narrate ('let me search…') — just do it, then answer. "
+    "answer. Do not narrate ('let me search…'), just do it, then answer. "
     "Name a note by its own words, never 'note 28'. Write symbols plainly "
     "(→ × ≤), never as LaTeX. If a tool fails, follow its 'what_to_do' "
     "field, and never repeat a call that just failed the same way."
@@ -229,18 +229,18 @@ COMPACT_TOOLS_GUIDE = (
 #: Appended when the tool list was narrowed by reading the question's words.
 #:
 #: The narrowing is a guess made from wording, and a guess the model is
-#: entitled to disagree with — asked for directly: *"if the program detects
+#: entitled to disagree with, asked for directly: *"if the program detects
 #: words and suggests that specific tools or skills might need to be used, and
 #: the AI thinks that's wrong then it doesn't have to use them"*.
 #:
 #: It already may. `permitted` is None on an ordinary turn, so a tool the model
 #: names runs whether or not it was in the list, and reaching past the list
 #: widens it for the rest of the turn (see the focus-correction block in the
-#: round loop). What was missing was the model being *told* that — without it,
+#: round loop). What was missing was the model being *told* that, without it,
 #: a well-behaved model treats the list as exhaustive, which is exactly the
 #: behaviour that makes a narrow guess expensive.
 #:
-#: One sentence, because it is on every round of every focused turn — and it
+#: One sentence, because it is on every round of every focused turn, and it
 #: is appended to the system message, joining the clock in its volatile tail
 #: (see build_agent_messages): narrowed-or-not is decided per turn, so this
 #: can never be part of the prefix-cached head wherever it is put.
@@ -252,7 +252,7 @@ FOCUS_NOTE = (
 
 
 def tools_guide(window_tokens: int | None) -> str:
-    """The tool guide sized to the window — see COMPACT_TOOLS_GUIDE.
+    """The tool guide sized to the window, see COMPACT_TOOLS_GUIDE.
 
     ``None`` means the window is not known yet, which is the safe case for the
     long guide: an unknown window is usually a provider that did not report
@@ -268,14 +268,14 @@ def tools_guide(window_tokens: int | None) -> str:
 
 
 # What the model is handed before a single word of the question, the notes or
-# the history — the system prompt plus every tool schema — resent on each of
+# the history, the system prompt plus every tool schema, resent on each of
 # up to MAX_ROUNDS rounds.
 #
 # This is the number that decides whether the agent is usable on the 3B-class
 # models people actually run here (granite4.1:3b, llama3.2:3b, qwen3.5:2b).
 # Ollama defaults to a 4096-token window unless a model says otherwise, so at
 # ~4 chars per token this overhead alone can be most of it, and everything
-# past the limit is silently dropped from the *front* — which is the system
+# past the limit is silently dropped from the *front*, which is the system
 # prompt, so a model that overflows stops knowing it has tools at all.
 #
 # It is asserted rather than noted because it drifts upward invisibly: every
@@ -285,13 +285,13 @@ def tools_guide(window_tokens: int | None) -> str:
 #
 # 13,000 → 13,800, for the four category tools (§14). The guard did its job:
 # adding them took the all-tools overhead straight past the old figure, and
-# the first version of those schemas — with a per-parameter description on
-# each, matching the older tools — went past the *window* too. They were
+# the first version of those schemas, with a per-parameter description on
+# each, matching the older tools, went past the *window* too. They were
 # rewritten terse (no "old: the current name" when the field is called `old`)
 # and now cost 1,112 characters between them.
 #
 # **This is now a backstop, not the mechanism.** It was briefly the binding
-# constraint on §14's tool list — "room for about one more tool, then none" —
+# constraint on §14's tool list, "room for about one more tool, then none" , 
 # which was the wrong shape of answer, because the ceiling it described was
 # never a fact about the app. 4096 is what Ollama falls back to when a model
 # declares nothing; most current models declare 8k, 32k or far more.
@@ -302,7 +302,7 @@ def tools_guide(window_tokens: int | None) -> str:
 # whole registry, a genuine 3B at 4096 gets a prioritised subset, and adding a
 # tool is no longer a question of whether it fits inside a constant.
 #
-# What this number still does is catch the *prose* growing — the system prompt
+# What this number still does is catch the *prose* growing, the system prompt
 # and TOOLS_GUIDE are sent whatever the window, and no per-turn trimming
 # applies to them. If it trips, look at what was added to the guide before
 # reaching for the number.
@@ -314,37 +314,37 @@ def tools_guide(window_tokens: int | None) -> str:
 # when to ask; it was cut to 507 by keeping only the two rules that stop it
 # being misused (stop after asking, don't ask what you could look up) and
 # deleting the rest. `ask_user` is in CORE_TOOLS, so unlike most tools it is
-# paid for on every single turn — which is exactly why it had to be terse.
+# paid for on every single turn, which is exactly why it had to be terse.
 #
 # 14,400 → 15,000, for `related_notes` (§9). Second raise in one session, and
 # that pattern is worth naming rather than repeating silently: **this number
 # was measuring the wrong thing.** It weighed the *whole* registry, and no turn
 # has sent the whole registry since `within_budget` started fitting the schemas
-# to the model's real window — a 4k model receives about 1,450 tokens of it, a
+# to the model's real window: a 4k model receives about 1,450 tokens of it, a
 # 32k model receives all of it and has ample room. So what tripped was not "the
 # prompt is too heavy for a small model" but "the registry grew again", which
 # is a thing that is *supposed* to happen.
 #
 # **Retired at that point, exactly as the note above it said to.** It asked for
 # retirement if it ever needed raising a third time for a *tool* rather than
-# for prose — and the third time came in the same session, for one added
+# for prose: and the third time came in the same session, for one added
 # argument on `save_skill`. A guard that has to be raised every time the app
 # grows is not a guard; it is a chore that teaches people to edit the number.
 #
 # What replaces it is two assertions that each measure something real:
 #
-#   - `PROSE_BUDGET_CHARS` below — the persona and TOOLS_GUIDE, which are sent
+#   - `PROSE_BUDGET_CHARS` below: the persona and TOOLS_GUIDE, which are sent
 #     whatever the window and are *never* trimmed. This is the half the old
 #     constant measured honestly, and the half that can still quietly bloat.
 #   - `test_prompt_budget.test_the_overhead_leaves_room_for_an_actual_
-#     conversation` — what actually reaches a 4,096-token model *after* the
+#     conversation`, what actually reaches a 4,096-token model *after* the
 #     trim. That is the number that decides whether a 3B model works.
 #
 # The tool registry is deliberately no longer capped by a constant. It is
 # capped by the model's real window, per turn, by code that is tested.
 
 # The un-trimmable half. Every character here is resent on every round of every
-# turn, before the question, the notes or the history — and unlike the tool
+# turn, before the question, the notes or the history, and unlike the tool
 # schemas, nothing fits it to the window. If this trips, something was added to
 # TOOLS_GUIDE or the persona; look there rather than at the number.
 PROSE_BUDGET_CHARS = 3_000
@@ -358,7 +358,7 @@ MEMORY_STREAM_BUDGET_CHARS = memory.MEMORY_STREAM_BUDGET_CHARS
 #
 # A failure used to be handed to the model as a bare `{"error": "..."}` and
 # nothing else. Small models do one of two things with that: give up and
-# apologise, or call the identical thing again — and again, until MAX_ROUNDS
+# apologise, or call the identical thing again, and again, until MAX_ROUNDS
 # runs out and the user gets "I stopped after using several tools in a row"
 # having been told nothing. Neither is a reasonable response to, say, a
 # mistyped note id.
@@ -399,7 +399,7 @@ _RECOVERY_HINTS = {
         "the run, or finish and tell the user what the skill could not do."
     ),
     "already_running": (
-        "You are already inside a run that is working through steps — you "
+        "You are already inside a run that is working through steps, you "
         "cannot start another one from in here. Do this step with the tools "
         "you have, and the next step will get its own turn."
     ),
@@ -434,8 +434,8 @@ def _recovery_hint(name: str, message: str) -> str:
     if "timeout" in lowered or "timed out" in lowered:
         return _RECOVERY_HINTS["timeout"]
     # "nothing found" and "returned nothing" are about the *search*; "empty" on
-    # its own is not, and matching it here sent "the note body is empty" — an
-    # argument mistake the model can fix — down the "it isn't there, stop
+    # its own is not, and matching it here sent "the note body is empty", an
+    # argument mistake the model can fix, down the "it isn't there, stop
     # looking" path. Match the phrases that mean an empty result, not the word.
     if "nothing found" in lowered or "returned nothing" in lowered or "no results" in lowered:
         return _RECOVERY_HINTS["empty_result"]
@@ -454,7 +454,7 @@ REPEATED_CALL_NOTE = (
     "different tool, or stop and tell the user what you could not do."
 )
 
-# How many times one tool may fail in a turn — with *any* arguments — before
+# How many times one tool may fail in a turn, with *any* arguments, before
 # it is taken away for the rest of that turn. See `tool_failures` in
 # `run_agent` for the logged loop this exists for. Three is deliberate: two
 # failures is a model correcting itself, which is the behaviour the recovery
@@ -465,7 +465,7 @@ REPEATED_CALL_NOTE = (
 #:
 #: Reported with a screenshot: "tools render fine in the chat initially but
 #: then I come back to them after reloading the app later and they look like
-#: this" — rows reading `Listed your categories{'categories': [{'name':
+#: this", rows reading `Listed your categories{'categories': [{'name':
 #: 'Games', 'notes': 3}], 'total_notes': 27, 'label': 'ph:folders Listed your
 #: categories'}`. That is Python's `repr` of the result dict, which is what
 #: the fallback here used to be: single quotes, `True`/`False`, no line
@@ -481,7 +481,7 @@ REPEATED_CALL_NOTE = (
 #: and `default=str` keeps a stray datetime from turning the whole disclosure
 #: into an error.
 #:
-#: 4000 is unchanged and deliberate — see the note at the call site: the box
+#: 4000 is unchanged and deliberate, see the note at the call site: the box
 #: it lands in already scrolls (`.tool-chip-result`, 12rem), so this only
 #: bounds a pathological single result from bloating the SSE event.
 RESULT_SUMMARY_CHARS = 4000
@@ -510,7 +510,7 @@ def _result_summary(result: dict) -> str:
 #: stuff??"
 #:
 #: The transcript already said *that* a tool ran and, in a disclosure, what it
-#: returned as JSON. What it could not say is *which note* — and a note id in a
+#: returned as JSON. What it could not say is *which note*, and a note id in a
 #: blob of JSON is not something a person can act on, the same complaint that
 #: produced the palette's note links.
 #:
@@ -532,7 +532,7 @@ def _touched_kind(candidate: dict) -> str | None:
     **The order matters and is the whole correctness of this function.** A
     document result carries `id`, `title` *and* `content` (see
     ai/tools/documents.py), so a check for `content` alone calls a document a
-    note — and the UI would then open the *note* with that id, which is a
+    note: and the UI would then open the *note* with that id, which is a
     different object entirely, or nothing at all. `title` is what only a
     document has; `content` is what a note has and a document also has. So
     document is tested first, and note is the fallback.
@@ -562,7 +562,7 @@ def _touched_items(result: dict) -> list[dict]:
             return
         seen.add((kind, item_id))
         # A document is known by its title; a note has none, so its opening
-        # words stand in for one — the same thing `noteLabel` shows in a list.
+        # words stand in for one, the same thing `noteLabel` shows in a list.
         source = candidate.get("title") if kind == "document" else candidate.get("content")
         label = " ".join(str(source or "").split())[:60]
         rows.append({"kind": kind, "id": item_id, "label": label or f"{kind} #{item_id}"})
@@ -575,7 +575,73 @@ def _touched_items(result: dict) -> list[dict]:
         if isinstance(value, list):
             for item in value:
                 _take(item)
+
+    #: **A mind map, which is named by `board_id` and not by `id`.**
+    #: MINDMAP_PLAN.md §5 item 12 asks for a map chip in the chat transcript,
+    #: and without this the four map tools contributed *nothing* to it:
+    #: `read_mindmap`, `create_mindmap`, `add_map_node` and `link_map_nodes`
+    #: all return `board_id` (plus `board_title` or `title`), so `_take`'s
+    #: `candidate.get("id")` found no id and the row was dropped, a turn that
+    #: read a whole map showed a bare tool name and no way to open it.
+    #:
+    #: Read here rather than by teaching `_take` about a second id field: `id`
+    #: means "a note or a document" everywhere else in this function, and a
+    #: board id in that space would be opened as a note by the front end,
+    #: which is the exact confusion `_touched_kind`'s own comment is about.
+    board_id = result.get("board_id")
+    if isinstance(board_id, int) and len(rows) < TOUCHED_LIMIT:
+        title = result.get("board_title") or result.get("title") or ""
+        label = " ".join(str(title).split())[:60] or f"map #{board_id}"
+        if ("map", board_id) not in seen:
+            seen.add(("map", board_id))
+            rows.append({"kind": "map", "id": board_id, "label": label})
     return rows
+
+
+#: How many ids one read may contribute to a run's `seen_ids` (Brief 13).
+#: Generous where `TOUCHED_LIMIT` is deliberately mean: `touched` draws chips
+#: in the transcript, where six is already a crowd, while this is the run's
+#: own ledger of what it has actually looked at, and the whole point of paging
+#: a notebook is that the number is larger than one page. Ints only, so the
+#: cost of carrying the full page is a few dozen bytes on the event.
+SEEN_LIMIT = 500
+
+
+def _seen_ids(result: dict) -> list[int]:
+    """Every note id one read returned, in order, without the chip cap.
+
+    **Why this is not `touched`.** `_touched_items` is the transcript's list
+    and stops at six, which is right for a row of chips and wrong for the one
+    question a paging step has to answer: *have I now seen all of them?* A
+    step told to look at every note used to have no way to know, because the
+    only record of what a page contained was capped at a quarter of a page.
+    """
+    if not isinstance(result, dict):
+        return []
+    ids: list[int] = []
+    seen: set[int] = set()
+
+    def _take(candidate: object) -> None:
+        if len(ids) >= SEEN_LIMIT or not isinstance(candidate, dict):
+            return
+        item_id = candidate.get("id")
+        # Notes only: an id here is read back as a note id by the state line
+        # and by every id-targeting tool, and a document id in that space
+        # names a different object entirely (see `_touched_kind`).
+        if not isinstance(item_id, int) or item_id in seen or "title" in candidate:
+            return
+        if "content" not in candidate:
+            return
+        seen.add(item_id)
+        ids.append(item_id)
+
+    _take(result)
+    for key in ("notes", "results", "matches", "linked", "created"):
+        value = result.get(key)
+        if isinstance(value, list):
+            for item in value:
+                _take(item)
+    return ids
 
 
 #: How many web/file sources one tool call may contribute to the answer's
@@ -599,7 +665,7 @@ def _tool_sources(name: str, result: dict) -> list[dict]:
     where it needed a title, an address and a line of the page.
 
     Read-only tools only. A write tool's result is a change, and changes are
-    already carried by `change`/`touched` — a source is something the answer
+    already carried by `change`/`touched`, a source is something the answer
     *drew on*.
     """
     if not isinstance(result, dict) or "error" in result:
@@ -664,7 +730,7 @@ MAX_PARKED_CONFIRMS = 2
 TOOL_EXHAUSTED_NOTE = (
     "This tool has now failed several times in this turn with different "
     "arguments, so it has been switched off for the rest of this turn. Do "
-    "not call it again — you will get this same message. Either do the job "
+    "not call it again, you will get this same message. Either do the job "
     "with a different tool, or stop now and tell the user plainly what you "
     "were trying to do and what went wrong."
 )
@@ -683,7 +749,7 @@ _WRITE_TOOLS = tools.WRITE_TOOLS
 # **Reported as "the agent does things that don't make sense":** a change
 # event used to read `result.get("id")` unconditionally and call it
 # `note_id`, so creating a document during a skill run produced a change
-# whose "note_id" was really that document's id — the change list's own View
+# whose "note_id" was really that document's id: the change list's own View
 # button (§21/§22) would then take you to whatever note happened to share
 # that id, or nowhere. `_change_note_id` only fills the field in for tools
 # that actually touched a note, and reads it from the field that tool really
@@ -694,7 +760,7 @@ _NOTE_ID_FIELD = {
     "tag_note": "tagged",
     "pin_note": "id",
     "restore_note": "id",
-    "link_notes": "linked",  # [source_id, target_id] — the note the call was made on
+    "link_notes": "linked",  # [source_id, target_id]: the note the call was made on
     "unlink_notes": "unlinked",
     "delete_note": "deleted",
 }
@@ -712,7 +778,7 @@ def _change_note_id(name: str, result: dict) -> int | None:
     return value if isinstance(value, int) else None
 
 
-# The document equivalent of `_NOTE_ID_FIELD` above — only `create_document`
+# The document equivalent of `_NOTE_ID_FIELD` above: only `create_document`
 # needs one: `delete_document` is destructive, so it never reaches this code
 # path at all (it is parked for a confirm, not executed here).
 _DOCUMENT_ID_FIELD = {"create_document": "id"}
@@ -733,8 +799,8 @@ def _change_document_id(name: str, result: dict) -> int | None:
 
 
 # ROADMAP.md Tier 2 §13: reminders and categories had no `_change_*_id`
-# resolver at all, so `changeRow`'s View button — built for notes and
-# documents — had nothing to extend to. Both tools' own results already
+# resolver at all, so `changeRow`'s View button: built for notes and
+# documents: had nothing to extend to. Both tools' own results already
 # carry what's needed; this just names the field the same way the two
 # resolvers above do.
 _REMINDER_ID_FIELD = {"set_reminder": "id", "complete_reminder": "id"}
@@ -749,11 +815,11 @@ def _change_reminder_id(name: str, result: dict) -> int | None:
     return value if isinstance(value, int) else None
 
 
-# Categories are identified by name, not id — every category tool's own
+# Categories are identified by name, not id, every category tool's own
 # arguments and results already work in names, so this names the field that
 # carries the category a note ended up in rather than inventing an id
 # nothing else uses. `delete_category` is destructive (like
-# `delete_document`) and never reaches this code path — it's parked for a
+# `delete_document`) and never reaches this code path, it's parked for a
 # confirm card, not executed here.
 _CATEGORY_NAME_FIELD = {
     "create_category": "name",
@@ -781,10 +847,10 @@ def _change_category_name(name: str, result: dict) -> str | None:
 # That turn got past the original net twice over, and both gaps are worth
 # naming because they are the shape of the next one:
 #
-# 1. The pattern only knew the first person singular — "I linked". The model
+# 1. The pattern only knew the first person singular, "I linked". The model
 #    wrote "**Linked Notes:** We connected your main Social Skills Guide to…"
 #    and "we" matched nothing.
-# 2. It asked one question of the whole turn — "did *any* write run?" — so a
+# 2. It asked one question of the whole turn, "did *any* write run?", so a
 #    turn that legitimately linked one pair and then claimed four more passed
 #    on the strength of the one that was real.
 #
@@ -792,7 +858,7 @@ def _change_category_name(name: str, result: dict) -> str | None:
 # actually ran. That is §33's "completion verifier" in its cheap form: no
 # second model round, just what was said against what was called.
 
-#: Who the model says did it. Past and perfect only — "we could link these" is
+#: Who the model says did it. Past and perfect only, "we could link these" is
 #: a suggestion and must not be reported as a false claim.
 _CLAIMANT = r"(?:i|we)(?:'ve)?\s+(?:have\s+|just\s+|now\s+|also\s+|then\s+|successfully\s+)*"
 
@@ -836,7 +902,7 @@ _CLAIMED_ACTIONS: tuple[tuple[str, str, frozenset[str]], ...] = (
 #: tagged** them both". Models write this constantly, and requiring an
 #: explicit "I"/"we" in front of every verb missed the whole second half of
 #: such a sentence. Only trusted once the answer has claimed something
-#: outright somewhere — otherwise "the notes you tagged in March" would read
+#: outright somewhere: otherwise "the notes you tagged in March" would read
 #: as a claim.
 _CARRIED_ON = r"(?:and|then|,)\s+(?:also\s+|successfully\s+|later\s+)*"
 
@@ -850,8 +916,8 @@ _CLAIM_MATCHERS = tuple(
     for label, verb, needs in _CLAIMED_ACTIONS
 )
 
-# Kept because it is the cheapest check for the commonest case — a model that
-# describes a note it never saved — and it catches phrasings with no claimant
+# Kept because it is the cheapest check for the commonest case, a model that
+# describes a note it never saved, and it catches phrasings with no claimant
 # at all. Widened from the original to cover "we" as well as "I".
 _CLAIM_PATTERN = re.compile(
     rf"\b({_CLAIMANT}(?:created|added|saved|made|updated|edited|deleted|tagged|"
@@ -865,7 +931,7 @@ def unsupported_claims(answer: str, ran: set[str]) -> list[str]:
 
     `ran` is the write tools that actually executed this turn (or were parked
     for the user's approval, which is its own visible signal). A claim whose
-    tool is in there is taken at face value — this is a net for fabrication,
+    tool is in there is taken at face value, this is a net for fabrication,
     not an auditor of whether the right note was edited.
     """
     # Whether this answer speaks in the claiming voice at all. A carried-on
@@ -901,7 +967,7 @@ def build_agent_messages(
     acting, and each note shows its id so tools can target it.
 
     `budget` trims the notes and the history to what the model can actually
-    hold. Optional so every existing caller keeps working untrimmed — the
+    hold. Optional so every existing caller keeps working untrimmed, the
     agent loop passes one, having measured the window first.
     """
     style_hint = librarian.STYLE_HINTS.get(style, librarian.STYLE_HINTS["friendly"])
@@ -917,7 +983,7 @@ def build_agent_messages(
     local = user_now(deps.get_config())
     # To the minute, not the microsecond. This string sits near the top of a
     # prompt that is resent on every round of every turn, and Ollama's prefix
-    # cache keeps only the tokens *before* the first difference — so a clock
+    # cache keeps only the tokens *before* the first difference, so a clock
     # that ticked every microsecond invalidated the history and the notes
     # below it every single time, and each round re-read the whole prompt from
     # scratch. A tool loop runs its rounds seconds apart, so a minute-precision
@@ -933,8 +999,8 @@ def build_agent_messages(
     # it. Rounding to the minute above stops the clock changing between the
     # rounds of one turn; putting it at the end of the message stops the
     # minute it does change from invalidating anything ahead of it. Persona,
-    # grounding and the tools guide — by far the largest part of this prompt,
-    # and the part that is identical turn after turn — now sit in front of
+    # grounding and the tools guide, by far the largest part of this prompt,
+    # and the part that is identical turn after turn, now sit in front of
     # every volatile byte, so they are re-read from cache instead of
     # re-processed. Asked for directly: "keep the system prompt + persona
     # byte-identical turn to turn so the cache is reused."
@@ -962,15 +1028,15 @@ def build_agent_messages(
         )
 
     numbered = "\n".join(
-        # Same caveats the plain (no-tools) librarian prompt already gives —
+        # Same caveats the plain (no-tools) librarian prompt already gives, 
         # attached-by-hand, linked-not-matched (with its reason, when the
-        # link has one), similarity/keyword match info — reused rather than
+        # link has one), similarity/keyword match info, reused rather than
         # left agent-mode-only silent about them. Nothing new to compute:
         # `prepared["notes"]` already carries this from routes_chat.py; the
         # agent path just never read it before.
         f"{i}. (note id {note.get('id', '?')}) [{note['category']}]"
         f"{' (attached by me)' if note.get('attached') else ''}"
-        f"{' (not a match — linked to one of the above)' if note.get('connected') else ''}"
+        f"{' (not a match: linked to one of the above)' if note.get('connected') else ''}"
         f"{librarian._match_info_hint(note.get('match_info'))} "
         f"{librarian.note_for_prompt(note)}"
         for i, note in enumerate(notes, start=1)
@@ -983,7 +1049,7 @@ def build_agent_messages(
         # failure this app exists to avoid.
         body = (
             f"{body[:-2]}\n({dropped_notes} more matching note"
-            f"{'' if dropped_notes == 1 else 's'} did not fit — use search_notes "
+            f"{'' if dropped_notes == 1 else 's'} did not fit: use search_notes "
             f"or get_note if you need them.)\n\n"
         )
     user_message = {"role": "user", "content": f"{body}My request: {question}"}
@@ -1000,16 +1066,16 @@ def build_agent_messages(
 # skill that doesn't exist usually means there was no skill for this job.
 _HANDOFF_RECOVERY = {
     "ask_user": (
-        "Fix the question and call ask_user again with 2-6 short options — or, "
+        "Fix the question and call ask_user again with 2-6 short options, or, "
         "if you can work it out yourself, just answer without asking."
     ),
     "run_skill": (
         "Call list_skills to see the exact names and what each one needs, then "
-        "run_skill again — or, if none of them fits, just do the job yourself "
+        "run_skill again: or, if none of them fits, just do the job yourself "
         "with the ordinary tools."
     ),
     "compress_chat": (
-        "There isn't enough conversation yet to compress — keep going, or "
+        "There isn't enough conversation yet to compress, keep going, or "
         "just answer without calling this."
     ),
 }
@@ -1020,13 +1086,13 @@ AWAITING_CONFIRMATION = {
     "status": "awaiting_user_confirmation",
     "note": (
         "The app is showing the user a confirm button for this action. "
-        "It has NOT run yet — tell the user it's waiting for their approval."
+        "It has NOT run yet, tell the user it's waiting for their approval."
     ),
 }
 
 
 #: How much of the previous exchange a follow-through turn is read against.
-#: Two turns' worth of text, capped — this is only ever used for keyword
+#: Two turns' worth of text, capped, this is only ever used for keyword
 #: matching, so the whole of a long answer adds nothing but false positives
 #: from words the model happened to use in passing.
 FOLLOW_THROUGH_CONTEXT_CHARS = 1_200
@@ -1059,7 +1125,7 @@ def _focus(question: str, history: list[dict] | None = None) -> list[str] | None
     for that has to be reachable without editing code.
 
     `history` is passed so a turn that means "now do what we just discussed"
-    can be read against what was discussed — reported directly, and the cause
+    can be read against what was discussed, reported directly, and the cause
     of an agent that answered "implement those suggestions" with the same
     suggestions again. See `tools.focus_for`.
     """
@@ -1092,23 +1158,23 @@ def run_agent(
     image_context: str | None = None,
 ) -> Iterator[dict]:
     """Yields event dicts:
-    {"type": "unsupported"}                    — model can't do tools; caller
+    {"type": "unsupported"}, model can't do tools; caller
                                                  should fall back to plain Q&A
                                                  (always the first and only event)
     {"type": "thinking", "delta": str}
     {"type": "tool", "label": str, "ok": bool, "error": str|None}
     {"type": "confirm", "name", "arguments", "label"}
-    {"type": "limit", "reason": "rounds", ...}  — ran out of rounds mid-job;
+    {"type": "limit", "reason": "rounds", ...}, ran out of rounds mid-job;
                                                  the answer that follows is a
                                                  stopping notice, not a result
-    {"type": "answer", "delta": str}           — the final text
+    {"type": "answer", "delta": str}: the final text
     """
     # Size the whole turn against the window before building any of it.
     #
     # Every part used to carry its own constant, each reasonable alone and
     # never added up: the worst case came to ~11,300 tokens against a 4,096
     # window, and the tool-result cap alone exceeded that window by half.
-    # Overflow is dropped from the FRONT, so the failure is not an error — it
+    # Overflow is dropped from the FRONT, so the failure is not an error, it
     # is the model quietly losing its system prompt and answering from nothing.
     report = getattr(ollama, "usable_context", None)
     agent_model = model_override or (
@@ -1128,7 +1194,7 @@ def run_agent(
 
     # Same fallback as librarian.answer()/converse(): a vision model's own
     # caption of an attached image, for when agent_model above can't see the
-    # image itself — folded into the question text here rather than mutating
+    # image itself: folded into the question text here rather than mutating
     # `question` in place, since later rounds of this same loop reuse it.
     full_question = f"{question}\n\n{image_context}" if image_context else question
     messages = build_agent_messages(
@@ -1145,7 +1211,7 @@ def run_agent(
     # A skill's declared tools are the only ones offered for its run: fewer
     # schemas on the wire (roadmap §11a) and a narrower thing to go wrong.
     # An ordinary turn declares nothing, so the question is read for what it
-    # plausibly needs — see tools.focus_for. Note the asymmetry: the skill's
+    # plausibly needs: see tools.focus_for. Note the asymmetry: the skill's
     # list is also *enforced* below, while the focus is only an economy. A
     # tool left out because a cue didn't fire must still run if the model
     # somehow calls it.
@@ -1164,7 +1230,7 @@ def run_agent(
         offered = [t for t in offered if t["function"]["name"] not in barred]
     # On a small window, trim the descriptions even when the full set would
     # fit. `within_budget` compacts only once the schemas overflow their share,
-    # which is the right rule for a large model — but on an 8k window the
+    # which is the right rule for a large model, but on an 8k window the
     # focused set measured 4,827 chars against a 7,901-char allowance, so it
     # "fits" and is sent in full, spending 1,206 tokens where 996 does the same
     # job. Affordable is not the same as wise: what the allowance leaves unspent
@@ -1179,7 +1245,7 @@ def run_agent(
     # Then fit what is left to the window the model actually has, rather than
     # to a constant. See tools.within_budget: 4096 is Ollama's fallback, not a
     # fact, and a model declaring 32k was being rationed as if it were a 3B.
-    # A skill's declared list is exempt — it asked for exactly those tools, and
+    # A skill's declared list is exempt, it asked for exactly those tools, and
     # silently dropping one would break the run rather than trim it.
     # --- the focus is a guess, and the model gets to overrule it ---------------
     #
@@ -1191,7 +1257,7 @@ def run_agent(
     # Two mechanisms, and they are different things. The escape hatch already
     # existed: `permitted` is None on an ordinary turn, so a tool the model
     # calls anyway still runs even if it was never offered. What is added here
-    # is the correction — a call for something unoffered is *evidence the focus
+    # is the correction: a call for something unoffered is *evidence the focus
     # was wrong*, so the next round of this same turn gets the full toolbox
     # rather than the same narrow guess that already failed the model once.
     #
@@ -1199,7 +1265,7 @@ def run_agent(
     # round, not the request.
     focused_only = allowed_tools is None
     every_tool = offered
-    # Say so, once, in the system prompt — but only when the list really was
+    # Say so, once, in the system prompt, but only when the list really was
     # narrowed. On a broad request the model already has everything, and a note
     # explaining that the list is partial would simply be false.
     if focused_only and focus_names is not None and messages:
@@ -1226,7 +1292,7 @@ def run_agent(
             )
     # Roadmap §11a's prescribed first step: measure before cutting. One line
     # per turn saying what the prompt is made of, so "which half dominates a
-    # real chat — the notes or the history?" is answered from the log rather
+    # real chat: the notes or the history?" is answered from the log rather
     # than argued about. Chars, not tokens: the ratio is what matters, and
     # the true token counts already arrive in each round's stats event.
     system_chars = len(messages[0]["content"])
@@ -1243,11 +1309,11 @@ def run_agent(
         len(offered),
     )
     # §88.4 item 4's next step past the log line above: the same breakdown,
-    # as a rough token estimate (chars/4 — the same approximation
+    # as a rough token estimate (chars/4: the same approximation
     # ai/context.py's own budgeting uses), attached to the first round's
     # stats event so the UI's metadata line can show it rather than it
     # being visible only in Settings -> Logs. Measured once, here, before
-    # the loop below appends any tool-result rounds to `messages` — a
+    # the loop below appends any tool-result rounds to `messages`, a
     # later round's true composition would need re-measuring inside the
     # loop, which this does not attempt; the first round is also the one
     # every turn actually has, tool calls or not.
@@ -1274,7 +1340,7 @@ def run_agent(
     #
     # Reported with a live log: the agent called `merge_categories` over and
     # over, alternating between "There is no category called X" and "X and X
-    # are the same category" — different arguments every round, so the
+    # are the same category", different arguments every round, so the
     # signature guard never fired once, and the turn burned every round it
     # had before telling the user nothing. The tool's own error message even
     # listed the real category names (see `_find_category`), so this is not
@@ -1310,15 +1376,38 @@ def run_agent(
     allowance = granted
     round_number = -1
 
+    #: **The run this turn belongs to, if it belongs to one** (Brief 13).
+    #: None for an ordinary chat turn: that is bounded per turn already, by
+    #: `allowance` immediately below, and has no notion of a run to belong to.
+    #: See `ai/budget.py` for why this is a scope rather than a parameter.
+    spend = run_budget.current()
+
     while round_number + 1 < allowance:
+        #: Checked between rounds, never mid-stream: stopping inside a model
+        #: call would leave half an answer on screen and a tool result nobody
+        #: read, so the most a run can overshoot its budget by is one round.
+        if spend is not None and spend.exceeded():
+            yield {
+                "type": "limit",
+                "reason": "budget",
+                "detail": spend.exceeded(),
+                "rounds": round_number + 1,
+                "tokens": spend.spent_tokens,
+                "wrote": sorted(ran_writes),
+            }
+            yield {
+                "type": "answer",
+                "delta": f"I stopped here: {spend.exceeded()}",
+            }
+            return
         round_number += 1
-        # Set by any tool call that succeeded and had not been made before —
+        # Set by any tool call that succeeded and had not been made before, 
         # the definition of "this round got somewhere". Read at the bottom of
         # the loop, where it buys the next round.
         progressed = False
         # Streamed: the model's prose reaches the user as it's written. The
         # non-streamed call this used to make is why an agent answer landed in
-        # one lump after a visible pause (user-reported) — every other chat
+        # one lump after a visible pause (user-reported): every other chat
         # path streamed, and the default path (tools on) didn't.
         reply: dict = {}
         streamed_any = False
@@ -1336,7 +1425,7 @@ def run_agent(
             return
         except OllamaError as exc:
             # Mid-answer death: say so, but don't wipe what already streamed.
-            # `offline: True` alongside the normal answer shape (Tier 1 §3) —
+            # `offline: True` alongside the normal answer shape (Tier 1 §3): 
             # an ordinary chat turn renders this exactly like any other
             # answer and needs no change, but skill_runner cannot tell this
             # boilerplate apart from a real answer without it, and was
@@ -1345,8 +1434,8 @@ def run_agent(
             # this flag's truthiness (never the message text), so swapping
             # in the real error below changes nothing about that contract.
             #
-            # This used to be librarian.OFFLINE_MESSAGE unconditionally —
-            # "Ollama doesn't seem to be running" — which is simply false
+            # This used to be librarian.OFFLINE_MESSAGE unconditionally, 
+            # "Ollama doesn't seem to be running", which is simply false
             # whenever this except is reached at all (the loop had already
             # gotten at least one successful round trip to be here) and the
             # same misdiagnosis routes_chat.py's plain_events() had for the
@@ -1365,8 +1454,13 @@ def run_agent(
             return
 
         # Report what this round cost. Agent turns used to emit nothing here,
-        # so switching tools on — the default — silently stripped the token
+        # so switching tools on, the default, silently stripped the token
         # counts out of the message metadata line.
+        # Charged whatever the provider reported, once per round, before
+        # anything is done with the result: a round that ran is a round that
+        # cost something even if the answer it produced is thrown away.
+        if spend is not None:
+            spend.charge(reply.get("stats"))
         if reply.get("stats"):
             stats = {**reply["stats"], "round": round_number + 1}
             if round_number == 0:
@@ -1381,12 +1475,12 @@ def run_agent(
             if not reply.get("streamed") and answer:
                 yield {"type": "answer", "delta": answer}
             # Safety net: if the model claims it saved/created something but no
-            # write tool actually ran, it hallucinated — say so instead of
+            # write tool actually ran, it hallucinated, say so instead of
             # letting the user believe a note exists that doesn't.
             unsupported = unsupported_claims(answer, ran_writes)
             if unsupported:
                 # Named, not vague. "It looks like I didn't actually save it"
-                # is useless when the answer claimed five different things —
+                # is useless when the answer claimed five different things, 
                 # the user needs to know which of them did not happen, because
                 # the rest of the list may well be true.
                 listed = ", ".join(unsupported)
@@ -1394,7 +1488,7 @@ def run_agent(
                     "type": "answer",
                     "delta": (
                         f"\n\nHeads up: I said I {listed}, but I didn't "
-                        "actually run the tool that does it — so that part did "
+                        "actually run the tool that does it, so that part did "
                         "not happen and nothing was changed by it. Ask me again "
                         "and I'll do it properly."
                     ),
@@ -1408,7 +1502,7 @@ def run_agent(
                     "delta": (
                         "\n\nHeads up: I described that, but it looks like I "
                         "didn't actually save it (my model didn't run the tool). "
-                        "Nothing was changed — try again, or paste the text into "
+                        "Nothing was changed: try again, or paste the text into "
                         "a new note yourself."
                     ),
                 }
@@ -1420,7 +1514,7 @@ def run_agent(
         # **Including the round's own reasoning**, asked for directly: *"it
         # often thinks up this whole plan, then it does a tool call and either
         # loses track or has to rethink the plan again."* That is exactly what
-        # happened — `thinking` was streamed to the user and then dropped, so
+        # happened: `thinking` was streamed to the user and then dropped, so
         # the next round saw its own tool calls with no record of why it made
         # them, and a thinking model spent its output budget re-deriving the
         # same plan every round.
@@ -1455,7 +1549,7 @@ def run_agent(
             if reached_past:
                 logging.getLogger("memorymap.agent").info(
                     "focus corrected: model called %s, which the question's "
-                    "words did not suggest — offering the full set from here",
+                    "words did not suggest, offering the full set from here",
                     ", ".join(sorted(set(reached_past))[:5]),
                 )
                 offered = every_tool
@@ -1516,8 +1610,8 @@ def run_agent(
                 # after either would mean carrying on with the guess the
                 # handover exists to avoid.
                 #
-                # No state is parked on the server. The user's choice — or the
-                # skill run — is sent as the next message, which means it
+                # No state is parked on the server. The user's choice: or the
+                # skill run: is sent as the next message, which means it
                 # arrives through the ordinary history the model already reads:
                 # nothing to expire, nothing to lose on a reload, and the
                 # exchange is visible in the saved conversation like any other.
@@ -1577,14 +1671,14 @@ def run_agent(
                 _count_failure(name)
                 yield {
                     "type": "tool",
-                    "label": f"ph:prohibit {name.replace('_', ' ')} — too many waiting for approval",
+                    "label": f"ph:prohibit {name.replace('_', ' ')}, too many waiting for approval",
                     "ok": False,
                     "error": result["error"],
                 }
             elif spec is not None and spec.destructive:
-                # Park it for the user — never auto-run a destructive tool.
+                # Park it for the user, never auto-run a destructive tool.
                 # The confirm card is the honest signal, so count it as an
-                # action (don't fire the "nothing happened" safety net) — the
+                # action (don't fire the "nothing happened" safety net): the
                 # user can see for themselves that it is waiting on them.
                 did_write = True
                 ran_writes.add(name)
@@ -1599,7 +1693,7 @@ def run_agent(
             elif tool_failures.get(name, 0) >= MAX_TOOL_FAILURES:
                 # **The tool is spent for this turn.** Unlike the signature
                 # check just below, this fires however much the arguments
-                # change — which is the whole point, since the loop it was
+                # change: which is the whole point, since the loop it was
                 # written for produced fresh wrong arguments every round (see
                 # `tool_failures`). Blocked *before* execution, so a tool that
                 # writes cannot land a change on a fourth guess either.
@@ -1612,7 +1706,7 @@ def run_agent(
                 }
                 yield {
                     "type": "tool",
-                    "label": f"ph:prohibit {name.replace('_', ' ')} — stopped after repeated failures",
+                    "label": f"ph:prohibit {name.replace('_', ' ')}, stopped after repeated failures",
                     "ok": False,
                     "error": result["error"],
                 }
@@ -1634,7 +1728,7 @@ def run_agent(
                 }
                 yield {
                     "type": "tool",
-                    "label": f"ph:warning {name.replace('_', ' ')} — repeated failure",
+                    "label": f"ph:warning {name.replace('_', ' ')}, repeated failure",
                     "ok": False,
                     "error": "Repeated failure intercepted",
                 }
@@ -1651,7 +1745,7 @@ def run_agent(
                 }
                 yield {
                     "type": "tool",
-                    "label": f"ph:warning {name.replace('_', ' ')} — already done",
+                    "label": f"ph:warning {name.replace('_', ' ')}, already done",
                     "ok": False,
                     "error": "Duplicate write intercepted",
                 }
@@ -1659,7 +1753,7 @@ def run_agent(
             elif (name, json.dumps(arguments, sort_keys=True)) in fresh_reads:
                 # note's context in full, after no changes."*
                 #
-                # Re-running it is not merely wasted time — the result is
+                # Re-running it is not merely wasted time, the result is
                 # identical and gets appended to the prompt a second time, so
                 # the round that repeats a read costs the window twice and
                 # brings back nothing. Handing back a pointer instead is
@@ -1669,7 +1763,7 @@ def run_agent(
                 #
                 # `done_calls` is emptied whenever a write succeeds (below), so
                 # this can never serve a stale read of something the turn
-                # itself just changed — which is the only way a cache here
+                # itself just changed: which is the only way a cache here
                 # could produce a wrong answer rather than a slow one.
                 result = {
                     "already_done": True,
@@ -1682,7 +1776,7 @@ def run_agent(
                 }
                 yield {
                     "type": "tool",
-                    "label": f"↩︎ {name.replace('_', ' ')} — already read",
+                    "label": f"↩︎ {name.replace('_', ' ')}, already read",
                     "ok": True,
                 }
             else:
@@ -1695,7 +1789,7 @@ def run_agent(
                 change = None
                 signature = (name, json.dumps(arguments, sort_keys=True))
                 if "error" not in result and signature not in done_calls:
-                    # Something new worked. That is what buys another round —
+                    # Something new worked. That is what buys another round, 
                     # see EARNED_ROUNDS. Reads and writes both count: paging
                     # through a notebook to find the right note is the work,
                     # not a preamble to it.
@@ -1722,7 +1816,7 @@ def run_agent(
                     # Deliberately not `failed_calls` either, for the same
                     # reason one step removed. A write briefly cleared it here,
                     # which sounds symmetrical and is not: a call that failed on
-                    # its own arguments — a bad note id, a malformed date — fails
+                    # its own arguments, a bad note id, a malformed date, fails
                     # again for exactly the same reason after an unrelated note
                     # is written, and forgetting it hands the model back the
                     # infinite retry that `_RECOVERY_HINTS` and the repeat
@@ -1746,7 +1840,7 @@ def run_agent(
                         **result,
                         "what_to_do": (
                             # Said on the failure that *reaches* the cap, not
-                            # only on the blocked call after it — otherwise the
+                            # only on the blocked call after it, otherwise the
                             # model spends one more round discovering a rule it
                             # could have been told here.
                             TOOL_EXHAUSTED_NOTE
@@ -1762,26 +1856,26 @@ def run_agent(
                     #: to read it (`SOURCE_TOOLS[event.tool || event.name]`,
                     #: app.js) and it was never sent, so every web page and
                     #: every file this app read was silently missing from the
-                    #: answer's Sources panel — a feature that could not have
+                    #: answer's Sources panel: a feature that could not have
                     #: worked once.
                     "tool": name,
                     "label": result.get("label") or name,
                     "ok": "error" not in result,
                     "error": result.get("error"),
                     "arguments": arguments,
-                    #: Titles, addresses and one line each of what was read —
+                    #: Titles, addresses and one line each of what was read, 
                     #: see `_tool_sources`. This is what the Sources panel
                     #: draws its cards, previews and links from.
                     "sources": _tool_sources(name, result),
-                    # UI display only — the version fed back to the model as
+                    # UI display only: the version fed back to the model as
                     # conversation context is `payload` below, with its own
                     # separate, real token budget (`result_cap`). This is just
                     # what the chat transcript's tool-call disclosure shows,
                     # and that box already scrolls (.tool-chip-result, 12rem
-                    # max-height) — 300 chars cut it down to a couple of
+                    # max-height): 300 chars cut it down to a couple of
                     # lines for no reason tied to cost. Reported live: "make
                     # the tool call output view a scrollable text box rather
-                    # than it being truncated" — the box already was one;
+                    # than it being truncated", the box already was one;
                     # this is what was starving it. 4000 is generous enough
                     # that raw JSON from a typical note/search/fetch result
                     # reads in full, while still bounding a pathological
@@ -1789,8 +1883,31 @@ def run_agent(
                     # SSE event.
                     "result_summary": _result_summary(result),
                     # What this call actually touched, for the chat's live
-                    # action line — see `_touched_items`.
+                    # action line: see `_touched_items`.
                     "touched": _touched_items(result),
+                    #: **The ids this read returned, and whether there are
+                    #: more pages of them** (Brief 13; CHAT_PLAN decision 10).
+                    #: A paging read already tells the *model* there is more
+                    #: (`note_to_model`, `next_offset`); nothing told the
+                    #: *app*, so `skill_runner` could only see that a tool had
+                    #: been called once and ticked the step off with four
+                    #: fifths of the notebook unread. Read off the result here
+                    #: rather than parsed back out of `result_summary` in the
+                    #: runner: the shape is this module's to know, and a
+                    #: regex over a truncated JSON blob is the version of this
+                    #: that breaks silently.
+                    "seen": _seen_ids(result),
+                    "more": bool(result.get("has_more")),
+                    "next_offset": result.get("next_offset"),
+                    #: **The same call, as things with actions** (PLAN.md §4
+                    #: A1). `touched` is notes and documents; this is all five
+                    #: kinds: a file, a board and a reminder are equally
+                    #: openable and had no representation at all. Kept beside
+                    #: `touched` rather than replacing it because a saved
+                    #: transcript from before this existed has only `touched`,
+                    #: and `skill_runner._absorb` reads it to carry ids across
+                    #: a run's steps.
+                    "cards": cards.result_cards(name, result),
                 }
                 if change:
                     event["change"] = change
@@ -1805,7 +1922,7 @@ def run_agent(
                     event["proposal"] = result["proposal"]
                 yield event
             payload = json.dumps(result)
-            # The window's share, but never more than the absolute ceiling —
+            # The window's share, but never more than the absolute ceiling, 
             # a 128k model would otherwise be allowed tens of thousands of
             # tokens of tool output, which is prefill time on every subsequent
             # round for material the model has usually finished with.
@@ -1814,7 +1931,7 @@ def run_agent(
                 # Over budget. Hand back the notice instead of the result and
                 # withdraw the tools, so the next round has to be an answer.
                 # Dropping the result rather than truncating it is deliberate:
-                # half a JSON object is worse than none — the model reads it
+                # half a JSON object is worse than none, the model reads it
                 # as data and answers from a note that got cut mid-sentence.
                 payload = json.dumps(BUDGET_EXHAUSTED)
                 offered = []
@@ -1825,13 +1942,13 @@ def run_agent(
 
         if progressed and allowance < ceiling:
             # This round did something new, so the turn gets another one. The
-            # cap that stops a runaway is still there — a round that repeats
+            # cap that stops a runaway is still there, a round that repeats
             # itself or errors buys nothing, so a loop never reaches `ceiling`.
             allowance += 1
 
     # Out of rounds with tools still being called: the job is unfinished, and
     # saying so is the honest end. The `limit` event is what distinguishes this
-    # from an answer — the skill runner uses it to mark the step stalled rather
+    # from an answer: the skill runner uses it to mark the step stalled rather
     # than ticking it off, and the chat UI uses it to offer Continue instead of
     # making the user type "carry on" (both reported: a run that "cuts out half
     # way through and has to restart").
@@ -1846,7 +1963,7 @@ def run_agent(
         "delta": exhausted_note
         or (
             "I stopped after "
-            f"{round_number + 1} rounds of tool calls — here's where things "
+            f"{round_number + 1} rounds of tool calls, here's where things "
             "stand. Continue and I'll pick up from here."
         ),
     }

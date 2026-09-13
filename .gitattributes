@@ -1,0 +1,22 @@
+# Line endings are content here, not formatting.
+#
+# `frontend/vendor/wordlist/en.txt` is read by the documents editor's spell
+# checker as one word per line and matched with `Set.has`. Git on Windows
+# checks text files out with CRLF by default, which turns every entry into
+# "offline\r" and makes all 92,972 of them miss: reported as "litterally
+# everything isnt in the dictionary", with 268 suggestions on a 298-word
+# document. The loader trims each line too, which fixes copies that already
+# exist; this stops the checkout from breaking it in the first place.
+#
+# The same reasoning covers the rest of the frontend: a `?v=` cache stamp, a
+# CSS brace count and a byte length in a test all change under CRLF.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary

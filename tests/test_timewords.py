@@ -1,6 +1,6 @@
 """What "tomorrow" meant on the day it was written (roadmap §10A).
 
-"Notes say 'today', 'yesterday', 'last week', 'two days ago' — phrasing that
+"Notes say 'today', 'yesterday', 'last week', 'two days ago', phrasing that
 is correct when written and misleading forever after. Today nothing records
 what those phrases *resolved to*." These tests pin the resolution rules, the
 capture hook, and the two places the answer surfaces: the note itself, and
@@ -110,7 +110,7 @@ def test_a_note_with_no_time_phrases_carries_none(client):
 def test_a_private_notes_phrases_are_not_lifted_into_a_plain_table(client, session):
     """Its text is encrypted at rest; copying phrases out of it would leak the
     one thing the encryption is for. A note is marked private *after* it is
-    created, so this has to be cleared out then — exactly like its embedding.
+    created, so this has to be cleared out then, exactly like its embedding.
     """
     from memorymap.core import vault
     from memorymap.core.database import EntryDate
@@ -170,7 +170,7 @@ def test_a_note_with_no_phrases_adds_nothing_to_what_the_model_reads(client, ses
 
 
 def test_the_stored_phrase_survives_a_round_trip_through_the_database(client, session):
-    """A POST response can lie about stored state — assert on the next read."""
+    """A POST response can lie about stored state, assert on the next read."""
     client.post("/entries", json={"content": "we move in 2 weeks"})
     entry = manager.list_entries(session)[0]
     stored = manager.entry_dates(session, entry)

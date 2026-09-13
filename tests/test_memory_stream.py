@@ -1,7 +1,7 @@
 """The memory stream: standing preferences the model saves about itself, or
 the user writes by hand, and replays into its own future system prompts.
 
-Split out of test_antigravity_regressions.py (§40/§41) — grouped here rather
+Split out of test_antigravity_regressions.py (§40/§41): grouped here rather
 than left as scattered bug-regression tests because this is now a real,
 readable feature: save, list, edit, deactivate, forget, and the budget that
 keeps it from growing without bound.
@@ -30,7 +30,7 @@ def test_an_accepted_preference_reaches_the_next_turns_persona(session):
 
 def test_the_memory_stream_cannot_grow_past_its_budget(session):
     """It was appended to the system prompt unbounded, on every round of every
-    turn — slipping straight past `PROSE_BUDGET_CHARS`, the guard that exists
+    turn: slipping straight past `PROSE_BUDGET_CHARS`, the guard that exists
     to stop exactly this."""
     for i in range(60):
         session.add(UserPreference(content=f"preference number {i} " + "x" * 120))
@@ -56,7 +56,7 @@ def test_the_same_preference_is_not_saved_twice(session):
 def test_losing_the_memory_stream_never_costs_the_turn(monkeypatch):
     """`run_agent` is also driven with stand-in sessions, and a notebook that
     predates the table has no `user_preferences` at all. A missing memory
-    stream must degrade to "no preferences", not to a broken turn — this
+    stream must degrade to "no preferences", not to a broken turn, this
     exact line took out 7 agent tests with an AttributeError."""
 
     class NotReallyASession:
@@ -167,7 +167,7 @@ def test_a_hand_written_preference_is_capped_like_the_tools(ai_client):
         saved = ai_client.post("/memory", json={"content": f"rule {i}"})
         assert saved.status_code == 201
     # The cap exists because every active preference is replayed into the
-    # system prompt on every round — true whoever typed it.
+    # system prompt on every round, true whoever typed it.
     over_the_cap = ai_client.post("/memory", json={"content": "one too many"})
     assert over_the_cap.status_code == 409
 
@@ -175,7 +175,7 @@ def test_a_hand_written_preference_is_capped_like_the_tools(ai_client):
 # --- ask before remembering (§39B, reported directly) ----------------------------
 #
 # "can the ai pick up things and suggest the user adds it as a preference in
-# that section with an accept or deny or similar popup??" — and the question is
+# that section with an accept or deny or similar popup??", and the question is
 # the right one because of what the tool used to do. `save_user_preference`
 # wrote a standing instruction into every future system prompt with no
 # confirmation and no notice, so one over-read sentence gave the model a
@@ -240,7 +240,7 @@ def test_answering_the_same_proposal_twice_is_a_no_op(ai_client, session):
     ai_client.post(f"/memory/{pref['id']}/answer", json={"accept": True})
     second = ai_client.post(f"/memory/{pref['id']}/answer", json={"accept": False})
     assert second.status_code == 200
-    # The first answer stands — a stale card can't switch off a live rule.
+    # The first answer stands, a stale card can't switch off a live rule.
     assert second.json()["active"] is True
 
 
@@ -251,7 +251,7 @@ def test_answering_a_proposal_that_is_gone_is_a_404(ai_client):
 def test_a_proposal_does_not_count_against_the_active_cap(ai_client, session):
     """The cap exists because active preferences are replayed into the system
     prompt. A pending question is not in the prompt, so it must not be able to
-    lock the list — otherwise a chatty model could fill the cap with questions
+    lock the list: otherwise a chatty model could fill the cap with questions
     and block the user from saving anything by hand."""
     from memorymap.ai.tools import MAX_ACTIVE_PREFERENCES
 
@@ -262,7 +262,7 @@ def test_a_proposal_does_not_count_against_the_active_cap(ai_client, session):
 
 def test_the_chat_is_where_a_proposal_is_answered():
     """A lint: nothing here can see a rendered page. The card is only useful
-    if the tool event carries the id — Settings alone was the write-only
+    if the tool event carries the id, Settings alone was the write-only
     version of this feature with an extra step."""
     from pathlib import Path
 

@@ -4,7 +4,7 @@ ROADMAP.md ranks auditing it first, and says why: shortcuts once ran behind
 the lock screen and were found by a user pressing keys, not by a test.
 
 The audit that produced this file drove the running app locked and checked
-each avenue the roadmap named. **The server side already held** — `/entries`,
+each avenue the roadmap named. **The server side already held**, `/entries`,
 `/media`, `/documents` and `/reminders` all answer 401 while locked, and the
 keyboard gate gave nothing away (the command palette, the agent palette, `/`
 to focus search and the `g`-then-letter tab jumps were all refused, and a
@@ -13,7 +13,7 @@ to focus search and the `g`-then-letter tab jumps were all refused, and a
 **The client side did not.** The overlay was a visual cover, not a purge:
 with the notebook locked, `#entry-list` still held 61 notes and 3,431
 characters of their text, `#library-grid` 5,089, and the documents list
-6,422 — one devtools click, one screen reader or one browser extension away
+6,422: one devtools click, one screen reader or one browser extension away
 from being read. `purgeLockedContent()` closes that, and unlocking restores
 everything because `startApp()` re-renders it.
 """
@@ -43,7 +43,7 @@ def test_locking_purges_the_rendered_content():
     start = source.index("async function lockNow(")
     body = source[start : source.index("\n}", start)]
     assert "purgeLockedContent()" in body, (
-        "lockNow must purge rendered content — the overlay alone is a cover, not a boundary"
+        "lockNow must purge rendered content, the overlay alone is a cover, not a boundary"
     )
 
 
@@ -57,7 +57,7 @@ def test_every_user_content_container_is_purged():
 
 def test_text_fields_are_cleared_too():
     """A textarea keeps its text in `.value`, which `replaceChildren()` never
-    touches — the document editor would otherwise stay fully readable behind
+    touches: the document editor would otherwise stay fully readable behind
     the lock screen."""
     source = APP_JS.read_text(encoding="utf-8")
     start = source.index("function purgeLockedContent(")
@@ -72,7 +72,7 @@ def test_locking_reaches_every_open_tab():
 
     The audit found this by opening a second tab, which ROADMAP.md had named
     as an unchecked avenue. Locking in tab A cleared tab A and dropped the
-    shared token — so the API correctly refused tab B — but tab B kept showing
+    shared token, so the API correctly refused tab B, but tab B kept showing
     all 61 notes with no lock screen, indefinitely. Lock the notebook, walk
     away from a shared machine, and everything is still on screen in the
     window behind.
@@ -83,7 +83,7 @@ def test_locking_reaches_every_open_tab():
     """
     source = APP_JS.read_text(encoding="utf-8")
     assert 'addEventListener("storage"' in source, (
-        "no cross-tab lock listener — a second open tab keeps showing everything"
+        "no cross-tab lock listener, a second open tab keeps showing everything"
     )
     start = source.index('addEventListener("storage"')
     handler = source[start : source.index("\n});", start)]

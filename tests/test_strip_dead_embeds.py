@@ -34,7 +34,7 @@ def test_an_embed_is_removed_from_the_note(client):
 
 
 def test_the_default_leaves_the_note_alone(client):
-    """Deleting a file is not permission to edit notes — the placeholder is
+    """Deleting a file is not permission to edit notes, the placeholder is
     still the right answer when nobody asked for the tidy-up."""
     upload = _upload(client)
     body = f"Keep this\n\n![a photo]({upload['url']})"
@@ -103,7 +103,7 @@ def test_the_pattern_matches_markdown_titles_but_not_neighbours():
 # --- the rebuild suggestion --------------------------------------------------
 #
 # Asked for: "suggest rebuilding the search index upon large changes." The
-# counter is the whole mechanism — it decides whether the app says anything at
+# counter is the whole mechanism, it decides whether the app says anything at
 # all, so it is worth pinning down what moves it and what clears it.
 
 

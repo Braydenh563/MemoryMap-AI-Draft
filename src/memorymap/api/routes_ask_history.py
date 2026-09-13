@@ -1,4 +1,4 @@
-"""Browsing back through the Ask box (Notes tab) — every notes-only question
+"""Browsing back through the Ask box (Notes tab): every notes-only question
 it has answered, not just the last five as a chip row.
 
 Turns are written by routes_chat.py's `chat_stream` (the only caller of the
@@ -15,12 +15,12 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from memorymap.core import deps
-from memorymap.core.database import AskTurn, Entry
+from memorymap.core.database import LIKE_ESCAPE, AskTurn, Entry, like_escape
 from memorymap.core.deps import get_session
 
 router = APIRouter(prefix="/ask-history", tags=["ask-history"])
 
-#: A row's answer, cut to a preview length for the list view — the full text
+#: A row's answer, cut to a preview length for the list view, the full text
 #: is only fetched when a turn is actually opened (GET /{turn_id}).
 PREVIEW_CHARS = 220
 
@@ -47,7 +47,7 @@ def list_ask_history(
     offset: int = Query(default=0, ge=0),
     session: Session = Depends(get_session),
 ) -> dict:
-    """Newest first, pinned first among ties — same ordering Conversation
+    """Newest first, pinned first among ties, same ordering Conversation
     uses for the Chat tab's own saved list, for the same reason: the thread
     you keep coming back to shouldn't sink under a week of one-offs."""
     query = select(AskTurn)
@@ -55,8 +55,11 @@ def list_ask_history(
         query = query.where(AskTurn.pinned == True)  # noqa: E712
     term = q.strip()
     if term:
-        like = f"%{term}%"
-        query = query.where(AskTurn.question.ilike(like) | AskTurn.answer.ilike(like))
+        like = f"%{like_escape(term)}%"
+        query = query.where(
+            AskTurn.question.ilike(like, escape=LIKE_ESCAPE)
+            | AskTurn.answer.ilike(like, escape=LIKE_ESCAPE)
+        )
     ordered = query.order_by(AskTurn.pinned.desc(), AskTurn.created_at.desc())
     total = session.scalar(select(func.count()).select_from(ordered.subquery()))
     rows = session.scalars(ordered.limit(limit).offset(offset)).all()
@@ -81,7 +84,7 @@ def get_ask_turn(turn_id: int, session: Session = Depends(get_session)) -> dict:
     """The full turn, with its notes hydrated to their current state.
 
     A note deleted or made private since this question was asked is dropped
-    rather than shown — same rule `_attached_notes` (routes_chat.py) applies
+    rather than shown: same rule `_attached_notes` (routes_chat.py) applies
     when a note is attached live, kept here for the same reason: a browsed-
     back turn should not resurrect binned content or leak a note that has
     since been marked private.
@@ -104,7 +107,7 @@ def get_ask_turn(turn_id: int, session: Session = Depends(get_session)) -> dict:
         "answer": turn.answer,
         "raw_results": [r.model_dump(mode="json") for r in _to_out_bulk(session, entries)],
         "omitted_results": len(ids) - len(entries),
-        # Same badge data the live answer had — older rows saved before this
+        # Same badge data the live answer had, older rows saved before this
         # field existed fall back to "no explanation" rather than an error.
         "match_info": json.loads(turn.match_info or "{}"),
         "connected_ids": json.loads(turn.connected_ids or "[]"),
@@ -131,7 +134,7 @@ def delete_ask_turn(turn_id: int, session: Session = Depends(get_session)) -> di
 def clear_ask_history(
     keep_pinned: bool = True, session: Session = Depends(get_session)
 ) -> dict:
-    """Wipe the browsable history. Pinned turns survive by default — the
+    """Wipe the browsable history. Pinned turns survive by default, the
     same asymmetry a "clear all" next to a pin button always needs, or
     pinning something means nothing the next time this button is pressed."""
     query = select(AskTurn)

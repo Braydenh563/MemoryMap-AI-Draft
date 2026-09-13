@@ -6,8 +6,8 @@ Reported directly:
      disappears once I switch chat sessions or quit the app."
 
 They disappeared because nothing stored them. `offerFollowups` fires a second
-model call *after* the turn is already saved — deliberately, so it can never
-delay the answer — appended the chips to a live DOM node, and that node was
+model call *after* the turn is already saved, deliberately, so it can never
+delay the answer: appended the chips to a live DOM node, and that node was
 the whole of their existence.
 """
 
@@ -34,7 +34,7 @@ def test_followups_are_remembered_against_the_turn(client):
 
 def test_they_hang_off_the_answer_not_the_question(client):
     """Index `n` addresses turn `n`, the same way every other per-turn endpoint
-    here does — and the chips belong under the answer they follow from."""
+    here does: and the chips belong under the answer they follow from."""
     conversation = _turn(client)
     client.post(
         f"/conversations/{conversation['id']}/turns",
@@ -112,7 +112,7 @@ def test_one_renderer_serves_the_live_path_and_the_reopen():
 
 def test_saving_them_never_puts_an_error_on_screen():
     """Bookkeeping behind a suggestion. A failed save must not show an error
-    over an answer that is fine — the same rule the request itself follows."""
+    over an answer that is fine, the same rule the request itself follows."""
     source = Path("frontend/app.js").read_text(encoding="utf-8")
     block = source.split("async function saveFollowups(")[1].split("\n}")[0]
     assert "silent: true" in block
@@ -124,13 +124,13 @@ def test_saving_them_never_puts_an_error_on_screen():
 
 def test_the_chat_timer_starts_with_the_turn_and_stops_with_it():
     """Asked for directly: "can there be an active timer on responses in chatg
-    messages as well??" — the *live* one; the finished time was already in the
+    messages as well??", the *live* one; the finished time was already in the
     metadata line."""
     source = Path("frontend/app.js").read_text(encoding="utf-8")
     assert "function startChatTimer()" in source and "function stopChatTimer()" in source
     assert "startChatTimer();" in source
     # Stopped where the controller is cleared, which is the one place every
-    # ending — answered, errored, stopped — passes through.
+    # ending, answered, errored, stopped, passes through.
     tail = source.split("if (chatController === controller) {")[1][:200]
     assert "stopChatTimer();" in tail
 
@@ -146,7 +146,7 @@ def test_the_timer_ticks_on_a_clock_not_on_stream_events():
 
 def test_switching_chats_mid_stream_hides_the_timer():
     """It belongs to the composer, which has just been handed to a different
-    conversation — leaving it ticking would time this chat's turn against the
+    conversation: leaving it ticking would time this chat's turn against the
     next chat's empty box."""
     source = Path("frontend/app.js").read_text(encoding="utf-8")
     block = source.split("function releaseChatComposer(")[1].split("\n}")[0]
@@ -161,7 +161,7 @@ def test_switching_chats_mid_stream_hides_the_timer():
 
 def test_the_action_row_does_not_reserve_space_when_hidden():
     """"the suggested responses appear after the popup buttons which leaves a
-    gap visually when not hovering over the chat bubble" — `opacity: 0` hides a
+    gap visually when not hovering over the chat bubble", `opacity: 0` hides a
     row while keeping every pixel of its layout, so a finished answer had a 2rem
     band of nothing above its "Next:" chips. Out of flow entirely: `display:
     none` until hover would close the gap and make the chips jump 2rem the

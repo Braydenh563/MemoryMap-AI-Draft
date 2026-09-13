@@ -126,7 +126,7 @@ def test_the_prompt_tells_the_model_multiple_rounds_are_expected():
     """Asked for directly: 'I need agents to use tools more and better'."""
     guide = agent.TOOLS_GUIDE
     assert "several turns is normal and expected" in guide.lower()
-    # A snippet is not a page — read_url before relying on a result.
+    # A snippet is not a page, read_url before relying on a result.
     assert "read_url" in guide
     # It should stop narrating a timeline the user is already watching.
     assert "already see which tools you ran" in guide
@@ -142,14 +142,14 @@ def test_the_prompt_tells_the_model_multiple_rounds_are_expected():
 #
 # The tool's own error already lists the real category names (see
 # `_find_category` in ai/tools/categories.py), so this is not a case of the
-# model being under-informed — it is a model that has misunderstood what the
+# model being under-informed: it is a model that has misunderstood what the
 # tool is *for*, and will keep producing fresh wrong arguments for as long as
 # it is allowed to. Taking the tool away is the only thing that ends it.
 
 
 # Driven through `get_note` rather than `merge_categories` itself: that one is
 # `destructive`, so it parks for the user's approval and never reaches a
-# handler at all (which is its own cap — see the confirm test below). The
+# handler at all (which is its own cap, see the confirm test below). The
 # mechanism under test is keyed on the tool's *name*, not on which tool it is.
 def _merge(note_id: int) -> dict:
     return {"name": "get_note", "arguments": {"note_id": note_id}}
@@ -179,7 +179,7 @@ def test_one_tool_failing_with_different_arguments_is_taken_away(monkeypatch, ap
 
 
 def test_a_tool_that_fails_twice_is_still_allowed_to_correct_itself(monkeypatch, app_state):
-    """Two failures is a model fixing its own mistake — the recovery hints
+    """Two failures is a model fixing its own mistake, the recovery hints
     exist to produce exactly that, so the cap must not cut it off."""
     calls: list[dict] = []
 
@@ -227,7 +227,7 @@ def test_failures_are_counted_per_tool_not_across_all_of_them(monkeypatch, app_s
 def test_a_destructive_tool_cannot_paper_the_turn_with_confirm_cards(monkeypatch, app_state):
     """`merge_categories` is destructive: it parks for the user's approval
     instead of running. Parking is not a stop signal to a model that has
-    misread the job, so the number of cards one tool may queue is capped —
+    misread the job, so the number of cards one tool may queue is capped, 
     the user should never come back to a wall of approvals they never asked
     for."""
     def _merge_cat(n: str) -> dict:

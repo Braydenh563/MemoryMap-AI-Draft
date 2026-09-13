@@ -28,13 +28,18 @@
 > as if they appear in the dashboard widgets and/or the timeline and/or graph
 > etc.
 
-**One naming note, flagged rather than guessed.** "kaggle" / "kaggle.it" does
-not resolve to a mindmapping product — Kaggle is a data-science competition
-platform. The closest matches by description are **Kumu.io** (relationship and
-systems mapping, which is what the "bundled entity with its own attributes"
-idea most resembles) and **Kinopio.club**. The research in §3 covers Kumu plus
-the mainstream mindmappers; **confirm which tool was meant before building the
-parts of §5 that lean on Kumu specifically.**
+**The naming question is settled.** Asked directly, the user confirmed
+"kaggle" was a typo for **Coggle (coggle.it)** — and said all of the tools
+named here are good references, so the feature set below draws on **Coggle**
+(immediacy, branch colours, loops and joins, image nodes, PNG/PDF/text/OPML
+export, `.mm` import), **Kumu** (attributes, perspectives, focus mode, signed
+edges), **XMind** (output quality, structure templates) and **Obsidian Canvas
+Mindmap** (the keyboard set). They also named **Lucidchart** as a reference,
+"but that's more for the whiteboard" — its smart connectors, containers,
+alignment tools and shape libraries map onto PLAN.md W1–W5, not this plan.
+
+**The scope call in §4 is made: option B** (confirmed by the user in the same
+exchange). Everything from §5 on assumes it.
 
 ## 2. What already exists (checked in the code, not assumed)
 
@@ -121,8 +126,32 @@ Three options, with a recommendation.
 | B | Mindmap as a **new board `type`** on the existing board entry (`board.type = "map" \| "board"`) | One data model, two behaviours, two filters in the Library. Clean. **Recommended.** |
 | C | A **separate entity** with its own tables and sub-tab | Duplicates linking, preview, export, permissions and the Library plumbing that boards already have. Not recommended. |
 
-**Recommendation: B.** A board is already an entry; add a `type` and a
-`layout` to it. Everything in §6 assumes B.
+**Decision: B — confirmed by the user.** A board is already an entry; add a
+`type` and a `layout` to it. Everything in §5 and §6 assumes B.
+
+### What Coggle specifically does that the phases below must keep
+
+Recorded because Coggle is the reference the user actually meant:
+
+- **Zero ceremony.** A new map is one click and one central node; a child is
+  the `+` on hover or `Tab`; there is no "mode" to enter. Phase 2 item 5 is
+  the keyboard half of this; the `+` affordance on the hovered node is the
+  pointer half and belongs in the same item.
+- **Branch colour carries down the branch** — every descendant inherits the
+  first-level colour unless overridden. Phase 2 item 8's "inherit-from-parent
+  by default" is exactly this; the default palette is one colour per
+  first-level branch, assigned in order.
+- **Loops and joins**: a second parent link between branches, drawn as a
+  curve distinct from the tree edges. Phase 2 item 9.
+- **Text is markdown-ish** (bold, italics, links, code) and a node may be an
+  image. Node kinds in Phase 1 item 3 cover the image; the text renderer is
+  the whiteboard's existing markdown pass.
+- **Export**: PNG, PDF, plain-text outline, `.mm` (FreeMind) and OPML;
+  **import** `.mm` and OPML. Phase 4 items 16–17 add `.mm` to their list.
+- **Auto-arrange** on demand rather than always: the user can drag a branch
+  and it stays; "tidy" re-lays it out. Phase 2 item 6 becomes a command, with
+  free placement kept per branch (a `pinned` flag on a node).
+- **Presentation/print**: a map fits to page for PDF. Covered by Phase 4.
 
 ## 5. The feature set, in build order
 
@@ -190,10 +219,11 @@ Three options, with a recommendation.
     invented text.
 16. **Export**: PNG and SVG from the existing canvas render, and PDF via the
     same path the app already uses for "Print or save as PDF" in the documents
-    kebab. Also **Markdown outline** and **OPML**, which is the interchange
-    format every mindmapper reads — cheap, and it makes the feature not a
-    lock-in.
-17. **Import**: OPML and indented Markdown, so an existing map can come in.
+    kebab. Also **Markdown outline**, **OPML** and **FreeMind `.mm`** — the
+    interchange formats every mindmapper (Coggle included) reads — cheap, and
+    it makes the feature not a lock-in.
+17. **Import**: OPML, FreeMind `.mm` and indented Markdown, so an existing map
+    can come in.
 
 ### Phase 5 — utility
 18. **Focus mode** (Kumu): start at one node, reveal the network step by step.
@@ -257,3 +287,240 @@ Three options, with a recommendation.
 - [Spatial canvases and your notes](https://tfthacker.substack.com/p/spatial-canvases-and-your-notes)
 - [d3-hierarchy `tree()` — Reingold–Tilford](https://d3js.org/d3-hierarchy/tree) · [d3-flextree](https://github.com/Klortho/d3-flextree)
 - [Radial tree component — Observable](https://observablehq.com/@d3/radial-tree-component)
+
+## 9. Built — Phase 1 (backend)
+
+Moved to HISTORY.md ("Moved from the plans, 2026-09-09", MINDMAP_PLAN.md) on 2026-09-09: a plan holds open work only.
+
+## 10. Built — Phase 2 (frontend)
+
+Moved to HISTORY.md ("Moved from the plans, 2026-09-09", MINDMAP_PLAN.md) on 2026-09-09: a plan holds open work only.
+
+## 11. Built: the previews, Phase 4 and Phase 5
+
+Moved to HISTORY.md ("Moved from the plans, 2026-09-09", MINDMAP_PLAN.md) on 2026-09-09: a plan holds open work only.
+
+## 12. The map as its own tool (INBOX 93, the owner's ask, 2026-09-09)
+
+The owner: "the mindmap needs more specialised and targeted controls, yes
+it is built off the whiteboard but it isn't the whiteboard ... it doesn't
+need to stop at Coggle, it can straight up copy, merge and make better
+many mindmap software." This section is the complete spec: every bug and
+missing feature the owner named, every feature worth taking from Coggle,
+XMind, MindMeister, MindNode, Freeplane, Miro and Whimsical, and the
+things a notebook-native map can do that none of them can. Two sessions,
+Opus, one worktree, each phase gated by `scratchpad/ui-sweeps/mindmap.js`
+extended with the numbers named.
+
+### 12.0 Decisions made (do not remake)
+
+- A map is a board of `type: "map"`; it keeps the whiteboard's storage,
+  undo, export and previews, and gets its **own toolbar, its own context
+  menus and its own keys**. The whiteboard's tool rail is hidden on a map;
+  nothing of the whiteboard's chrome shows unless it applies to a map.
+- **A map is never empty and never stuck.** Deleting the last node leaves
+  a root placeholder ("Untitled map, type to start"); the toolbar always
+  has "Add topic", "Add sub-topic", "Add sibling" enabled for the
+  selection; a collapsed branch shows a count badge that reopens it on
+  click and on Space.
+- Every node action is reachable three ways: the node's edit strip, the
+  right-click radial, and a key. The keys are the industry's: Tab child,
+  Enter sibling, Shift+Enter above, Delete removes the node and re-parents
+  its children, Shift+Delete removes the branch, F2 edits, Space toggles
+  collapse, arrows walk the tree, Ctrl+D duplicate, Ctrl+Shift+arrows
+  move within siblings, Alt held turns adds into removes (Coggle).
+- Styling is per node and per link and is stored in `data` (shape, fill,
+  border, text size, weight, alignment, icon, image, link style, link
+  label position), with **inheritance down the branch** and "Reset to
+  branch" on any node; the theme picks defaults, never overrides a
+  choice.
+- Layouts: tree right, tree left, both sides (Coggle), org chart down,
+  logic chart, fishbone, timeline (XMind), radial (MindNode); a branch
+  can override the map's layout; auto-arrange is a command, not a
+  constant, so a hand-placed node stays put until asked.
+- Everything the map shows is in the tree endpoint and the FreeMind and
+  OPML exports round-trip; a feature that cannot round-trip is not built.
+- **The last topic cannot be deleted; clearing the map is offered
+  instead** (the owner asked directly: "should the user even be able to
+  delete the primary core node??"). A map with no nodes is a dead end by
+  construction: every add gesture hangs off a node that is already there,
+  so removing the last one removes the way to make the next one. Refusing
+  the delete is a smaller surprise than silently recreating a root under
+  the same name, and "clear the map" says what it does, so the refusal
+  carries that action: it takes the whole map away and leaves one blank
+  topic ready to type into. Enforced at both delete paths (the map's own
+  subtree delete, and the generic object delete the Delete tool, the
+  context menu and the selection bar use), because a rule enforced at one
+  of two doors is not a rule.
+- **Multiple roots are allowed** ("should the user be able to make
+  multiple main core nodes??"). Yes: real maps have several trunks, and
+  nothing in the code has ever assumed one, `wbMapIndex` returns a list of
+  roots, the tidy pass lays out a forest, and Enter on a root already adds
+  another root. So this is a decision to keep and to surface, not to build:
+  "Add topic" in the map dock adds a top-level topic whatever is selected,
+  which is the only visible way to make the second trunk.
+- **There is no "sub core" node type** ("sub core nodes??"). A node with
+  children *is* the sub core: it already draws larger than its leaves
+  through the branch colour and the depth it sits at, and its subtree
+  already collapses, tidies, transplants and exports as a unit. A third
+  tier would be a concept the data model does not have (`parent_id` and
+  `kind`, nothing else), and every export format this plan commits to
+  round-tripping (FreeMind, OPML, Markdown outline) has no way to carry
+  it, so it would be a decoration that vanishes on the first export.
+
+- **Space keeps the pan; `C` folds a branch; Space works on the fold
+  control itself** (left open by the previous run, decided here). Held space
+  is this canvas's pan gesture from every tool (`wbZoomFilter`) and a map
+  node is selected nearly all the time once someone is editing, so binding
+  Space to collapse would take the pan away exactly when it is most used and
+  would make a map pan differently from a board, which is the opposite of
+  "the mindmap can keep important and usable parts of the whiteboard". So
+  the key on the canvas is `C` (bare, beside Tab, Enter, F and the arrows;
+  `c` is not a tool key), and §12.1 item 7's "reopens on click and on Space"
+  is met where it actually reads as a button: with the keyboard focus on a
+  node's chevron or on the dock's Collapse button, the Space handler stands
+  aside and the browser's own activation folds the branch.
+- **A node carries its colour on its own card, so a trunk can set one.** The
+  previous run disabled the picker on a root because "a colour paints only
+  the line coming into a node and a root has no incoming line". That is true
+  of the edge and false of the card: `wbPaintMapNode` writes `--wb-branch` on
+  every node and `.wb-map-node` already draws it as the 4px spine down the
+  leading edge, so a root's colour was drawn all along and only the control
+  refused to set it. It does not cascade: the roots' children are the
+  first-level topics and start the palette over by design, which is Coggle's
+  rule, so a trunk's colour marks the trunk and every branch under it keeps
+  its own. The picker's title says which of the two it is doing.
+
+### 12.1 Phase 6a, the controls (1 session)
+
+1. **The map toolbar** (replaces the whiteboard rail on a map): Add
+   topic, Add sub-topic, Add sibling, Delete, Collapse/Expand branch,
+   Layout ▾, Style ▾ (theme, branch colours, line style), Insert ▾ (note
+   card, image, link, icon, boundary, summary, relationship), Arrange
+   (auto, tidy siblings, centre root), Focus, Present, Export ▾, and the
+   undo pair; seven visible at most, the rest in ▾ menus, per the dock
+   grammar. **Part of this is built**: the board-only sections (draw,
+   shapes, the free adds) are hidden on a map and the map's own Topic and
+   Branch sections carry add topic, add child, add sibling, collapse,
+   branch colour and focus; the layout picker and Tidy are still in the
+   top bar, and the Style, Insert, Arrange, Present and Export menus are
+   not written. See `agent-remaining/mindmap.md` for the measured numbers
+   and the rest of the list.
+2 to 9. **Built, 2026-09-12**: the node edit strip, the node radial, the
+   link radial, the mid-line add, the text-size grip, uncollapse, drag to
+   transplant and sever. Moved whole to HISTORY.md ("Moved from the plans,
+   2026-09-12", MINDMAP_PLAN.md §12.1 items 2 to 9); a plan holds open work
+   only. What is left of those eight, with the reason each was left:
+
+   - **An image in a node** (item 2's fourth). It needs the board's upload
+     path and a node whose body is a picture rather than a label, which is a
+     second node shape, not a fourth button on a strip.
+   - **Comment on a node** (item 3's sixth) is §12.2 item 6 and belongs
+     there, not here.
+   - **The control points on a curve drag to reshape it** (item 5's third).
+     A tree edge is derived from `parent_id` and has no row to store a
+     control point on; it would be two more `data` fields on the child and a
+     third hit target per line, and it now has to compose with the three
+     line shapes item 4 added.
+   - **Line thickness** (item 4's "style") was not built: the three shapes
+     and the dash carry the distinction, and a fourth axis on a 2px line is
+     a setting nobody can see.
+   - **Shift+drag off a node to sever** (item 9's second gesture). Sever is
+     on both rings; the drag gesture would collide with drag-to-transplant,
+     which took the same pointer.
+
+Gate: every action reachable by strip, radial and key (mindmap.js counts
+the three routes per action); an empty map recreates a root; 0 console
+errors; export/import round-trip of a map using every feature.
+
+**The gate's round-trip half is met** (2026-09-12, sixth run): everything the
+strip and the two rings write is in the FreeMind and OPML exports and comes
+back through both imports, and the two rings stay inside the canvas at any
+viewport. The account, including which field each format has an honest home
+for and which ride as private attributes, is in HISTORY.md ("Moved from the
+plans, 2026-09-12", "what the sixth run closed behind items 2 to 9"). What is
+still open of §12.1 is item 1's four dock menus and the five sub-items above.
+**Node shape is built too** (2026-09-12, same run): four shapes, decided in
+§12.0 and recorded in HISTORY with the rest.
+
+### 12.2 Phase 6b, structure and richness (1 session)
+
+1. **Boundaries** (XMind): a shaded background shape around a branch or
+   a lasso'd set, with a label, a colour and a style (rounded, cloud,
+   dashed); moves with its nodes.
+2. **Summaries** (XMind): a bracket beside a set of siblings with a
+   summary node.
+3. **Relationships**: a cross-link between any two nodes with an arrow
+   and a label, curved, dashed by default so it reads as secondary.
+4. **Markers and task info**: priority 1 to 5, progress 0 to 100, flags,
+   due date (a reminder can be created from it), a checkbox; filter the
+   map by marker; the outline view shows them as columns.
+5. **Notes on nodes**: a text note behind a node (the small marker
+   opens it); a node that is a notebook note shows the note's own text
+   here, editable both ways.
+6. **Comments** (MindMeister): a thread per node, count marker.
+7. **Multiple roots and floating topics**; **numbering** of branches
+   (1, 1.1, 1.1.1) as a toggle; **auto-colour by branch** as the
+   default theme with eight curated palettes.
+8. **Outline view** beside the map (a two-pane split): the same tree as
+   indented text, editable, Tab and Shift+Tab re-parent, every edit
+   mirrored live.
+9. **Presentation mode** (MindMeister): step through branches with the
+   arrow keys, each step zooming to a branch; Escape ends.
+10. **Export**: PNG at 2x with the theme, PDF, SVG, FreeMind .mm, OPML,
+    Markdown outline, plain-text outline; **import** by drop of .mm,
+    .opml, .txt outline or Markdown, and from XMind's .xmind (its
+    content.json) read-only.
+Gate: mindmap3.js extended with one check per feature; the 201-node map
+keeps 60 fps pan (measured with the frame probe); round-trip of every
+export that claims it.
+
+### 12.3 Phase 6c, what only a notebook can do (½ session)
+
+1. **Nodes are notes**: any node can become a note (and stays linked); a
+   note dragged from the Library becomes a node with its card; the map
+   node and the note title edit each other.
+2. **Grow with the AI**: on any node, "Suggest branches" proposes five
+   children from the notebook (grounded, with the source note on each),
+   "Expand from my notes" fills a branch from search results,
+   "Summarise this branch" writes the parent's note.
+3. **From a question**: "Make a map of..." in chat proposes a map
+   (exists, Phase 4) and now opens it in the map editor with the
+   proposal as floating topics to accept or discard.
+4. **Graph sync**: a map's cross-links become graph links (kind "map");
+   the graph's "Mind map" selection action (Phase 4) opens here with the
+   layout pre-chosen.
+5. **Study mode**: hide all but the root, reveal a branch at a time,
+   with a "recall" prompt before revealing (the note's own text is the
+   answer); progress stored per map.
+Gate: each AI action grounded (its sources listed) and faked in tests;
+the study mode measured on a 40-node map.
+
+### 12.4 Not built until asked
+
+Real-time collaboration, cloud sync, voice-to-map, AI image generation
+in nodes.
+
+## Placed from INBOX, 2026-09-09
+
+The owner's reports this plan owns, moved whole from INBOX.md with their numbers (never reused). Each becomes a phase row when its phase is written; until then this list is the phase.
+
+24. **"New board" and "New mind map": same or different?** Decision: the
+    dock grammar allows one filled button per dock, so one filled "New"
+    button opens a two-row menu (Board, Mind map), each with its icon and a
+    one-line hint. Two side-by-side filled buttons is the wrong answer.
+    Owner: docks.md.
+
+## Placed from INBOX, 2026-09-09 (the owner's evening batch)
+
+- "in the all library subtab, the mindmap I made called bubble tea shows as
+  a note" (two screenshots: the All list draws a "bubble tea" row with a
+  note's pencil icon, while Boards & maps draws the same thing as a map
+  with 3 nodes). The All view's kind test does not know about maps, so a
+  map falls through to the note branch.
+- "the boards and maps dashboard widget is ugly and needs fixing", and
+  "also the ui at the top of the boards and maps subtab dock is broken and
+  miss wrapped. remember responsive design!" (screenshot at ~2000px: the
+  search box and sort/view controls on one line, then New board, New mind
+  map, Map from notes, Import outline, refresh and help wrapped onto a
+  second line below them, left-aligned under nothing).

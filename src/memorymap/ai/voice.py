@@ -1,4 +1,4 @@
-"""Local speech-to-text — optional, like everything AI here.
+"""Local speech-to-text: optional, like everything AI here.
 
 Uses faster-whisper (Whisper running on CPU via CTranslate2) when the
 user has installed it:  pip install faster-whisper
@@ -15,15 +15,15 @@ from pathlib import Path
 
 INSTALL_HINT = (
     "Voice capture needs the optional faster-whisper package. In your "
-    "MemoryMap folder run:  pip install faster-whisper  — then restart the app."
+    "MemoryMap folder run:  pip install faster-whisper: then restart the app."
 )
 
 # One loaded model per process; Whisper models are too heavy to reload
 # per request. Guarded by a lock because two requests can race the load.
 #
 # The size and the model are one cache entry, not two globals: kept apart, the
-# pair can be written half-way — the old model still loaded under the new
-# size's name — and every later call then hands back the wrong model believing
+# pair can be written half-way, the old model still loaded under the new
+# size's name: and every later call then hands back the wrong model believing
 # it is the right one. A single tuple cannot get out of step with itself.
 _loaded: tuple[str, object] | None = None
 _lock = threading.Lock()
@@ -33,7 +33,7 @@ def whisper_available() -> bool:
     return importlib.util.find_spec("faster_whisper") is not None
 
 
-def _get_model(size: str):  # noqa: ANN202 — faster_whisper types are optional
+def _get_model(size: str):  # noqa: ANN202  # faster_whisper types are optional
     global _loaded
     with _lock:
         if _loaded is None or _loaded[0] != size:
@@ -52,7 +52,7 @@ def transcribe(audio_path: Path, model_size: str = "base") -> str:
     That second case is not hypothetical: the first transcription on a
     machine downloads the model from Hugging Face, and a broken or
     offline connection makes that download raise deep inside
-    faster-whisper/huggingface_hub — an exception that has nothing to do
+    faster-whisper/huggingface_hub: an exception that has nothing to do
     with the recording. Left uncaught, it surfaced as "Couldn't
     transcribe that recording: <httpx error>" (the route's catch-all for
     a bad clip), which reads exactly like "transcription is broken" and
@@ -65,7 +65,7 @@ def transcribe(audio_path: Path, model_size: str = "base") -> str:
     except Exception as exc:
         raise RuntimeError(
             f"Couldn't load the Whisper '{model_size}' model. The first use "
-            "downloads it from Hugging Face — check your internet connection "
+            "downloads it from Hugging Face, check your internet connection "
             f"and try again. ({exc})"
         ) from exc
     segments, _info = model.transcribe(str(audio_path))

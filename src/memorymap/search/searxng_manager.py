@@ -1,6 +1,6 @@
 """Run a SearXNG instance for the user (optional).
 
-SearXNG is a separate service — it can't be imported into this process — but
+SearXNG is a separate service, it can't be imported into this process, but
 the app can still own its lifecycle so "use SearXNG" is a button rather than a
 setup guide. We generate a settings file that enables the JSON API (the one
 step people always miss), start it, wait for it to answer, and hand back the
@@ -8,9 +8,9 @@ URL.
 
 There are two ways to run it, and Docker is only the tidier one:
 
-- **docker** — pull the official image and run a container. Preferred when
+- **docker**: pull the official image and run a container. Preferred when
   Docker is installed, because upgrades and isolation come for free.
-- **source** — SearXNG is a Python app, so it also runs in a virtualenv of its
+- **source**: SearXNG is a Python app, so it also runs in a virtualenv of its
   own under the data directory, started as a child process. Slower to set up
   (a pip install from git) and it needs `git`, but it needs no Docker at all.
 
@@ -24,14 +24,14 @@ whichever backend this machine can" / "stop it" / "describe it" entry points.
 The four concerns underneath live in their own modules, split out because this
 file had grown to soak up all of them at once:
 
-- `searxng_docker.py`   — the Docker container lifecycle.
-- `searxng_install.py`  — downloading and installing SearXNG from source.
-- `searxng_process.py`  — running the source install as a child process.
-- `searxng_settings.py` — the settings.yml MemoryMap generates, and the
+- `searxng_docker.py`, the Docker container lifecycle.
+- `searxng_install.py`, downloading and installing SearXNG from source.
+- `searxng_process.py`, running the source install as a child process.
+- `searxng_settings.py`, the settings.yml MemoryMap generates, and the
   environment (including the Windows `pwd` shim) it runs SearXNG in.
 
 Everything those modules exposed before the split is still reachable as
-`searxng_manager.<name>` — this file imports it back in, so nothing outside
+`searxng_manager.<name>`, this file imports it back in, so nothing outside
 this package needs to change what it imports.
 """
 
@@ -61,7 +61,7 @@ HOST_PORT = DEFAULT_PORT  # the default, and what a fresh install will use
 FALLBACK_PORTS = (8080, 8081, 8890, 8899)
 # 127.0.0.1, never localhost: SearXNG is told to bind exactly
 # SEARXNG_BIND_ADDRESS=127.0.0.1, and on Windows `localhost` often resolves
-# to IPv6 ::1 first — so a probe of "localhost" knocked on a door SearXNG
+# to IPv6 ::1 first, so a probe of "localhost" knocked on a door SearXNG
 # was not behind, timed out the whole start, and blamed whatever noise sat
 # in the log. The address we dial must be the address we bind.
 BASE_URL = f"http://127.0.0.1:{HOST_PORT}"
@@ -107,7 +107,7 @@ def _port_free(port: int) -> bool:
 def choose_port() -> int:
     """Settle on a port, now, before starting.
 
-    A port already answering as SearXNG is *better* than a free one — that is
+    A port already answering as SearXNG is *better* than a free one, that is
     our own instance from a previous run, and taking a different port would
     start a second copy beside it. Anything else holding the port is a reason
     to move along rather than to fail, which is what used to happen.
@@ -128,8 +128,8 @@ START_TIMEOUT = 90  # image pulls can be slow the first time
 # A first from-source start is slower than any Docker start: it imports a few
 # hundred modules into a cold interpreter, and on Windows the antivirus reads
 # over every one of them on the way. 90 seconds is genuinely not always
-# enough, and calling a start that was going to succeed a failure — then
-# SIGTERMing it — is the worst outcome available. The wait bails out early
+# enough, and calling a start that was going to succeed a failure, then
+# SIGTERMing it: is the worst outcome available. The wait bails out early
 # when the process dies, so the higher ceiling costs nothing when something
 # is actually wrong.
 SOURCE_START_TIMEOUT = 180
@@ -159,8 +159,8 @@ def _pid_file(data_dir: Path) -> Path:
 
 #: Set to stop whatever `_run_streaming` is currently running. One event for
 #: all of them because only one SearXNG setup ever runs at a time (the install
-#: takes a lock). Asked for directly — "allow the quitting/killing of
-#: background tasks as well" — and this is the task with the longest silence
+#: takes a lock). Asked for directly: "allow the quitting/killing of
+#: background tasks as well", and this is the task with the longest silence
 #: of any of them: a source install compiles wheels for minutes.
 _stop_streaming = threading.Event()
 
@@ -183,14 +183,14 @@ def _run_streaming(
 
     Reads the pipe from a background thread rather than the caller's `for
     line in process.stdout`: that loop's own deadline check only runs
-    *between* lines, so a child that goes quiet without exiting — a stalled
-    network mid-download, a hung subprocess — blocked here forever no matter
+    *between* lines, so a child that goes quiet without exiting, a stalled
+    network mid-download, a hung subprocess, blocked here forever no matter
     what `timeout` said. A daemon thread feeding a queue lets the main thread
     poll with a real timeout even while nothing is being read.
     """
     output: list[str] = []
     try:
-        process = subprocess.Popen(  # noqa: S603 — fixed args, no shell
+        process = subprocess.Popen(  # noqa: S603  # fixed args, no shell
             args,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -231,7 +231,7 @@ def _run_streaming(
             try:
                 line = lines.get(timeout=min(remaining, 1.0))
             except queue.Empty:
-                continue  # still within the deadline — just nothing new yet
+                continue  # still within the deadline, just nothing new yet
             if line is None:
                 break
             output.append(line)
@@ -252,9 +252,9 @@ def _run_streaming(
 def _run(
     args: list[str], timeout: int = COMMAND_TIMEOUT, env: dict | None = None
 ) -> subprocess.CompletedProcess:
-    """Run a setup command. Fixed argument lists only — never a shell."""
+    """Run a setup command. Fixed argument lists only, never a shell."""
     try:
-        return subprocess.run(  # noqa: S603 — fixed args, no shell
+        return subprocess.run(  # noqa: S603  # fixed args, no shell
             args,
             capture_output=True,
             text=True,
@@ -284,7 +284,7 @@ def _wait_until_ready(timeout: int = START_TIMEOUT, still_starting=None) -> bool
     return False
 
 
-# The log lines that mean "the port, not SearXNG, is the problem" — one
+# The log lines that mean "the port, not SearXNG, is the problem", one
 # spelling per platform. POSIX raises EADDRINUSE ("Address already in use"),
 # Windows raises WinError 10048 ("Only one usage of each socket address …").
 _PORT_CLASH_MARKS = (
@@ -305,7 +305,7 @@ def _port_clash(output: str) -> bool:
 #
 # Reported with a screenshot: "Couldn't install SearXNG: [notice] To update,
 # run: …python.exe -m pip install --upgrade pip". That notice is pip's parting
-# advice, it is printed on almost every run, and it is always the last line —
+# advice, it is printed on almost every run, and it is always the last line, 
 # so taking the last line meant reporting it instead of the actual failure,
 # every single time an install went wrong. The user is then sent to fix pip,
 # which was never the problem.
@@ -336,7 +336,7 @@ def _reason(result: subprocess.CompletedProcess, prefix: str) -> str:
     if not useful:
         return prefix
 
-    # A line that names the failure beats the last line — pip prints the real
+    # A line that names the failure beats the last line, pip prints the real
     # cause and then several lines of hint after it.
     named = [
         line
@@ -351,11 +351,11 @@ def _reason(result: subprocess.CompletedProcess, prefix: str) -> str:
 # working exactly as it did before the split, without this file importing any
 # of them back at module level. It used to: each of those four modules
 # imports the shared primitives defined above back from this one, and this
-# file returned the favour with a plain `from ... import (...)` block here —
+# file returned the favour with a plain `from ... import (...)` block here: 
 # which is a real cyclic import (CodeQL: py/import-cycle), even though careful
 # ordering made it work. PEP 562's module `__getattr__` gets the same
-# attribute lookup — `searxng_manager.docker_available`, `from
-# memorymap.search.searxng_manager import install_source`, all of it — but
+# attribute lookup: `searxng_manager.docker_available`, `from
+# memorymap.search.searxng_manager import install_source`, all of it: but
 # resolved (and cached into this module's namespace) on first use instead of
 # at import time, so there is no longer an edge from this file back to them.
 _FACADE_NAMES: dict[str, tuple[str, ...]] = {
@@ -444,8 +444,8 @@ def __dir__() -> list[str]:
 
 
 # This module's own live object, so the functions below can reach the four
-# concerns' names through `_self.<name>` — genuine attribute access, which
-# `__getattr__` above handles — rather than as bare names. A bare reference
+# concerns' names through `_self.<name>`, genuine attribute access, which
+# `__getattr__` above handles: rather than as bare names. A bare reference
 # (`docker_available()` instead of `_self.docker_available()`) compiles to
 # LOAD_GLOBAL, which reads this module's `__dict__` directly and never calls
 # `__getattr__`; it would also be indistinguishable from a typo to a linter,
@@ -453,7 +453,7 @@ def __dir__() -> list[str]:
 _self = sys.modules[__name__]
 
 # Every name the four modules above exposed before the split, so ruff doesn't
-# flag this facade's whole reason for existing as "unused imports" — and so
+# flag this facade's whole reason for existing as "unused imports", and so
 # the list doubles as a manifest of what moved out of this file.
 #
 # **Built from `_FACADE_NAMES` rather than typed out again, and that is a fix
@@ -462,7 +462,7 @@ _self = sys.modules[__name__]
 # `py/undefined-export` alerts ("Explicit export is not defined"): the query
 # looks for a module-level binding with that name and PEP 562's `__getattr__`
 # is invisible to it, so every facade name was flagged. Deriving the list from
-# the same dict the resolver uses removes the duplication *and* the alerts —
+# the same dict the resolver uses removes the duplication *and* the alerts, 
 # there is no longer a list of string literals naming things this module does
 # not define, and a name added to a concern above can no longer be forgotten
 # here.
@@ -491,7 +491,7 @@ __all__ = [
     # `searxng_manager.shutil.which`/`.rmtree` directly, so the name has to
     # stay bound here. A prior `# noqa: F401  # codeql[py/unused-import]`
     # inline suppression on the import line did not stop CodeQL flagging
-    # it — listing it in `__all__` is a real reference (pyflakes/ruff and
+    # it: listing it in `__all__` is a real reference (pyflakes/ruff and
     # CodeQL both treat `__all__` membership as usage), not a suppression,
     # so it resolves the alert rather than asking a tool to ignore it.
     "shutil",
@@ -519,7 +519,7 @@ def port_report() -> dict:
     "Check the port isn't in use" is advice that assumes the person can check.
     This checks: it binds the port, and if it can't, asks whatever is there
     whether it speaks SearXNG. Those are three genuinely different situations
-    — free, occupied by a working SearXNG, occupied by something else — and
+    - free, occupied by a working SearXNG, occupied by something else, and
     only the last one is a problem the user has to go and solve.
     """
     free = True
@@ -546,7 +546,7 @@ def port_report() -> dict:
         "free": False,
         "held_by_searxng": answering,
         "detail": (
-            f"A working SearXNG is already answering on port {host_port()} — "
+            f"A working SearXNG is already answering on port {host_port()}, "
             "MemoryMap can use it as it is."
             if answering
             else f"Something is using port {host_port()}, and it isn't answering "
@@ -590,7 +590,7 @@ def status(data_dir: Path | None = None) -> dict:
         # Defensive: source installs no longer need anything beyond Python, so
         # this is only reached if `source_available` has been overridden.
         detail = (
-            "Docker is installed but its daemon isn't running — start Docker "
+            "Docker is installed but its daemon isn't running: start Docker "
             "Desktop, or MemoryMap will set SearXNG up in a virtualenv instead."
             if _self.docker_installed()
             else "SearXNG can't be set up automatically here. Point MemoryMap "
@@ -611,7 +611,7 @@ def status(data_dir: Path | None = None) -> dict:
             base["detail"] = (
                 "Docker is installed but not running, so SearXNG will be set "
                 "up in a virtualenv of its own instead. The first start takes "
-                "a few minutes — or start Docker Desktop and try again."
+                "a few minutes: or start Docker Desktop and try again."
                 if _self.docker_installed()
                 else "Docker isn't installed, so SearXNG will be set up in a "
                 "virtualenv of its own. The first start takes a few minutes."
@@ -624,7 +624,7 @@ def status(data_dir: Path | None = None) -> dict:
 
 
 # A start runs in the request thread and waits up to START_TIMEOUT for the
-# service to answer — a minute and a half of nothing, and the one wait a user
+# service to answer: a minute and a half of nothing, and the one wait a user
 # is most likely to open Background tasks to ask about. The install was listed
 # there and this was not, which is what "the bg tasks still isn't working"
 # turned out to be: the longest visible wait in the app had nothing to show.
@@ -641,7 +641,7 @@ def start(data_dir: Path, on_ready=None) -> dict:
 
     `on_ready` only matters when nothing is installed yet: the install this
     kicks off runs for minutes in the background, and with a callback it
-    finishes by starting SearXNG and reporting the URL — instead of asking
+    finishes by starting SearXNG and reporting the URL, instead of asking
     the user to come back and press Start a second time.
     """
     backend = preferred_backend()

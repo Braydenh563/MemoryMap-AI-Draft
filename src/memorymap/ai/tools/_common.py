@@ -3,7 +3,7 @@ the tool-spec shape, and the context-budget/lookup helpers every domain
 module needs (`_require_note`, `_visible`, `_note_summary`, ...).
 
 Split out of what used to be one 4,240-line `ai/tools.py` (ROADMAP.md §0/§4)
-— every handler used to live in one file with these helpers at the top;
+- every handler used to live in one file with these helpers at the top;
 they're the one piece every domain module below depends on, so they had to
 land somewhere with no dependency back on any of them.
 """
@@ -52,7 +52,7 @@ __all__ = [
 class ToolError(ValueError):
     """A failure a tool means to explain, in words written for a reader.
 
-    Every handler below raises this for the cases it anticipates — "there's no
+    Every handler below raises this for the cases it anticipates, "there's no
     note with that id", "that tag is already in use". Those strings are safe to
     hand to the model and to show in the UI, because somebody wrote them for
     exactly that.
@@ -83,8 +83,8 @@ class ToolSpec:
 # --- context budget -------------------------------------------------------------
 # A local model's window is small and a notebook is not. These caps are the
 # whole reason the reading tools below are safe to hand to a model: without
-# them, one `list_notes` on a 5,000-note notebook would push everything else —
-# the question included — out of the window.
+# them, one `list_notes` on a 5,000-note notebook would push everything else, 
+# the question included: out of the window.
 #
 # The rule: list calls return *previews* and say when they were capped, so the
 # model pages deliberately instead of silently seeing a truncated notebook.
@@ -99,11 +99,11 @@ MAX_LIST_LIMIT = 25
 DEFAULT_CONTEXT_TOKENS = 4_096
 
 #: The share of the model's window one search may fill by default. Only the
-#: default scales with the window — `MAX_LIST_LIMIT` still caps the result.
+#: default scales with the window, `MAX_LIST_LIMIT` still caps the result.
 SEARCH_CONTEXT_SHARE = 0.15
 SUMMARY_NOTE_LIMIT = 40
 # Documents are long-form by definition, so they get a larger ceiling than a
-# note — but still a ceiling: one document must not fill the whole window.
+# note: but still a ceiling: one document must not fill the whole window.
 DOCUMENT_CHARS = 12_000
 
 
@@ -114,7 +114,7 @@ def _clip(text: str, length: int = 300) -> str:
 #: How much text either side of a keyword hit travels with it. Enough that a
 #: sentence has room either side of the word that matched; the selection
 #: toolbar's own "how much travels with the selection" note (documents.js)
-#: uses the same reasoning for the same reason — a hit with no surroundings
+#: uses the same reasoning for the same reason, a hit with no surroundings
 #: answers "is the word here" and not "what does it say here".
 _KEYWORD_CONTEXT_RADIUS = 200
 
@@ -135,15 +135,15 @@ def _keyword_context(
     length: int = 0,
 ) -> str:
     """The text *around* where `needle` actually appears, not the start of
-    the document — asked for directly, and a real gap rather than a
+    the document: asked for directly, and a real gap rather than a
     misunderstanding of one that already existed: *"if the ai is searching
     for something, might keywords be flagged in certain pages of a file
     document in the actual document and/or extracted text, then it can use
     a tool or smth simpler to get the full text from those areas."*
 
     Before this, every search-result preview and every plain (no-embeddings)
-    document/file read clipped from the *start* of the text — `_clip(text,
-    N)` — regardless of where a match actually was. `_matches`/`ILIKE`
+    document/file read clipped from the *start* of the text, `_clip(text,
+    N)`, regardless of where a match actually was. `_matches`/`ILIKE`
     correctly finds a document because the word is in it somewhere; the
     preview it hands the model is the document's opening paragraph, which,
     fifty pages away from the actual hit, may share nothing with it at all.
@@ -155,7 +155,7 @@ def _keyword_context(
     Case-insensitive, matches merged when their windows overlap (a phrase
     that recurs two sentences apart reads as one passage, not two identical
     fragments with a gap between). Falls back to a plain head-of-text clip
-    — `_clip`'s existing behaviour — when there is no needle or no match, so
+    - `_clip`'s existing behaviour: when there is no needle or no match, so
     every caller can pass a query unconditionally and a document with none
     of the words in it still returns something rather than nothing.
     """
@@ -197,7 +197,7 @@ def _keyword_context(
 def _visible(*extra):
     """The where-clause every reading tool starts from.
 
-    Private notes are excluded here, once, rather than in each handler —
+    Private notes are excluded here, once, rather than in each handler, 
     the same reasoning as `manager.readable_content`: a rule applied in one
     place can't be forgotten in the next path someone adds. A private note is
     kept out of retrieval (`search_manager._without_private`), so it must be
@@ -219,12 +219,12 @@ def _readable(entry: Entry) -> str:
 def _note_summary(
     session: Session, entry: Entry, chars: int = PREVIEW_CHARS, dates: list | None = None
 ) -> dict:
-    """What the model gets back about a note — enough to talk about it
+    """What the model gets back about a note, enough to talk about it
     and to reference it in follow-up tool calls.
 
     `dates` lets a caller looping over many rows (`list_notes`,
     `_summarize_notes`) pass in a pre-fetched, batched lookup instead of
-    paying one `entry_dates` query per row — the N+1 ROADMAP.md Tier 1 item
+    paying one `entry_dates` query per row: the N+1 ROADMAP.md Tier 1 item
     8 named. Left `None` for the single-note callers, which still fetch it
     themselves below.
     """
@@ -258,7 +258,7 @@ def _undo_edit(session: Session, entry: Entry) -> dict:
     special-case endpoint: the UI hands it straight back to
     `POST /chat/tools/execute`, which is the same path the confirm button
     already uses. Roadmap §21 asks a skill to end in "a list the user can
-    undo, rather than prose claiming something happened" — this is the half
+    undo, rather than prose claiming something happened", this is the half
     that makes the list actionable.
     """
     return {
@@ -328,7 +328,7 @@ def _since_days(value) -> int | None:
 
     Models are inconsistent about which they send, and a tool that rejects one
     of them just burns a round. Anything unparseable means "no time filter"
-    rather than an error — the same call, wider, beats no answer.
+    rather than an error, the same call, wider, beats no answer.
     """
     if value in (None, ""):
         return None
@@ -346,7 +346,7 @@ def _since_days(value) -> int | None:
 
 def _refresh_embedding(session: Session, entry: Entry) -> None:
     """Content changed → the old vector is stale. Best effort, exactly
-    like the entries routes: a failed embed never fails the change —
+    like the entries routes: a failed embed never fails the change, 
     but it does get logged, so a backend that has stopped working is
     visible in Settings → Logs instead of silently degrading search."""
     try:

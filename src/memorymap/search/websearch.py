@@ -1,15 +1,15 @@
-"""Opt-in web search — the ONE feature that leaves the machine.
+"""Opt-in web search: the ONE feature that leaves the machine.
 
 It's off by default, gated behind the "web_search_enabled" preference, and the
 UI labels results clearly as coming from the internet.
 
 Two providers:
 
-- **SearXNG** (recommended) — a self-hosted metasearch engine. If the user
+- **SearXNG** (recommended): a self-hosted metasearch engine. If the user
   points `searxng_url` at their own instance we use its JSON API: no scraping,
   no API key, aggregated results, and the query never leaves their network
   beyond whatever SearXNG itself federates.
-- **DuckDuckGo HTML** (default) — no setup at all. The request carries only
+- **DuckDuckGo HTML** (default): no setup at all. The request carries only
   the query text. Parsed defensively, since it's markup we don't control.
 
 Whatever the provider, a failure degrades: SearXNG errors fall back to
@@ -61,14 +61,14 @@ _CHALLENGE_MARKERS = (
 # near-unique fingerprint: it announces the exact app on every site visited and
 # links those visits together across unrelated domains. That is the opposite of
 # what someone asking for private search wants. A plain, extremely common
-# browser string is the quiet choice — the aim is to look like everyone else,
+# browser string is the quiet choice, the aim is to look like everyone else,
 # not to be identifiable and polite about it.
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0"
 )
 
-# Sent on every outbound request. None of these are a guarantee — a header is a
-# request, not a control — but they cost nothing and they are what a browser in
+# Sent on every outbound request. None of these are a guarantee, a header is a
+# request, not a control, but they cost nothing and they are what a browser in
 # a privacy mode sends.
 PRIVACY_HEADERS = {
     "User-Agent": USER_AGENT,
@@ -103,8 +103,8 @@ def _private_session() -> requests.Session:
     empty at the start and thrown away at the end, so nothing about a search
     survives to be joined onto the one after it.
 
-    trust_env stays ON deliberately. Turning it off looks like a privacy win —
-    no ambient proxy, no netrc — but it also discards the system CA bundle and
+    trust_env stays ON deliberately. Turning it off looks like a privacy win, 
+    no ambient proxy, no netrc, but it also discards the system CA bundle and
     the user's own proxy settings, and someone routing through Tor or a VPN
     configures that through exactly those variables. Ignoring them would make
     this less private, not more.
@@ -200,8 +200,8 @@ def _searxng_target(
 ) -> tuple[str, dict[str, str]] | None:
     """Turn a configured SearXNG address into a request that can only reach it.
 
-    SearXNG is documented as self-hosted — the app can even install it for you
-    — so the address is required to resolve to this machine or the local
+    SearXNG is documented as self-hosted, the app can even install it for you
+    - so the address is required to resolve to this machine or the local
     network, and *every* address it resolves to must, not merely one of them.
     Anything else and this becomes a way for a mistyped or hostile preference
     to aim the app at an arbitrary host.
@@ -210,7 +210,7 @@ def _searxng_target(
     same reason `_pin_url` exists on the reader path: resolving once to check
     and again to connect leaves a DNS-rebinding window between the two, and a
     nameserver that answers differently the second time walks straight through
-    it. Returns None — never a partly-checked target — when anything fails.
+    it. Returns None, never a partly-checked target, when anything fails.
     """
     parsed = urlparse(base_url)
     if parsed.scheme not in {"http", "https"} or not parsed.hostname:
@@ -240,7 +240,7 @@ def _searxng_target(
 
     # Prefer IPv4 when the name resolves to both families. A self-hosted
     # SearXNG almost always listens on IPv4 (ours binds 127.0.0.1 exactly),
-    # while Windows resolves `localhost` to IPv6 ::1 first — pinning to the
+    # while Windows resolves `localhost` to IPv6 ::1 first, pinning to the
     # first answer meant probing a door the instance was not behind.
     pinned_ip = next((a for a in addresses if a.version == 4), addresses[0])
     if port is None:
@@ -255,7 +255,7 @@ def _searxng_target(
 def probe_searxng(base_url: str) -> bool:
     """True if a SearXNG instance answers JSON search at this URL.
 
-    `_searxng_target` is what makes that safe — see it for why the address has
+    `_searxng_target` is what makes that safe, see it for why the address has
     to be local and why the connection is pinned to it.
     """
     target = _searxng_target(base_url)
@@ -303,7 +303,7 @@ PROVIDERS = {
         "label": "Automatic (recommended)",
         "detail": (
             "Prefer your own SearXNG whenever it is running, and fall back to "
-            "DuckDuckGo when it isn't — so search keeps working before you "
+            "DuckDuckGo when it isn't: so search keeps working before you "
             "have set one up."
         ),
     },
@@ -324,7 +324,7 @@ PROVIDERS = {
 #
 # The roadmap asked to flip the default to SearXNG once it did. Read literally
 # that means "searxng", and that mode exists precisely so it will NOT fall back
-# — which is right for the person who wants it and wrong as a default, because
+#, which is right for the person who wants it and wrong as a default, because
 # a fresh notebook has no SearXNG yet and every search would fail until one was
 # installed. "auto" already *prefers* SearXNG whenever it is running, which is
 # the behaviour the item actually wanted; what was missing was saying so, which
@@ -332,14 +332,14 @@ PROVIDERS = {
 DEFAULT_PROVIDER = "auto"
 
 # How to describe the engine that ANSWERED, which is a different question from
-# which one was configured — under "auto" those routinely differ, and the
+# which one was configured, under "auto" those routinely differ, and the
 # difference is the whole point of saying so. The person picked an engine in
 # Settings for a privacy reason; if the panel does not report which one served
 # a given search, that choice is invisible exactly where it matters.
 ANSWERED_BY = {
     "searxng": {
         "label": "SearXNG",
-        "detail": "your own instance — the query stayed on your machine",
+        "detail": "your own instance: the query stayed on your machine",
     },
     "duckduckgo": {
         "label": "DuckDuckGo",
@@ -371,7 +371,7 @@ def settings_from(config) -> tuple[str, str]:
 
     Takes the config rather than reaching for the singleton, so this module
     stays free of the dependency container. One reader for the HTTP route and
-    the agent's `web_search` tool both — two readers is how the tool ended up
+    the agent's `web_search` tool both: two readers is how the tool ended up
     honouring a different setting from the rest of the app.
     """
     return (
@@ -389,8 +389,8 @@ def search_web(
     """[{title, url, snippet, domain, engine}] for a query, best first.
 
     `provider` is the user's choice from Settings → Web search, and "searxng"
-    means it. The old behaviour — try SearXNG, silently fall back to
-    DuckDuckGo — is still available as "auto" and is still the default, but it
+    means it. The old behaviour: try SearXNG, silently fall back to
+    DuckDuckGo: is still available as "auto" and is still the default, but it
     could not be turned off, and it is the wrong answer for somebody who runs
     their own instance *so that* their queries stay on their own network: a
     failed instance quietly sent every query to the engine they were avoiding.
@@ -413,7 +413,7 @@ def search_web(
         return cached
 
     if provider == "searxng":
-        # No fallback on purpose — see the docstring.
+        # No fallback on purpose, see the docstring.
         results = _search_searxng(query, limit, searxng_url)
     elif provider == "duckduckgo":
         results = _search_duckduckgo(query, limit)
@@ -426,7 +426,7 @@ def search_web(
                 # Named, not swallowed: "my results changed" is otherwise
                 # impossible to explain after the fact.
                 logger.info(
-                    "SearXNG didn't answer (%s) — falling back to DuckDuckGo",
+                    "SearXNG didn't answer (%s): falling back to DuckDuckGo",
                     exc,
                 )
                 results = []
@@ -444,7 +444,7 @@ def _search_searxng(query: str, limit: int, base_url: str) -> list[dict]:
     """Query a self-hosted SearXNG instance via its JSON API."""
     # One shared check with probe_searxng, rather than two that can drift.
     # This path used to do its own looser version and then hand the *hostname*
-    # to requests, which resolved it a second time — so the address that was
+    # to requests, which resolved it a second time, so the address that was
     # checked and the address that was connected to were not guaranteed to be
     # the same one. The probe pinned; the search that followed it did not.
     target = _searxng_target(base_url)
@@ -458,7 +458,7 @@ def _search_searxng(query: str, limit: int, base_url: str) -> list[dict]:
     try:
         # Not user-reachable as an SSRF: `url` is an IP literal built here from
         # an address this module resolved and checked itself.
-        # POST rather than GET so the query never appears in a request line —
+        # POST rather than GET so the query never appears in a request line, 
         # request lines are what end up in access logs and proxy history. The
         # instance is local, but "local" is not the same as "not written down".
         response = session.post(
@@ -495,7 +495,7 @@ def _search_searxng(query: str, limit: int, base_url: str) -> list[dict]:
                 # SearXNG is a metasearch engine: "via searxng" says where the
                 # query was assembled, not who answered it. It reports the
                 # upstream engines that returned each result, and that is the
-                # part with privacy meaning — a result from a self-hosted
+                # part with privacy meaning, a result from a self-hosted
                 # instance still originated somewhere.
                 "via": _upstream_engines(row),
             }
@@ -514,7 +514,7 @@ def _upstream_engines(row: dict) -> list[str]:
     """Which engines actually returned a SearXNG result, cleaned for display.
 
     SearXNG sends `engines` (a list) and sometimes `engine` (a single name);
-    take whichever is there, and accept neither without complaint — this is
+    take whichever is there, and accept neither without complaint, this is
     presentational, so a schema change upstream must not break searching.
     """
     raw = row.get("engines")
@@ -549,14 +549,14 @@ def _search_duckduckgo(query: str, limit: int) -> list[dict]:
     parser has three quite different ways of ending up with an empty list and
     only one of them is its own fault:
 
-    1. The request never arrived — no egress, a proxy refusing CONNECT, DNS.
+    1. The request never arrived, no egress, a proxy refusing CONNECT, DNS.
     2. It arrived and was refused: a 202/403 challenge page, or a rate limit.
     3. It arrived, was a real results page, and genuinely had no results.
 
     All three used to reach the caller as an empty list or one generic
     message, so the obvious conclusion was that the markup had changed. The
-    status and body length are logged for every search — that is what the
-    Logs screen needs in order to answer this without a debugger — and cases
+    status and body length are logged for every search, that is what the
+    Logs screen needs in order to answer this without a debugger, and cases
     1 and 2 now raise with a description of what actually happened.
     """
     session = _private_session()
@@ -599,7 +599,7 @@ def _search_duckduckgo(query: str, limit: int) -> list[dict]:
             # A real results page is tens of kilobytes even when it finds
             # nothing. Something this short is an error or an interstitial.
             logger.warning(
-                "DuckDuckGo returned a %d-byte body with no results — "
+                "DuckDuckGo returned a %d-byte body with no results, "
                 "probably not a results page at all",
                 len(body),
             )
@@ -676,7 +676,7 @@ _READER_MAX_CHARS = 20_000
 def _host_addresses(host: str) -> list[ipaddress.IPv4Address | ipaddress.IPv6Address]:
     """Every IP a hostname resolves to, so a check can't be dodged by a name.
 
-    An empty list means the name doesn't resolve — callers treat that as a
+    An empty list means the name doesn't resolve: callers treat that as a
     failed check rather than a pass, so a lookup failure can never open a hole.
     """
     try:
@@ -711,7 +711,7 @@ def _assert_external(url: str) -> list:
     """Refuse a URL that isn't plain http(s) out to the public internet.
 
     A search result is untrusted input, so it must never make the app fetch
-    something on this machine or the local network — that would turn "open a
+    something on this machine or the local network, that would turn "open a
     result" into a probe of the user's own services.
 
     Returns the resolved addresses so the caller can connect to one it has
@@ -734,7 +734,7 @@ def _pin_url(url: str, address) -> tuple[str, str]:
     Without this the guard above is checkable but not enforceable:
     _assert_external resolves the hostname, then requests resolves it AGAIN to
     open the connection. A hostile nameserver can answer the first lookup with
-    a public address and the second with 127.0.0.1 — DNS rebinding — and the
+    a public address and the second with 127.0.0.1, DNS rebinding, and the
     fetch walks straight past the check. Connecting to the exact address that
     passed closes that window.
 
@@ -774,7 +774,7 @@ def _get_external(url: str) -> requests.Response:
 
     Redirects are followed by hand precisely because `allow_redirects=True`
     would resolve the next hop inside requests, where the address check can't
-    see it — a public page answering "302 → http://127.0.0.1/" would otherwise
+    see it: a public page answering "302 → http://127.0.0.1/" would otherwise
     walk straight past the guard above.
     """
     session = _private_session()
@@ -803,7 +803,7 @@ def _get_external(url: str) -> requests.Response:
                 response.close()
                 if not location:
                     raise WebSearchError("That page redirected to nowhere")
-                # A relative Location is resolved against the hop it came from —
+                # A relative Location is resolved against the hop it came from, 
                 # the original URL, not the pinned one, so the next check sees
                 # the real hostname.
                 url = requests.compat.urljoin(url, location)
@@ -814,7 +814,7 @@ def _get_external(url: str) -> requests.Response:
             # to stream from. Tying it to the response hands that lifetime to
             # the garbage collector.
             response._memorymap_session = session
-            # response.url is the pinned IP-literal — anything resolved
+            # response.url is the pinned IP-literal, anything resolved
             # against it (relative links, error messages) would leak the
             # confusing rewritten address. Carry the real one alongside.
             response._memorymap_url = url
@@ -859,7 +859,7 @@ def fetch_readable(url: str) -> dict:
             raise WebSearchError("That link isn't a readable page")
         raw = response.raw.read(_READER_MAX_BYTES, decode_content=True) or b""
     except requests.HTTPError as exc:
-        # Name the site, not the pinned IP-literal the request was aimed at —
+        # Name the site, not the pinned IP-literal the request was aimed at, 
         # "403 for https://162.159.142.170:443/…" reads as our bug, and the
         # interesting part is *why*: 403/429/503 from a fetch that presents
         # ordinary headers is almost always bot protection (Cloudflare and
@@ -868,7 +868,7 @@ def fetch_readable(url: str) -> dict:
         status = exc.response.status_code if exc.response is not None else 0
         if status in (403, 429, 503):
             raise WebSearchError(
-                f"{domain_of(url)} refused the reader ({status}) — its bot "
+                f"{domain_of(url)} refused the reader ({status}): its bot "
                 "protection wants a real browser. Open the link there instead."
             ) from exc
         raise WebSearchError(
@@ -878,7 +878,7 @@ def fetch_readable(url: str) -> dict:
         raise WebSearchError(f"Couldn't open that page: {exc}") from exc
 
     # Relative links resolve against where the page actually came from
-    # (redirects included) — never against response.url, which is the
+    # (redirects included): never against response.url, which is the
     # pinned IP-literal.
     final_url = getattr(response, "_memorymap_url", url)
     page = raw.decode(response.encoding or "utf-8", errors="replace")
@@ -913,7 +913,7 @@ def _content_body(page: str) -> str:
     """The page minus its furniture, narrowed to the article when marked up.
 
     Shared by the block parser and the link collector, so both read the same
-    part of the page — links from a stripped nav bar would be exactly the
+    part of the page, links from a stripped nav bar would be exactly the
     chrome the stripping exists to drop.
     """
     body = re.sub(rf"(?is)<({_STRIP_TAGS})[^>]{{0,400}}>.{{0,200000}}?</\1>", " ", page)
@@ -930,9 +930,9 @@ def _page_links(page: str, base_url: str, limit: int = 40) -> list[dict]:
     """The article's outgoing links: [{text, url}], absolute and cleaned.
 
     So an agent that has read a page can cite where its statements lead and
-    follow up without a second search. Only http(s) targets survive —
+    follow up without a second search. Only http(s) targets survive: 
     javascript:, data: and mailto: are dropped by the same check every
-    reader URL passes — and following one still goes through the full
+    reader URL passes: and following one still goes through the full
     address check and pinning in fetch_readable; nothing here is fetched.
     """
     links: list[dict] = []
@@ -979,7 +979,7 @@ def _readable_blocks(page: str) -> list[dict]:
         kind = "heading" if tag.startswith("h") else tag
         block = {"type": kind, "text": text[:2000]}
         # Keep the heading's depth. Flattening h1..h6 to one "heading" threw
-        # away the page's own outline — which is the thing that makes a
+        # away the page's own outline: which is the thing that makes a
         # stripped article navigable rather than a long ribbon of text.
         if kind == "heading":
             block["level"] = int(tag[1])

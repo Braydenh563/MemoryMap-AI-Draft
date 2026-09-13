@@ -1,7 +1,7 @@
 """Tests for the link-reason audit (`ai.links`) and the pieces around it.
 
 A previous agent's version of `audit_vague_links` called
-`provider.run_prompt`, which does not exist anywhere in `ai.provider` — every
+`provider.run_prompt`, which does not exist anywhere in `ai.provider`, every
 call raised `AttributeError`, was swallowed by the broad `except Exception`,
 and the function always returned 0. The feature had never run once. These
 tests exercise the fixed version against the same fake Ollama transport
@@ -26,7 +26,7 @@ from memorymap.entry import manager
 
 @pytest.fixture(autouse=True)
 def _clear_failure_tracking():
-    """`links._failed_attempts` is process-global, keyed by `EntryLink.id` —
+    """`links._failed_attempts` is process-global, keyed by `EntryLink.id`, 
     and every test here gets a fresh SQLite file whose autoincrement starts
     back at 1, so a link marked "failed" by one test's id=1 would otherwise
     silently poison the next test's own id=1. Clearing before and after
@@ -40,11 +40,11 @@ def _clear_failure_tracking():
 def _linked_pair(session, reason=manager.AUTO_REASON_TEXT, reason_confidence=0.8):
     """Two notes linked the way `create_link` leaves them when nobody gives a
     reason and the embedding score clears `AUTO_REASON_THRESHOLD`: a generic
-    reason plus a confidence score — exactly what `audit_vague_links` looks
+    reason plus a confidence score, exactly what `audit_vague_links` looks
     for. Inserted directly rather than through `create_link`, the same way
     `test_waven_api.py`'s backfill tests do, so each pair is independent of
     the embedding backend."""
-    a = Entry(content="Planning the Denver move — dates and logistics", ai_confidence=0)
+    a = Entry(content="Planning the Denver move, dates and logistics", ai_confidence=0)
     b = Entry(content="More on the Denver move: packing and movers", ai_confidence=0)
     session.add_all([a, b])
     session.commit()
@@ -64,11 +64,11 @@ def _linked_pair(session, reason=manager.AUTO_REASON_TEXT, reason_confidence=0.8
 
 def test_audit_never_sends_a_private_note_to_the_model(session, fake_ollama):
     """A note can be marked private *after* it was already linked to another
-    note — `manager.set_private` drops the note's embedding and resolved
+    note: `manager.set_private` drops the note's embedding and resolved
     dates for exactly this reason but leaves any existing `EntryLink` rows in
     place. `audit_vague_links` fetches both ends of a link by id with no
-    `is_private` check at all, so it read the raw `content` column — ciphertext
-    for a private note — straight into the model's prompt, the same shape of
+    `is_private` check at all, so it read the raw `content` column: ciphertext
+    for a private note, straight into the model's prompt, the same shape of
     bug as the weekly digest's."""
     a, b, link = _linked_pair(session)
     a.is_private = True
@@ -185,7 +185,7 @@ def test_no_log_row_at_all_when_nothing_was_updated(session, fake_ollama):
 
 def test_a_repeatedly_failing_link_is_not_retried_forever(session, fake_ollama, monkeypatch):
     """A link whose AI reason generation keeps failing must not be retried
-    on every single pass forever — `audit_vague_links`'s own WHERE clause
+    on every single pass forever, `audit_vague_links`'s own WHERE clause
     would otherwise pick it straight back up next time, since a failed
     attempt changes neither `reason` nor `reason_confidence`."""
     _, _, link = _linked_pair(session)
@@ -202,7 +202,7 @@ def test_a_repeatedly_failing_link_is_not_retried_forever(session, fake_ollama, 
     assert links._failed_attempts[link.id] == links.MAX_ATTEMPTS_PER_PROCESS
 
     # One more pass: the guard must skip this link WITHOUT calling the model
-    # again — proven by making a call raise loudly instead of just failing.
+    # again: proven by making a call raise loudly instead of just failing.
     def _should_not_be_called(*a, **k):
         raise AssertionError("the retry guard should have skipped this link")
 
@@ -243,7 +243,7 @@ def test_audit_link_reasons_tool_is_registered_and_callable(session, fake_ollama
 
 def test_the_audit_link_reasons_skill_names_only_that_tool(session):
     """The skill this feature ships with must be specifically about link
-    REASONS, not general link management — it should offer only the one
+    REASONS, not general link management, it should offer only the one
     tool, not `link_notes`/`unlink_notes`."""
     from memorymap.ai import skills
 
@@ -257,7 +257,7 @@ def test_the_audit_link_reasons_skill_names_only_that_tool(session):
 
 def test_creating_a_link_does_not_call_the_model(session, fake_ollama, fake_embeddings):
     """`_deduce_reason` used to call the model synchronously inside
-    `create_link` — every link creation, human or agent, stalled on a chat
+    `create_link`, every link creation, human or agent, stalled on a chat
     round-trip. Two notes similar enough to clear `AUTO_REASON_THRESHOLD`
     must still get a reason (the cheap generic one) without ever asking the
     model."""
@@ -282,7 +282,7 @@ def test_backfill_endpoint_runs_the_ai_pass_over_the_reasons_it_just_deduced(
     The embedding pass compares two vectors and has no words for what it
     found, so every reason it can write is the literal string "similar in
     meaning". A notebook that pressed "Give links a reason" therefore ended up
-    with every link saying nothing — reported as the button appearing to work
+    with every link saying nothing, reported as the button appearing to work
     and producing reasons that were useless.
 
     So the endpoint runs both passes: deduce, then ask the model to name the
@@ -305,7 +305,7 @@ def test_backfill_endpoint_runs_the_ai_pass_over_the_reasons_it_just_deduced(
 
 def test_backfill_endpoint_can_skip_the_ai_pass(ai_client, fake_ollama):
     """`ai=false` is for when the model is known to be down and you just want
-    the links marked — the cheap pass still runs and still commits."""
+    the links marked: the cheap pass still runs and still commits."""
     a = ai_client.post("/entries", json={"content": "a funny scarecrow joke"}).json()
     b = ai_client.post("/entries", json={"content": "another funny pun"}).json()
     ai_client.post(f"/entries/{a['id']}/links", json={"target_id": b["id"]})
@@ -356,7 +356,7 @@ def test_link_suggestions_carry_the_reason_linking_would_deduce(ai_client):
     """Asked directly: a suggestion showed a bare percentage with nothing
     saying *why*, unlike an actual link. `LINK_SUGGESTION_THRESHOLD` equals
     `manager.AUTO_REASON_THRESHOLD` exactly, so every suggestion here would
-    get this same text if it were linked with no reason given — showing it
+    get this same text if it were linked with no reason given, showing it
     up front is a preview of that outcome, not a separate guess."""
     a = _save(ai_client, "a funny scarecrow joke")
     b = _save(ai_client, "another funny pun")
@@ -400,7 +400,7 @@ def test_an_unrelated_pair_is_left_with_no_reason_at_all(ai_client):
 
 def test_a_reason_someone_gave_is_never_overridden_by_a_guess(ai_client):
     """Two notes close enough to be auto-reasoned still keep the human's own
-    words — and a stated reason never carries a similarity score, since it
+    words: and a stated reason never carries a similarity score, since it
     isn't one."""
     a = _save(ai_client, "a funny scarecrow joke")
     b = _save(ai_client, "another funny pun")
@@ -415,7 +415,7 @@ def test_a_reason_someone_gave_is_never_overridden_by_a_guess(ai_client):
 
 
 def test_no_reason_is_deduced_without_embeddings(client):
-    """The plain `client` fixture has no working embedding backend — the same
+    """The plain `client` fixture has no working embedding backend, the same
     case `/entries/link-suggestions` already returns empty for."""
     a = _save(client, "first note")
     b = _save(client, "second note")
@@ -451,7 +451,7 @@ def test_a_links_reason_can_be_added_edited_and_cleared_by_hand(client):
 def test_backfill_deduces_reasons_for_links_made_before_the_feature_existed(
     ai_client, session
 ):
-    """"none of my notes have a linked reason yet — is there an easy way to
+    """"none of my notes have a linked reason yet, is there an easy way to
     give them all a reason?" `_deduce_reason` only ever ran at the moment
     `create_link` made a *new* link, so a link made before that shipped (or
     while the embedding backend was off) stays mute forever with nothing to
@@ -464,17 +464,17 @@ def test_backfill_deduces_reasons_for_links_made_before_the_feature_existed(
     c = _save(ai_client, "buy milk and eggs")
     session.add(
         EntryLink(source_entry_id=a["id"], target_entry_id=b["id"])
-    )  # similar — should clear the bar
+    )  # similar: should clear the bar
     session.add(
         EntryLink(source_entry_id=a["id"], target_entry_id=c["id"])
-    )  # unrelated — should not
+    )  # unrelated: should not
     session.commit()
 
     result = ai_client.post("/entries/links/backfill-reasons", json={"ai": False}).json()
     # The endpoint reports a third number now: `rewritten`, the links the AI
     # pass turned from "similar in meaning" into an actual reason. Asserted as
     # a subset rather than an exact dict, so adding a counter is not a test
-    # failure — what this test is about is the deduction, not the shape.
+    # failure: what this test is about is the deduction, not the shape.
     assert result["checked"] == 2
     assert result["updated"] == 1
 
@@ -505,7 +505,7 @@ def test_backfill_never_touches_a_reason_someone_already_gave_directly(ai_client
 
 def test_editing_a_reason_by_hand_clears_a_deduced_confidence(ai_client):
     """Once a person has spoken for the link, the similarity score that
-    produced the old reason no longer describes anything — an edited link
+    produced the old reason no longer describes anything, an edited link
     and a fresh auto-reasoned one that hasn't been touched must stay
     tellable apart, so the score is cleared rather than left stale."""
     a = _save(ai_client, "a funny scarecrow joke")
@@ -538,7 +538,7 @@ def test_editing_a_reason_on_someone_elses_link_id_is_404(client):
 
 def test_generate_link_reason_refuses_a_private_note(ai_client, fake_ollama, session):
     """The `/links/{id}/generate-reason` endpoint decrypted both linked notes
-    and sent them to the model with no `is_private` check — the one guard
+    and sent them to the model with no `is_private` check: the one guard
     every other AI-facing read path in this codebase enforces (see
     `test_generate_title_refuses_a_private_note`, search, embeddings, janitor,
     chat linking). A private note's content must not reach the model this
@@ -573,7 +573,7 @@ def test_generate_link_reason_refuses_a_private_note(ai_client, fake_ollama, ses
 
 # --- a shared date rescues a borderline reason (ROADMAP.md Tier 2 item 9) --------
 #
-# "the deduction should weigh temporal words as well as embedding similarity —
+# "the deduction should weigh temporal words as well as embedding similarity, 
 # two notes mentioning 'next Tuesday' or written the same day read as related
 # even when their topics don't overlap semantically" (asked for directly).
 # `manager.TEMPORAL_RESCUE_BOOST` folds `EntryDate`/`created_at` in as a
@@ -582,7 +582,7 @@ def test_generate_link_reason_refuses_a_private_note(ai_client, fake_ollama, ses
 
 
 def _borderline_pair(session):
-    """Two entries whose embeddings cosine to exactly 0.5 — a fixed 5° below
+    """Two entries whose embeddings cosine to exactly 0.5, a fixed 5° below
     `AUTO_REASON_THRESHOLD` (0.55) so `TEMPORAL_RESCUE_BOOST` (0.15) alone
     decides whether a reason is deduced."""
     a = manager.create_entry(session, "planning for the trip")
@@ -626,7 +626,7 @@ def test_a_shared_resolved_date_rescues_a_borderline_reason(session):
 
 
 def test_being_written_the_same_day_also_rescues_a_borderline_reason(session):
-    """No `EntryDate` phrase needed — both notes' own `created_at` falling on
+    """No `EntryDate` phrase needed: both notes' own `created_at` falling on
     the same calendar day is the other named case."""
     a, b = _borderline_pair(session)
 
@@ -639,7 +639,7 @@ def test_being_written_the_same_day_also_rescues_a_borderline_reason(session):
 
 def test_a_coarser_than_day_date_does_not_rescue_a_borderline_reason(session):
     """"last week" isn't specific enough to call two notes related on its
-    own — only day-precision phrases count, and `created_at` itself is
+    own: only day-precision phrases count, and `created_at` itself is
     pinned a day apart here so that fallback can't rescue it either."""
     a, b = _borderline_pair(session)
     b.created_at = a.created_at + timedelta(days=3)
@@ -660,7 +660,7 @@ def test_a_coarser_than_day_date_does_not_rescue_a_borderline_reason(session):
 
 
 def test_the_temporal_boost_cannot_manufacture_a_reason_from_a_low_score(session):
-    """A shared date is a tie-breaker, not a second path to a link — a pair
+    """A shared date is a tie-breaker, not a second path to a link, a pair
     nowhere near the bar on meaning stays unreasoned even on the same day."""
     a = manager.create_entry(session, "a funny scarecrow joke")
     b = manager.create_entry(session, "buy milk and eggs")
@@ -691,7 +691,7 @@ def test_the_temporal_boost_cannot_manufacture_a_reason_from_a_low_score(session
 
 def test_ordinary_today_phrasing_in_note_text_rescues_a_borderline_reason(session):
     """The end-to-end path, not a hand-built `EntryDate` row: saving a note
-    that just says "today" (asked for directly — "I was at uni today and
+    that just says "today" (asked for directly: "I was at uni today and
     bought that mouse there") already goes through the same
     `record_dates`/`entry.timewords` resolution every note gets, entirely
     independent of this feature. This pins that the two are actually wired
@@ -792,7 +792,7 @@ def test_suggestion_reasons_pairs_are_capped_at_twelve(ai_client, fake_ollama):
 
 def test_a_score_already_over_threshold_keeps_the_plain_reason(session):
     """A shared date must not relabel a pair that already clears the bar on
-    meaning alone — the exact-match text and score every existing test
+    meaning alone: the exact-match text and score every existing test
     already pins stay exactly as they were."""
     a = manager.create_entry(session, "a funny scarecrow joke")
     b = manager.create_entry(session, "another funny pun")
@@ -814,7 +814,7 @@ def test_a_score_already_over_threshold_keeps_the_plain_reason(session):
     )
     session.commit()
 
-    link = manager.create_link(session, a, b)  # both created just now — same day
+    link = manager.create_link(session, a, b)  # both created just now, same day
 
     assert link is not None
     assert link.reason == manager.AUTO_REASON_TEXT

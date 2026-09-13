@@ -1,7 +1,7 @@
 """What a tool call shows in the chat transcript (agent._result_summary).
 
 Reported with a screenshot: *"tools render fine in the chat initially but then
-I come back to them after reloading the app later and they look like this"* —
+I come back to them after reloading the app later and they look like this"*, 
 rows reading `Listed your categories{'categories': [{'name': 'Games',
 'notes': 3}], 'total_notes': 27, 'label': 'ph:folders Listed your
 categories'}`. That is Python's `repr` of the result dict.
@@ -30,7 +30,7 @@ def test_a_result_without_a_summary_is_json_not_a_python_repr():
 
 
 def test_the_display_label_is_not_repeated_inside_the_body():
-    """The row's heading already *is* the label — see the screenshot, where it
+    """The row's heading already *is* the label, see the screenshot, where it
     appears twice in one row."""
     text = _result_summary({"total_notes": 27, "label": "ph:folders Listed your categories"})
     assert "label" not in text

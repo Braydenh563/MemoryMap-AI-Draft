@@ -1,6 +1,6 @@
 """What the backend actually says about a model, read rather than guessed at.
 
-The app knew one thing about the active model — its context length — and
+The app knew one thing about the active model, its context length, and
 guessed or ignored the rest. Ollama's `/api/show` has been reporting the
 parameter count, the quantisation and, most usefully, a `capabilities` list
 (`tools`, `thinking`, `vision`, …) that nothing here looked at.
@@ -9,7 +9,7 @@ That list is not cosmetic. Two places behave differently for knowing it:
 
 - **The thinking toggle.** Recent Ollama rejects `think` outright for a model
   that has no thinking, so `quick` mode would have failed *every* turn on an
-  ordinary model — the preset breaking the chat it was meant to speed up.
+  ordinary model: the preset breaking the chat it was meant to speed up.
 - **"Agent mode does nothing."** Whether the model can call tools at all was
   previously discoverable only by trying it and reading the 400.
 
@@ -177,8 +177,8 @@ def test_a_sparse_server_reports_what_little_it_has():
 
 def test_the_openai_dialect_admits_it_cannot_report_capabilities():
     """No OpenAI-compatible server reports them in a standard way. Saying
-    "unknown" keeps the existing behaviour — offer tools, and find out from
-    the 400 — instead of inventing an answer."""
+    "unknown" keeps the existing behaviour, offer tools, and find out from
+    the 400: instead of inventing an answer."""
     c = OpenAICompatClient(base_url="http://localhost:1234/v1")
     c._catalog = []
     c._props = {}

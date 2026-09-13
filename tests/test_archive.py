@@ -1,6 +1,6 @@
 """Archive: a third state between active and binned (BACKLOG §30b).
 
-Archiving a note is not deleting it — nothing about it is bound for
+Archiving a note is not deleting it, nothing about it is bound for
 auto-clear or purge, and there is no confirmation, because nothing is at
 risk of being lost. It's excluded from ordinary listings the same way a
 binned note is, for a different reason: kept, but out of the way.
@@ -33,7 +33,7 @@ def test_archiving_removes_a_note_from_the_normal_list(client, session):
 
 
 def test_archiving_is_not_deleting(client, session):
-    """An archived note is not in the bin, and vice versa — the two
+    """An archived note is not in the bin, and vice versa, the two
     states are independent, not aliases of each other."""
     entry = _note(session, "archive me, not delete me")
     client.post(f"/entries/{entry.id}/archive")
@@ -74,7 +74,7 @@ def test_archiving_twice_is_a_no_op_not_a_new_timestamp(client, session):
 
 def test_archived_note_is_still_readable_directly_by_id(client, session):
     """Unlike a binned note (which 404s unless ?deleted=true), an archived
-    note stays normally reachable — it's kept, not hidden."""
+    note stays normally reachable, it's kept, not hidden."""
     entry = _note(session, "still findable by id")
     client.post(f"/entries/{entry.id}/archive")
     response = client.get(f"/entries/{entry.id}")

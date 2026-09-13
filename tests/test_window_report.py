@@ -3,8 +3,8 @@
 A token count on its own doesn't answer the question anyone actually has.
 "3,900 tokens" is not information; "3,900 of 8,192" is, because it says whether
 the *next* turn of this conversation is the one that starts dropping the top of
-its own prompt. That failure is silent — the model doesn't error, it just stops
-knowing it has tools — so the number has to be visible before it happens rather
+its own prompt. That failure is silent, the model doesn't error, it just stops
+knowing it has tools, so the number has to be visible before it happens rather
 than diagnosable after.
 
 The second half is honesty. Ollama counts tokens itself, so its numbers are
@@ -112,7 +112,7 @@ def test_an_agent_turn_carries_it_too(openai_client, capture_post):
 
 def test_the_estimate_counts_what_actually_streamed(openai_client, capture_post):
     """The output half of a streamed estimate can only come from the text that
-    went past — there is no payload at the end to read it off."""
+    went past: there is no payload at the end to read it off."""
     capture_post.queue.append(
         FakeResponse(lines=sse({"choices": [{"delta": {"content": "x" * 400}}]}))
     )
@@ -136,7 +136,7 @@ def _events(http, question, **body):
 def test_both_chat_paths_pass_the_window_through(ai_client, fake_ollama, use_tools):
     """Both the agent and plain Q&A spread the whole stats dict into their
     event, so a new field reaches the UI without either path learning about it.
-    That property is what is asserted here — the field itself is the easy half,
+    That property is what is asserted here, the field itself is the easy half,
     and the agent path is the one that has historically dropped stats entirely.
     """
     ai_client.post("/entries", json={"content": "the beans need netting next week"})

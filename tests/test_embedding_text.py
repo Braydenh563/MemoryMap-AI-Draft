@@ -1,7 +1,7 @@
 """What a note means includes how it is filed and what is attached to it.
 
 **Reported directly:** "I have a whole category called hobbies but basically
-none came up in the semantic search." Nothing was broken — the word
+none came up in the semantic search." Nothing was broken: the word
 "hobbies" lives in the *category*, and `embedding_text` had never included
 one. A note about bouldering, filed under Hobbies, contained no more
 relation to the query "hobbies" than to any other word it does not happen to
@@ -9,7 +9,7 @@ contain, so the vectors could not answer the one question the category
 exists to answer.
 
 The same gap swallowed attachments. A scanned lecture PDF hanging off a
-two-word note was, to the vectors, a two-word note — even now that the
+two-word note was, to the vectors, a two-word note, even now that the
 attachment carries a caption and extracted text of its own
 (`Attachment.caption`/`ocr_text`, added alongside these tests).
 
@@ -17,7 +17,7 @@ The trap this file exists to hold: this app's models declare foreign keys
 and **no ORM `relationship()` anywhere**, so `entry.category` and
 `entry.attachments` are not attributes that exist. The first version of the
 fix read them with `getattr(entry, "category", None)` and would have indexed
-nothing at all, forever, without ever raising — exactly the "features that
+nothing at all, forever, without ever raising, exactly the "features that
 never ran once" shape CLAUDE.md warns about. These tests fail if that
 regresses, because they assert on the text rather than on the code path.
 """

@@ -21,13 +21,13 @@
   // The gap was real and had just cost a session: a JavaScript error aborts
   // the rest of the file it is in, so the app can hang with nothing in the
   // terminal, nothing in Settings → Logs, and the only record in a browser
-  // console nobody opens — least of all in the desktop shell, which has no
+  // console nobody opens: least of all in the desktop shell, which has no
   // obvious way to open one.
   //
   // `keepalive` so a report still leaves even if the page is being torn down
   // as it fires. No token: `/logs/client` sits outside the unlock
   // gate precisely because these failures happen before unlock. Failures
-  // here are swallowed — a logger that throws while reporting a crash would
+  // here are swallowed: a logger that throws while reporting a crash would
   // replace the message on screen with its own.
   var reported = 0;
   function report(kind, message, source) {
@@ -70,7 +70,7 @@
   // broken", and nobody can tell those apart from a progress bar.
   // **No "press Ctrl+Shift+R" here.** Reported immediately after the first
   // version said exactly that: "ctrl shift r hard reload doesnt work as it is
-  // a hothey" — in the desktop shell that chord is bound to something else,
+  // a hothey", in the desktop shell that chord is bound to something else,
   // so the one instruction on a dead screen was one the reader could not
   // follow. Restarting the app is the advice that works in every shell this
   // runs in, and it also fixes the stale-server case below.
@@ -89,7 +89,7 @@
   });
 
   // A CSP refusal does not fire `error` with a useful message, and it is the
-  // failure mode most likely to leave a completely blank app — so it is
+  // failure mode most likely to leave a completely blank app, so it is
   // reported specifically, with the one thing that actually fixes it.
   document.addEventListener("securitypolicyviolation", function (event) {
     report(
@@ -106,7 +106,7 @@
   });
 
   // An unhandled promise rejection never fires `error`, and every network
-  // call in this app is a promise — so the most likely runtime failure after
+  // call in this app is a promise, so the most likely runtime failure after
   // load was the one class going unreported. Not surfaced on the splash: by
   // the time these happen the app is usually up, and a rejected fetch is
   // often already handled by a toast. The log is the right place for it.
@@ -120,7 +120,7 @@
   });
 
   // **A way out, not just a message.** The 12-second notice below has been
-  // here a while and it names the one remedy that works in every shell — but
+  // here a while and it names the one remedy that works in every shell, but
   // it is still an instruction on a dead screen, and the report that prompted
   // this ("it went back to the loading screen and got stuck there") is a case
   // where a plain reload is all that is needed. A button is one click; closing
@@ -134,12 +134,27 @@
     button.textContent = "Try again";
     button.addEventListener("click", function () {
       // `true` is ignored by modern browsers and harmless; the plain reload is
-      // what re-runs boot. Deliberately not `location.href = "/"` — that would
+      // what re-runs boot. Deliberately not `location.href = "/"`, that would
       // discard a deep link the reader may have arrived on.
       location.reload();
     });
     splash.appendChild(button);
   }
+
+  // Eight seconds, then twelve. `initAuth()` bounds its own /auth/status
+  // probe at 8s, so a boot still on screen at that point has already used
+  // up the one wait the app plans for: the reader has been looking at a
+  // crawling bar with nothing to do about it. This says so and gives them
+  // the button, without yet claiming anything is broken, which at eight
+  // seconds it may not be. The 12-second notice below still follows and
+  // still names the remedy that works in every shell; the two are
+  // deliberately different sentences.
+  setTimeout(function () {
+    var splash = document.getElementById("boot-splash");
+    if (!splash || splash.classList.contains("hidden")) return;
+    say("Still loading. Give it a moment, or reload.");
+    offerReload(splash);
+  }, 8000);
 
   setTimeout(function () {
     say(

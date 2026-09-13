@@ -3,14 +3,14 @@
 ROADMAP.md item 20a: `MediaUpload` (added for the Library gallery) tracks
 every file `/media/upload` has ever produced, but nothing before this
 checked a row against whether any live note, document, whiteboard image
-object or saved chat turn still points at it — pasting over an image in a
+object or saved chat turn still points at it, pasting over an image in a
 note, or deleting the note entirely, leaves the file on disk with only a
 manual, one-at-a-time `DELETE /media/{id}` to ever find it again.
 
 The one thing this has to get right, and would rather be slow about than
 wrong about: a private note's content is encrypted at rest, so an image
 referenced only inside a private note that's currently locked cannot be
-ruled out as "still referenced" — it can only be *not checked*. Rather than
+ruled out as "still referenced", it can only be *not checked*. Rather than
 treat "couldn't check" as "not referenced" (which would eventually delete a
 real attachment out from under a locked note), any private note this pass
 can't read makes the whole pass refuse to delete anything, not just skip
@@ -28,7 +28,7 @@ from sqlalchemy.orm import Session
 from memorymap.core.database import Conversation, Document, Entry, MediaUpload, WhiteboardObject
 from memorymap.entry import manager
 
-# Same shape routes_whiteboard.py's own MEDIA_URL_RE validates on the way in —
+# Same shape routes_whiteboard.py's own MEDIA_URL_RE validates on the way in, 
 # kept independent (not imported) since this only ever reads, never resolves
 # a path from user input.
 _MEDIA_NAME_RE = re.compile(r"/media/([A-Za-z0-9][A-Za-z0-9._-]{0,119})")
@@ -37,7 +37,7 @@ _MEDIA_NAME_RE = re.compile(r"/media/([A-Za-z0-9][A-Za-z0-9._-]{0,119})")
 def referenced_names(text: str) -> set[str]:
     """Every `/media/<filename>` this text mentions. Public (not
     module-private): `core/media_process.py` reuses it to answer the same
-    underlying question — "which uploads does this text reference" — when
+    underlying question, "which uploads does this text reference", when
     deciding what to run OCR/captioning/vision-OCR on at save time, not
     just when deciding what counts as orphaned."""
     return set(_MEDIA_NAME_RE.findall(text or ""))
@@ -72,7 +72,7 @@ def _conversation_referenced_ids(session: Session) -> set[int]:
 
     A conversation stores its images as ids
     (`routes_conversations.TurnBody.image_media_ids`, on the user message),
-    not as inline `/media/…` markdown text — so `_referenced_filenames`
+    not as inline `/media/…` markdown text: so `_referenced_filenames`
     above, which only ever looks for that text, can never see a chat's own
     images no matter how thoroughly it scans notes, documents and
     whiteboard content. Without this, `find_orphaned_media` would call
@@ -97,14 +97,14 @@ def usage_map(session: Session) -> tuple[dict[str, list[dict]], bool]:
     """The reverse of `_referenced_filenames`: filename -> where it is used.
 
     The Library's Files & Images tab showed a thumbnail, a filename and two
-    empty prompts, and nothing about what the file was *for* — so a gallery of
+    empty prompts, and nothing about what the file was *for*, so a gallery of
     sixty uploads could not answer the only question anyone brings to it,
     which is "where did this come from and what is it attached to?". Reported
     as the Files tab needing to be "properly integrated" rather than
     redesigned.
 
     Built from `referenced_names` rather than a second scanner, so this and
-    the orphan check can never disagree about what "referenced" means — an
+    the orphan check can never disagree about what "referenced" means: an
     important property, because a file this says is used and the GC says is
     orphaned would be a file the GC deletes out from under a live note.
 
@@ -144,7 +144,7 @@ def usage_map(session: Session) -> tuple[dict[str, list[dict]], bool]:
             # screen can read. The app already has this convention: a
             # document's linked-notes list (`routes_documents._linked_notes`)
             # sends `is_private` and the UI draws a lock instead of the
-            # preview. Same answer here — the connection is still shown and
+            # preview. Same answer here: the connection is still shown and
             # still clickable, because knowing *that* a file is in use is what
             # stops it being deleted; only the wording is withheld.
             if entry.is_private:
@@ -152,7 +152,7 @@ def usage_map(session: Session) -> tuple[dict[str, list[dict]], bool]:
                 continue
             # `plain_label`, not the raw first line: a chip cannot render
             # markdown, and one that tries shows `# Title ![alt](/media/…)`
-            # verbatim — reported exactly that way.
+            # verbatim: reported exactly that way.
             note(name, "note", entry.id, manager.plain_label(content))
 
     return used, skipped_private
@@ -164,7 +164,7 @@ def find_orphaned_media(session: Session) -> tuple[list[MediaUpload], bool]:
 
     Returns `(orphans, skipped_private)`. When `skipped_private` is True,
     at least one private note's content could not be checked (vault
-    locked) — the list is not exhaustive, and `delete_orphaned_media`
+    locked): the list is not exhaustive, and `delete_orphaned_media`
     refuses to act on it.
     """
     referenced, skipped_private = _referenced_filenames(session)
@@ -179,12 +179,12 @@ def find_orphaned_media(session: Session) -> tuple[list[MediaUpload], bool]:
 def delete_orphaned_media(session: Session, media_dir) -> tuple[list[dict], bool]:
     """Deletes every currently-orphaned upload's file and tracking row.
 
-    Returns `(deleted, skipped_private)` — `deleted` holds one
+    Returns `(deleted, skipped_private)`, `deleted` holds one
     `{"id", "filename", "original_name"}` dict per row removed, captured
     *before* the delete (a row's fields aren't safely readable through the
     ORM object once `session.commit()` has expired it). Refuses outright
     (deletes nothing) when a locked private note made the reference check
-    incomplete — leaving a genuinely orphaned file on disk a while longer
+    incomplete: leaving a genuinely orphaned file on disk a while longer
     is the safe side of that trade; deleting one a locked note still
     references is not.
     """

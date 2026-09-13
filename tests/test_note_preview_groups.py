@@ -4,7 +4,7 @@ A lint, not a behaviour test, for the reason the other frontend lints exist:
 this Python suite cannot run `app.js`. It pins the one coupling that already
 broke silently.
 
-Reported with a screenshot of the Contents page — "Girl with bell undefined",
+Reported with a screenshot of the Contents page, "Girl with bell undefined",
 "Leafeon Pokemon image test undefined". The `++colour|text++` highlight
 alternative was added to INLINE_MD *after* `notePreviewText`'s replacer was
 written, introducing two capture groups in the middle of the pattern and
@@ -14,7 +14,7 @@ walked off the end of the branches it knew about, the last one evaluated to
 
 Three things were wrong and only one was visible: an image previewed as
 "undefined", a link previewed as "undefined", and `==red|highlighted==`
-previewed as "red" — the colour name, because the optional colour group was
+previewed as "red", the colour name, because the optional colour group was
 being read as the text.
 """
 
@@ -49,7 +49,7 @@ def _preview_replacer() -> str:
 
 
 def _capture_group_count(pattern: str) -> int:
-    """Capturing groups only — `(?:`, `(?<!` and friends do not count."""
+    """Capturing groups only: `(?:`, `(?<!` and friends do not count."""
     return len(re.findall(r"(?<!\\)\((?!\?)", pattern))
 
 

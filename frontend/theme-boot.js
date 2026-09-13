@@ -27,7 +27,7 @@
 
   const theme = pref("theme", "system");
   if (theme && theme !== "system") _r.dataset.theme = theme;
-  // data-mode is the RESOLVED light/dark, which the palettes match on —
+  // data-mode is the RESOLVED light/dark, which the palettes match on, 
   // under "System" there is no data-theme for CSS to hang off, so without
   // this every palette would paint its light set on a dark desktop until
   // app.js caught up.
@@ -45,12 +45,24 @@
   _r.dataset.fontsize = pref("fontsize", "normal");
   _r.dataset.font = pref("font", "system");
   _r.dataset.density = pref("density", "comfortable");
-  _r.dataset.glass = pref("glass", "on");
-  _r.dataset.motion = pref("motion", "auto");
+  // Performance mode, mirrored from perfModeOn() in settings.js: "on", or
+  // "auto" on a small machine (2 cores or 4 GB or fewer), or the operating
+  // system asking for less transparency. It takes the glass and the motion
+  // off before first paint so a small laptop never draws the blurred frame
+  // it is about to be spared. Keep the three readings in step.
+  const perfPref = pref("perf", "auto");
+  const small =
+    (navigator.deviceMemory && navigator.deviceMemory <= 4) ||
+    (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2);
+  const lessGlass = window.matchMedia("(prefers-reduced-transparency: reduce)").matches;
+  const perf = perfPref === "on" || (perfPref === "auto" && (small || lessGlass));
+  _r.dataset.perf = perf ? "on" : "off";
+  _r.dataset.glass = perf ? "off" : pref("glass", "on");
+  _r.dataset.motion = perf ? "reduced" : pref("motion", "auto");
   _r.dataset.themePreset = localStorage.getItem("themePreset") || "";
   _r.style.setProperty("--radius", pref("radius", "14") + "px");
   _r.style.setProperty("--glass-blur", pref("glass-blur", "14") + "px");
-  _r.style.setProperty("--bg-art-opacity", Number(pref("bg-intensity", "90")) / 100);
+  _r.style.setProperty("--bg-art-opacity", Number(pref("bg-intensity", "45")) / 100);
   const page = pref("page-bg", null);
   if (page) _r.style.setProperty("--page", page);
 })();

@@ -5,22 +5,22 @@ shouldn't happen to staged files, only when they are actually saved as a
 note, actually sent in a chat message, or uploaded directly to the
 library." `POST /media/upload` is one shared endpoint behind every one of
 those (the note composer, the chat composer, the document editor and the
-Library's own "Upload images" button all post to it) — a staged image
+Library's own "Upload images" button all post to it), a staged image
 picked in the note composer and then abandoned, or an image attached to a
 chat draft that's deleted before sending, has no business paying for a
 Tesseract pass and a vision-model round trip for something that may never
 be kept.
 
 So the trigger point moves from *upload* to *commit*: this module is
-called from the moment something actually becomes permanent — a note or
+called from the moment something actually becomes permanent, a note or
 document is saved with the image referenced in its content, a chat turn is
 saved with the image in `image_media_ids`, a whiteboard image object is
 placed on the board, or `POST /media/upload` itself is told the upload
 *is* the commit (`direct=True`, the Library's own upload button).
 
-Every trigger already guards its own repeat work — `caption_and_store`/
+Every trigger already guards its own repeat work, `caption_and_store`/
 `vision_ocr_and_store` are write-once unless forced, and Tesseract is cheap
-and local — so calling this on every save of a note that already has its
+and local: so calling this on every save of a note that already has its
 images processed is a fast no-op, not a growing cost.
 """
 
@@ -37,11 +37,11 @@ def _module(name: str):
     """A lazy import of one of this module's three readers, or `media_gc`.
 
     Every name here is one this module needs only at call time, never at
-    import time — `ocr`/`captioning`/`vision_ocr` need a model to actually
+    import time: `ocr`/`captioning`/`vision_ocr` need a model to actually
     run, and `media_gc` is a sibling this only borrows one function from. A
     plain `from memorymap.core import ocr` inside the function already made
     that lazy at *runtime*, but CodeQL's cyclic-import check still counts a
-    function body's imports as edges in its static graph — so this goes
+    function body's imports as edges in its static graph, so this goes
     through `importlib` instead, which is the same lookup with no `import`
     statement for that check to see.
     """
@@ -50,7 +50,7 @@ def _module(name: str):
 
 def process_committed_upload(upload: MediaUpload, media_dir: Path) -> None:
     """Fire the three background readers for one upload that just became
-    permanent. Never raises — a missing file or an unsupported suffix for
+    permanent. Never raises: a missing file or an unsupported suffix for
     one reader just means that reader has nothing to do, exactly as
     `POST /media/upload`'s own trigger calls always treated it.
     """
@@ -59,7 +59,7 @@ def process_committed_upload(upload: MediaUpload, media_dir: Path) -> None:
     vision_ocr = _module("memorymap.ai.vision_ocr")
 
     # Both default to on, because reading a picture you just filed is the
-    # behaviour that makes the gallery searchable at all — but asked for
+    # behaviour that makes the gallery searchable at all, but asked for
     # directly, they are now switchable off: a vision-model round trip per
     # image is the single most expensive automatic thing this app does, and
     # someone on a small model (or who simply does not want their pictures
@@ -91,7 +91,7 @@ def process_committed_upload(upload: MediaUpload, media_dir: Path) -> None:
 
 def process_referenced_uploads(session: Session, media_dir: Path, text: str) -> None:
     """Every `/media/…` upload referenced in `text` (a note or document's
-    own content) gets processed, keyed off filename — reuses
+    own content) gets processed, keyed off filename, reuses
     `media_gc`'s own extraction pattern rather than a second regex, since
     "which uploads does this text reference" is exactly the question that
     module already answers for the orphan scan.
@@ -104,7 +104,7 @@ def process_referenced_uploads(session: Session, media_dir: Path, text: str) -> 
 
 
 def process_committed_upload_ids(session: Session, media_dir: Path, media_ids: list[int]) -> None:
-    """Same as `process_referenced_uploads`, keyed off explicit ids — for
+    """Same as `process_referenced_uploads`, keyed off explicit ids, for
     a saved chat turn, which stores `image_media_ids` directly rather than
     `/media/…` text (TurnBody.image_media_ids's own docstring explains why:
     a conversation's own content is a question string, not markdown with
@@ -127,7 +127,7 @@ def media_text_for(session: Session, text: str) -> str:
     Asked for directly: "allow captions if they accompany images of sketches
     to be read by the ai if they appear in semantic searches." A note with a
     drawing in it used to be, to every part of this app that reads notes, a
-    note with a `/media/…` url in it — the vision model's description of that
+    note with a `/media/…` url in it: the vision model's description of that
     drawing and any text it read off it lived on the `MediaUpload` row and was
     reachable only from the Library tile.
 
@@ -153,7 +153,7 @@ def media_text_for(session: Session, text: str) -> str:
         if not readings:
             continue
         # Named, so a model reading this can tell a picture's description from
-        # the note's own sentences — and so two pictures in one note do not
+        # the note's own sentences: and so two pictures in one note do not
         # run together into one paragraph.
         joined = " ".join(readings)[:MAX_MEDIA_TEXT_CHARS]
         parts.append(f"[image: {upload.original_name}] {joined}")

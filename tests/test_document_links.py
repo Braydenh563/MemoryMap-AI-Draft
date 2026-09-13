@@ -2,8 +2,8 @@
 
 Asked for directly: "I want a way to link documents to new notes I create in
 the capture tab; the documents and notes sections and features need to be more
-integrated together." They are deliberately different things — a note is a
-captured thought, a document is something you sit down and write — but they
+integrated together." They are deliberately different things, a note is a
+captured thought, a document is something you sit down and write, but they
 are usually *about* the same thing, and nothing could say so.
 """
 
@@ -107,7 +107,7 @@ def test_the_link_shows_up_on_the_note_in_the_list(client):
 
 
 def test_attaching_afterwards_shows_up_on_the_note_straight_away(client):
-    """"What about adding a document to a note??" — the note list is where
+    """"What about adding a document to a note??", the note list is where
     that is done from, so it is where the result has to appear. The note card
     reads `documents` off `GET /entries` and nothing else."""
     document = _doc(client, "Iceland trip")

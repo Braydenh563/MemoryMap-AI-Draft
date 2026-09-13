@@ -2,7 +2,7 @@
 SearXNG process admin (install/start/stop/reinstall).
 
 Split out of `routes_settings.py`'s "web search" section
-(ROADMAP.md §0/§4) — self-contained apart from the app-wide `router`
+(ROADMAP.md §0/§4): self-contained apart from the app-wide `router`
 pattern every route module follows.
 """
 
@@ -66,7 +66,7 @@ def web_search(
             # regardless of what was asked for: both providers already fetch
             # one page and slice it (rows[:limit] / _parse_results(body,
             # limit)), so nothing about asking for up to 20 costs a second
-            # request — the frontend's "show more" reveals the rest of what
+            # request: the frontend's "show more" reveals the rest of what
             # was already fetched, not a second search.
             limit=max(1, min(limit, 20)),
             searxng_url=searxng or None,
@@ -76,7 +76,7 @@ def web_search(
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     manager.log_action(session, "web_searched", "chat", detail=q[:120])
     session.commit()
-    # Which engine actually answered, not which one was asked for — under
+    # Which engine actually answered, not which one was asked for, under
     # "auto" those differ, and the difference is the interesting part. Resolved
     # even when nothing came back: "no results" is exactly when you want to
     # know who found nothing, and it is the case the panel used to go quiet.
@@ -95,7 +95,7 @@ def detect_searxng(url: str = "", session: Session = Depends(get_session)) -> di
     """Test a SearXNG URL, or scan the usual local ports for one.
 
     Saves the working URL to preferences so the user never has to know how the
-    connection is wired up — if they have an instance running, this finds it.
+    connection is wired up, if they have an instance running, this finds it.
     """
     from memorymap.search import websearch
 
@@ -139,7 +139,7 @@ def searxng_start(session: Session = Depends(get_session)) -> dict:
     config = deps.get_config()
     try:
         # When nothing is installed yet, this kicks off a background install
-        # that ends by starting SearXNG itself — the callback points web
+        # that ends by starting SearXNG itself, the callback points web
         # search at it the moment it answers, with no second Start press.
         result = searxng_manager.start(
             config.data_dir,
@@ -163,7 +163,7 @@ def searxng_reinstall(session: Session = Depends(get_session)) -> dict:
     """Throw the SearXNG install away and build a fresh one.
 
     A part-finished install looks installed and dies on start, which reads as
-    "it just doesn't work" with nothing to act on — and the only fix was to go
+    "it just doesn't work" with nothing to act on, and the only fix was to go
     and delete folders by hand.
     """
     from memorymap.search import searxng_manager
@@ -223,7 +223,7 @@ def web_read(url: str, session: Session = Depends(get_session)) -> dict:
     # in fetch_readable, which re-runs it on every redirect hop.
     #
     # There is deliberately NO host allowlist here. One was added briefly and
-    # it only permitted the search engines themselves — but the reader exists
+    # it only permitted the search engines themselves, but the reader exists
     # to open the *results*, which live on whatever site published them, so it
     # rejected every real page with "URL host is not allowed".
     parsed = urlparse(url)

@@ -1,6 +1,6 @@
 """The system-tray menu: Open, New note, View Logs, [console], Restart, Quit.
 
-None of this can be driven here — pystray needs a real desktop session and the
+None of this can be driven here, pystray needs a real desktop session and the
 menu callbacks close over a pywebview window. What *is* testable is the part
 that was actually broken, and it was broken in the one build where nobody would
 see it: the packaged Windows app, which has no console to print an error to.
@@ -82,7 +82,7 @@ def test_no_tray_item_can_reach_past_the_lock_screen():
 
 
 def test_quick_capture_targets_an_element_that_exists():
-    """The id was wrong first time — `entry-input`, which is not in the page.
+    """The id was wrong first time, `entry-input`, which is not in the page.
     A tray item that focuses nothing looks like it did nothing."""
     block = SOURCE.split("def _new_note(")[1].split("\n    def ")[0]
     ids = re.findall(r"getElementById\('([^']+)'\)", block)
@@ -93,7 +93,7 @@ def test_quick_capture_targets_an_element_that_exists():
 
 def test_a_missing_tray_backend_never_takes_the_launcher_down():
     """pystray picks a backend at import time and that backend's init can raise
-    anything — found here as an Xlib error on a headless box. A missing tray
+    anything: found here as an Xlib error on a headless box. A missing tray
     icon is cosmetic; the window is not."""
     block = SOURCE.split("def _start_tray(")[1].split("\ndef ")[0]
     assert "except ImportError:" in block
@@ -116,7 +116,7 @@ def test_closing_the_window_hides_it_rather_than_quitting():
 def test_close_to_tray_is_a_choice_and_defaults_to_on():
     block = SOURCE.split("def _on_closing(")[1].split("\n        window.events.closing")[0]
     assert 'get_preference("close_to_tray", True)' in block
-    # Off means the X button really quits — and that path skips the lifespan
+    # Off means the X button really quits, and that path skips the lifespan
     # handler, so it has to stop background work itself.
     quitting = block.split('if not config.get_preference("close_to_tray", True):')[1]
     assert "_stop_background_work()" in quitting
@@ -134,7 +134,7 @@ def test_the_hide_explains_itself_exactly_once():
 
 def test_the_setting_round_trips_through_preferences():
     """A field Pydantic doesn't know about is silently dropped, which is how a
-    switch that looks like it saves doesn't — the same bug this file's
+    switch that looks like it saves doesn't: the same bug this file's
     console-mode tests exist for."""
     settings = Path("src/memorymap/api/routes_settings.py").read_text(encoding="utf-8")
     assert "close_to_tray: bool | None = None" in settings
@@ -148,7 +148,7 @@ def test_the_setting_round_trips_through_preferences():
 
 def test_quit_and_restart_stop_background_work_before_exiting():
     """`os._exit` and `os.execv` skip every shutdown hook this process has,
-    including the lifespan handler that stops background jobs — so quitting
+    including the lifespan handler that stops background jobs, so quitting
     from the tray was the one exit that left pip and SearXNG running."""
     for callback in ("_quit", "_restart"):
         block = SOURCE.split(f"def {callback}(")[1].split("\n    def ")[0]
@@ -191,15 +191,15 @@ def test_every_generated_menu_item_carries_the_lock_guard():
 
 def test_the_tray_only_calls_frontend_functions_that_exist():
     """A tray item that calls a function nobody defined does nothing and says
-    nothing — the exact failure the report describes.
+    nothing: the exact failure the report describes.
 
     Widened after a real miss: this used to scan only the `menu_items = [...]`
     list literal, which covers an inline `_go("...")` call but not a named
-    callback's own body — exactly where `_view_logs` called `showSettingsSection`,
+    callback's own body: exactly where `_view_logs` called `showSettingsSection`,
     a function that existed nowhere in the frontend, for at least one whole
     session before being caught. Scoped from `_go`'s own definition (the
     first tray-navigation helper) through the end of `menu_items`, which
-    covers `_go`, `_view_logs`, `_new_note` and the list itself in one pass —
+    covers `_go`, `_view_logs`, `_new_note` and the list itself in one pass, 
     everything that runs JS in the page on this menu.
     """
     import re as _re

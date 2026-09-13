@@ -4,14 +4,14 @@
 Priority 0 item 2: "CSS splitting into multiple linked `<link>` files is
 mechanically low-risk"). Every test that used to hardcode
 `frontend/style.css` needs the same list, in the same order index.html
-loads them in — that order is load-bearing (the split was cut only at
+loads them in: that order is load-bearing (the split was cut only at
 section-comment boundaries, so concatenating these files in this order
 reproduces the old single file byte-for-byte, which is what guarantees no
 selector's cascade/specificity position moved). One shared list here means
 a ninth file, or a reorder, is a one-line change instead of an N-line hunt
 through every test that used to open `style.css` directly.
 
-Not named `test_*.py` on purpose — pytest would otherwise try to collect it
+Not named `test_*.py` on purpose: pytest would otherwise try to collect it
 and find no tests in it.
 """
 
@@ -32,6 +32,12 @@ CSS_FILES = [
     CSS_DIR / "05-sidebars-themes.css",
     CSS_DIR / "06-timeline-dialogs.css",
     CSS_DIR / "07-whiteboard-misc.css",
+    CSS_DIR / "08-consistency.css",
+    #: The documents editor's own layout (DOCUMENTS_PLAN Phase 2). Appended
+    #: rather than inserted: it is linked last in index.html, and this list is
+    #: load order, which is what makes the concatenation above meaningful.
+    CSS_DIR / "09-editor.css",
+    CSS_DIR / "10-responsive.css",
 ]
 
 
@@ -39,7 +45,7 @@ def css_text() -> str:
     """All of CSS_FILES, concatenated in load order.
 
     Byte-for-byte what `frontend/style.css` used to return from
-    `.read_text()` — see the split's own diff, or diff this against a
+    `.read_text()`, see the split's own diff, or diff this against a
     `cat`'d concatenation of CSS_FILES, to confirm.
     """
     return "".join(p.read_text(encoding="utf-8") for p in CSS_FILES)

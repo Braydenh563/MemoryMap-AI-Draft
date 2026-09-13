@@ -1,6 +1,6 @@
 """In-app guidance chat: "how do I..." answers about MemoryMap itself.
 
-ROADMAP.md item 40's "mini AI chat half" — deliberately its own path,
+ROADMAP.md item 40's "mini AI chat half", deliberately its own path,
 separate from `librarian.converse`/`librarian.answer`, because those two
 answer from the user's notes or hold a general conversation, and this one
 must do neither: it only explains the app. Uses the utility model (not the
@@ -11,7 +11,7 @@ tight budget" the spec asked for.
 
 **Grounded, not just instructed.** A first version of this module told the
 model "don't invent a feature you're not sure exists" and gave it nothing
-else to go on — for a small local model that has never heard of MemoryMap,
+else to go on, for a small local model that has never heard of MemoryMap,
 that is an instruction with no way to follow it: refusing to guess and
 guessing wrong look identical from inside the prompt. `HELP_TOPICS` below is
 the fix: a short, factual reference entry per feature area, the same
@@ -20,12 +20,12 @@ question is matched against it by keyword, and whichever entries match get
 attached to the prompt as the only material the model is allowed to answer
 from. Keeping `HELP_TOPICS` in step with the accordion (and the accordion in
 step with the app) is what "the chatbot's information is up to date" means
-in practice, and it is why this module — not the docs alone — is the thing
+in practice, and it is why this module, not the docs alone, is the thing
 future sessions should re-check first when a feature's behaviour changes.
 
 No persistence: nothing here writes to the database. The caller (the
 frontend) is the one holding the running transcript, in memory only, for
-exactly as long as the spec allows — this module only ever sees what it's
+exactly as long as the spec allows, this module only ever sees what it's
 handed on each call.
 """
 
@@ -43,20 +43,20 @@ SYSTEM_PROMPT = (
     "asked a question about their notebook's own content, say plainly that "
     "this chat is for app guidance only and point them to the Chat or Ask "
     "tab instead of guessing. Base your answer only on the reference notes "
-    "given to you below the question, if any are given — never invent a "
+    "given to you below the question, if any are given, never invent a "
     "button, setting, or feature that isn't in them. If no reference notes "
     "are given, or they don't cover the question, say plainly that you're "
     "not sure and suggest checking the Help topics above this chat instead "
-    "of guessing. Keep answers short — a few sentences or a short numbered "
-    "list of steps — and name the exact tab or settings section involved."
+    "of guessing. Keep answers short: a few sentences or a short numbered "
+    "list of steps: and name the exact tab or settings section involved."
 )
 
 OFFLINE_MESSAGE = (
     "The AI guide isn't available right now (the local model doesn't seem "
-    "to be running) — the Help topics above still work without it."
+    "to be running): the Help topics above still work without it."
 )
 
-# One factual entry per feature area — the model's *only* source of facts
+# One factual entry per feature area, the model's *only* source of facts
 # about the app, and the same ground truth the Help accordion shows in
 # `frontend/index.html`'s `#settings-help` (kept in sync by hand: there is
 # no shared data file behind both, since the accordion is static HTML and
@@ -85,7 +85,7 @@ HELP_TOPICS: list[dict] = [
             "\"Ask your notebook\" (Notes tab) and the Chat tab both answer from "
             "saved notes, with the raw notes shown beside the answer. Agent mode "
             "(a toggle in Chat) lets the assistant use its tools to search, link, "
-            "tag, organise and create — destructive actions always ask first. "
+            "tag, organise and create, destructive actions always ask first. "
             "Conversations save and rename in the sidebar. The same agent also "
             "pops open over any tab with Ctrl/Cmd+Shift+A, so you don't have to "
             "switch to Chat first."
@@ -177,7 +177,7 @@ HELP_TOPICS: list[dict] = [
         "body": (
             "Every image is read automatically, up to three ways: an AI caption "
             "of what it shows, a vision-model transcription of any text in it, "
-            "and Tesseract OCR if that's installed — all editable and searchable. "
+            "and Tesseract OCR if that's installed: all editable and searchable. "
             "A scanned PDF is rasterised page-by-page and read by an OCR model "
             "(no Tesseract needed); you can pick the model or leave it automatic."
         ),
@@ -198,7 +198,7 @@ HELP_TOPICS: list[dict] = [
         "keywords": ("remember", "passive capture", "auto capture", "learn about me"),
         "body": (
             "MemoryMap can pick up small facts and preferences as you write and "
-            "chat, always asking first — never assumed. Accept or decline each "
+            "chat, always asking first, never assumed. Accept or decline each "
             "suggestion right in the chat, and review or forget anything it has "
             "learned in Settings -> What it remembers."
         ),
@@ -243,7 +243,7 @@ HELP_TOPICS: list[dict] = [
         "body": (
             "Settings -> Models picks the chat model and an optional smaller "
             "utility model for background jobs. Any OpenAI-compatible server "
-            "works, not just Ollama — LM Studio, llama-server, Jan, vLLM. "
+            "works, not just Ollama, LM Studio, llama-server, Jan, vLLM. "
             "Sampling parameters (temperature, top-p, top-k, min-p, repeat "
             "penalty) are exposed there too, starting at what the model itself "
             "recommends."
@@ -266,8 +266,8 @@ HELP_TOPICS: list[dict] = [
         "keywords": ("web search", "websearch", "internet search", "searxng"),
         "body": (
             "Web search is opt-in and off by default. When turned on in "
-            "Settings -> Web search, only your search words are sent out — "
-            "never your notes — so the assistant can look something up online "
+            "Settings -> Web search, only your search words are sent out, "
+            "never your notes: so the assistant can look something up online "
             "when asked."
         ),
         "badge": {"label": "Web search", "section": "websearch"},
@@ -288,7 +288,7 @@ HELP_TOPICS: list[dict] = [
         "keywords": ("archive", "archived", "shelved", "out of the way"),
         "body": (
             "Archiving keeps a note, chat or document but gets it out of your "
-            "everyday lists — different from the bin, since nothing archived "
+            "everyday lists: different from the bin, since nothing archived "
             "is ever auto-cleared or at risk of being deleted. The action is "
             "in each item's own menu (next to Delete, not grouped with it); "
             "everything archived is still reachable from the Library's "
@@ -300,7 +300,7 @@ HELP_TOPICS: list[dict] = [
         "id": "undo-bin",
         "keywords": ("undo", "redo", "recycle bin", "restore", "deleted", "trash"),
         "body": (
-            "Deleting a note goes to the recycle bin, not gone for good — "
+            "Deleting a note goes to the recycle bin, not gone for good, "
             "restore it from the Library's Bin filter, or use the Undo toast "
             "that appears right after deleting. Ctrl/Cmd+Z undoes the last "
             "change generally; the status bar's own Undo/Redo buttons do the "
@@ -313,7 +313,7 @@ HELP_TOPICS: list[dict] = [
         "keywords": ("dictate", "dictation", "voice", "microphone", "meeting", "transcribe", "recording", "read aloud"),
         "body": (
             "The microphone icon on the note composer dictates a note using "
-            "local Whisper — nothing sent anywhere. \"Record a meeting or "
+            "local Whisper: nothing sent anywhere. \"Record a meeting or "
             "lecture\" (reachable from the Dashboard or the command palette) "
             "transcribes a longer recording and can pull out decisions and "
             "action items. Read-aloud plays a note or answer back to you."
@@ -326,7 +326,7 @@ HELP_TOPICS: list[dict] = [
         "body": (
             "Turned on in Settings -> Preferences, the background librarian "
             "tags, links and flags duplicate notes on an interval you choose "
-            "— off by default, since it writes to your notebook without "
+            ", off by default, since it writes to your notebook without "
             "being asked each time. It never deletes anything and skips "
             "itself on battery power."
         ),
@@ -340,7 +340,7 @@ HELP_TOPICS: list[dict] = [
             "setting, search notes, or run a quick action (new note, new "
             "chat, back up now, toggle the theme, and more) without leaving "
             "the keyboard. It's a different box from the popup agent "
-            "(Ctrl/Cmd+Shift+A) — this one runs fixed commands, that one "
+            "(Ctrl/Cmd+Shift+A): this one runs fixed commands, that one "
             "answers and acts on an open-ended request."
         ),
         "badge": {"label": "Shortcuts", "section": "shortcuts"},
@@ -360,7 +360,7 @@ HELP_TOPICS: list[dict] = [
         "id": "favourites",
         "keywords": ("favourite", "favorite", "star", "starred", "pin", "pinned"),
         "body": (
-            "Starring a note makes it a favourite — a parallel way to keep "
+            "Starring a note makes it a favourite, a parallel way to keep "
             "important notes close, separate from categories or tags. "
             "Favourites show in the sidebar, filter in the Library, and can "
             "sit in their own Dashboard widget."
@@ -369,8 +369,8 @@ HELP_TOPICS: list[dict] = [
     },
     #: **Five topics added after an audit against what the app can actually
     #: do.** Asked for directly: "did you make sure full usage guides exist in
-    #: the docs for the help ai to use??" The answer was mostly yes — every tab
-    #: had an entry — but the checker found five features the help AI could not
+    #: the docs for the help ai to use??" The answer was mostly yes, every tab
+    #: had an entry: but the checker found five features the help AI could not
     #: describe at all, which means it would have guessed. A help assistant that
     #: guesses is worse than one that says it does not know, so anything it can
     #: be asked about needs an entry here.
@@ -382,14 +382,14 @@ HELP_TOPICS: list[dict] = [
         ),
         "body": (
             "OCR workspace: open any image or PDF from the Library or a note and "
-            "choose \"Read text\". Pick the reader at the top — the AI document "
+            "choose \"Read text\". Pick the reader at the top, the AI document "
             "reader (a model built to transcribe a page), the general vision "
             "model where you have a different one installed, or Tesseract, which "
             "needs no model, is about ten times faster and is the only reader "
             "that tells you where on the page each block sits. Read one page, a "
             "range like 1-5, or the whole document. A read keeps running if you "
-            "close the window — it shows in Settings -> Background tasks and can "
-            "be stopped from there or from the workspace — and every page that "
+            "close the window: it shows in Settings -> Background tasks and can "
+            "be stopped from there or from the workspace, and every page that "
             "has been read is remembered, so reopening the document shows the "
             "text again rather than starting over."
         ),
@@ -427,7 +427,7 @@ HELP_TOPICS: list[dict] = [
             "right-click it for corrections, \"Add to dictionary\" or \"Ignore "
             "this for now\". The Suggestions panel lists every finding; clicking "
             "one scrolls to it and highlights it briefly. Where there is no "
-            "mechanical fix — an awkward sentence — \"Ask the AI for wordings\" "
+            "mechanical fix, an awkward sentence, \"Ask the AI for wordings\" "
             "has the local model offer two or three alternatives to pick from. "
             "Nothing is changed until you choose it. Manage the dictionary and "
             "the British/American spelling preference from the editor's own "
@@ -460,8 +460,8 @@ HELP_TOPICS: list[dict] = [
             "inconsistent", "changed my mind", "out of date",
         ),
         "body": (
-            "MemoryMap can look for places where two of your notes disagree — a "
-            "decision you reversed, a fact you later corrected — and show them "
+            "MemoryMap can look for places where two of your notes disagree, a "
+            "decision you reversed, a fact you later corrected, and show them "
             "side by side with the dates, so you can see which is current. It "
             "runs on demand rather than constantly, because it is a real pass "
             "over the notebook with the local model. It never edits anything: "
@@ -471,16 +471,16 @@ HELP_TOPICS: list[dict] = [
     },
 ]
 
-#: A tight window — this is guidance, not a conversation to reminisce in.
+#: A tight window: this is guidance, not a conversation to reminisce in.
 MAX_HISTORY_TURNS = 6
 MAX_MESSAGE_CHARS = 1000
 #: How many reference entries to hand the model for one question. Kept
-#: small on purpose — item 40 asked for "a tight prompt/context budget",
+#: small on purpose: item 40 asked for "a tight prompt/context budget",
 #: and a guidance answer is about one or two features, not a syllabus.
 MAX_TOPICS = 3
 
 
-# Whole-word match, not a raw substring one — a plain `in` check let "ask"
+# Whole-word match, not a raw substring one, a plain `in` check let "ask"
 # match inside "basket" and "task", and a wrongly-matched topic means the
 # model gets handed reference notes about the wrong feature. Compiled once
 # at import time rather than per call: this runs on every `/help/ask`
@@ -514,7 +514,7 @@ def _matching_topics(question: str) -> list[dict]:
 
 def badges_for(topics: list[dict]) -> list[dict]:
     """The quick-access chips for a set of matched topics, de-duplicated by
-    label and capped — same cap as `MAX_TOPICS`, since each matched topic
+    label and capped: same cap as `MAX_TOPICS`, since each matched topic
     contributes at most one badge."""
     seen: set[str] = set()
     out: list[dict] = []
@@ -535,7 +535,7 @@ def answer(
     """One turn of the help chat.
 
     `history` is whatever the caller is holding client-side for the current
-    session (see module docstring) — never read from or written to the
+    session (see module docstring): never read from or written to the
     database. Returns `{"content": str, "badges": list[dict]}`."""
     question = question.strip()[:MAX_MESSAGE_CHARS]
     if not question:

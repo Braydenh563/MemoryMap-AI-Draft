@@ -1,12 +1,12 @@
 """The GitHub Pages site can actually load its own documentation.
 
 Reported: *"the embedded documentation still won't load, even when I have my
-adblockers turned off."* Two previous fixes had been aimed at the fetch logic —
-a malformed fallback URL, then a same-origin candidate — and neither could
+adblockers turned off."* Two previous fixes had been aimed at the fetch logic, 
+a malformed fallback URL, then a same-origin candidate, and neither could
 work, because of something outside the JavaScript entirely:
 
 **there was no `.nojekyll`.** GitHub Pages runs Jekyll over `/docs` by default,
-and Jekyll does not publish source `.md` files — it *converts* them. So
+and Jekyll does not publish source `.md` files: it *converts* them. So
 `ARCHITECTURE.md` was never at that origin at all, the same-origin fetch 404'd
 on every load for everyone, and the whole feature rested on two cross-origin
 hosts. That is exactly the shape of "it won't load even with the adblocker
@@ -15,7 +15,7 @@ variables and rendering them away.
 
 The second half is that three of the eight documents live at the repo root,
 which Pages never publishes under this source setting. They are copied into
-`/docs`, and this file is what stops the copies drifting — a stale copy of
+`/docs`, and this file is what stops the copies drifting, a stale copy of
 SECURITY.md on the public site is worse than no copy.
 """
 
@@ -52,7 +52,7 @@ def test_the_mirrored_docs_match_the_originals(name):
     mirrored = (DOCS / name).read_text(encoding="utf-8")
     assert mirrored == original, (
         f"docs/{name} has drifted from {name} at the repo root. The site serves "
-        f"the copy, because Pages publishes /docs only — re-copy it: "
+        f"the copy, because Pages publishes /docs only, re-copy it: "
         f"cp {name} docs/{name}"
     )
 

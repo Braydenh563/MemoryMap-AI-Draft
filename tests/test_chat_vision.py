@@ -4,7 +4,7 @@ Two paths, chosen per turn by whether the chat model itself declares vision
 (`routes_chat._chat_model_sees_images`):
 
 - **The chat model can see.** An attached image reaches it directly as
-  `images` on the last user message — see `routes_chat._resolve_chat_images`
+  `images` on the last user message, see `routes_chat._resolve_chat_images`
   for how a `/media/upload` id becomes a data URI, and
   `ollama_client`/`openai_client`'s own `_to_*_messages` for how each
   dialect adapts that shape.
@@ -18,7 +18,7 @@ Two paths, chosen per turn by whether the chat model itself declares vision
 
 These tests exercise the plumbing end-to-end through the real routes, with
 `FakeOllama` standing in for the model (this sandbox has no reachable
-Ollama — see CLAUDE.md's own standing caveat) and confirm the one behaviour
+Ollama: see CLAUDE.md's own standing caveat) and confirm the one behaviour
 bug an image attachment could silently trigger: a vision-only question
 retrieving zero notes must not be mistaken for "nothing to answer with".
 """
@@ -28,7 +28,7 @@ from __future__ import annotations
 
 def _upload_image(ai_client, monkeypatch) -> int:
     # A plain upload (no `direct`) is the staged case (core/media_process.py)
-    # — OCR, captioning and vision OCR no longer run automatically here at
+    #, OCR, captioning and vision OCR no longer run automatically here at
     # all, so there is no longer a background-thread race with this test's
     # own explicit /chat call to guard against (there was, before that
     # change: see test_media_process.py for the commit-time triggers this
@@ -43,7 +43,7 @@ def _upload_image(ai_client, monkeypatch) -> int:
 def test_an_attached_image_reaches_a_vision_capable_chat_model_as_a_data_uri(
     ai_client, fake_ollama, monkeypatch
 ):
-    """FakeOllama.supports() isn't per-model — declaring "vision" here makes
+    """FakeOllama.supports() isn't per-model: declaring "vision" here makes
     it true for whichever model is asked, which is enough to stand in for
     "the chat model itself can see"."""
     fake_ollama.capabilities_declared = ["vision"]
@@ -62,11 +62,11 @@ def test_a_vision_only_question_is_not_treated_as_no_matching_notes(
     ai_client, fake_ollama, monkeypatch
 ):
     """Retrieval never sees the image, so an empty search result must not
-    stand in for "there's nothing to look at" — the exact bug the guard in
+    stand in for "there's nothing to look at", the exact bug the guard in
     `librarian.answer` (and `routes_chat.chat_stream`'s `plain_events`)
     exists to prevent. No vision declared on the chat model here, so this
     also exercises the caption-relay path's own version of the same guard
-    (`image_context`) — an explicit vision_model still has to be set for a
+    (`image_context`), an explicit vision_model still has to be set for a
     caption to be producible at all, same as any other caption-relay test."""
     from memorymap.core import deps
 
@@ -84,7 +84,7 @@ def test_a_vision_only_question_is_not_treated_as_no_matching_notes(
 
 
 def test_streaming_chat_without_tools_also_carries_the_image(ai_client, fake_ollama, monkeypatch):
-    """`use_tools: false` forces the plain (non-agent) streaming path —
+    """`use_tools: false` forces the plain (non-agent) streaming path: 
     `librarian.build_messages`, tracked via `chat_calls`."""
     fake_ollama.capabilities_declared = ["vision"]
     media_id = _upload_image(ai_client, monkeypatch)
@@ -93,13 +93,13 @@ def test_streaming_chat_without_tools_also_carries_the_image(ai_client, fake_oll
         "/chat/stream",
         json={"question": "what's this?", "image_media_ids": [media_id], "use_tools": False},
     ) as response:
-        list(response.iter_lines())  # drain — the assertion is on what was sent
+        list(response.iter_lines())  # drain: the assertion is on what was sent
     sent = fake_ollama.chat_calls[-1][-1]
     assert sent.get("images")
 
 
 def test_streaming_chat_in_agent_mode_also_carries_the_image(ai_client, fake_ollama, monkeypatch):
-    """Agent/tools mode is the default — `agent.run_agent`, tracked via
+    """Agent/tools mode is the default, `agent.run_agent`, tracked via
     `tool_rounds` rather than `chat_calls` (`FakeOllama.chat_tools`)."""
     fake_ollama.capabilities_declared = ["vision"]
     media_id = _upload_image(ai_client, monkeypatch)
@@ -114,7 +114,7 @@ def test_streaming_chat_in_agent_mode_also_carries_the_image(ai_client, fake_oll
 
 
 def test_a_missing_media_id_is_dropped_rather_than_erroring(ai_client, fake_ollama):
-    """The UI already confirmed the upload before sending its id — a miss
+    """The UI already confirmed the upload before sending its id, a miss
     means the file moved or was deleted after that, not a bad request."""
     response = ai_client.post(
         "/chat", json={"question": "hello", "image_media_ids": [999999]}
@@ -123,7 +123,7 @@ def test_a_missing_media_id_is_dropped_rather_than_erroring(ai_client, fake_olla
 
 
 def test_no_image_means_no_images_key_at_all(ai_client, fake_ollama):
-    """The overwhelming majority of turns carry no attachment — this proves
+    """The overwhelming majority of turns carry no attachment, this proves
     the new plumbing is a no-op for them, not just "doesn't crash". A note
     is attached so the turn actually reaches the model rather than short-
     circuiting on "no notes, no images, nothing to say" (the case the
@@ -169,7 +169,7 @@ def test_a_non_vision_chat_model_gets_a_caption_instead_of_the_raw_image(
 
 
 def test_an_already_captioned_image_is_not_captioned_twice(ai_client, fake_ollama, monkeypatch):
-    """caption_and_store's own write-once rule (core/captioning.py) — a
+    """caption_and_store's own write-once rule (core/captioning.py): a
     caption already on the upload from the background trigger must be
     reused, not regenerated, on every chat turn that references it."""
     from memorymap.core import deps

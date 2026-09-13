@@ -51,7 +51,7 @@ def test_string_parameters_never_reach_an_options_block():
 
 
 def test_knobs_this_app_does_not_offer_are_ignored():
-    """mirostat is real and is deliberately not offered — fourteen sliders is
+    """mirostat is real and is deliberately not offered, fourteen sliders is
     not help for someone whose model is repeating itself."""
     assert "mirostat" not in sampling.parse_model_parameters(QWEN_SHOW)
 
@@ -62,7 +62,7 @@ def test_an_integer_knob_stays_an_integer():
 
 
 def test_a_recommendation_outside_the_offered_range_is_clamped_not_dropped():
-    """Still better information than the backend default — and the slider must
+    """Still better information than the backend default, and the slider must
     not disagree with what is actually sent."""
     parsed = sampling.parse_model_parameters({"parameters": "temperature 9.0"})
     assert parsed["temperature"] == sampling.KNOBS_BY_NAME["temperature"].maximum

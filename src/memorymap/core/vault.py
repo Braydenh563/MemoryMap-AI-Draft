@@ -47,7 +47,7 @@ def create(session: Session, password: str) -> None:
     """Set up the vault on first run, and open it.
 
     Called from setup, so a notebook always has somewhere to put a private
-    note — asking the user to "enable encryption" later would mean a second
+    note: asking the user to "enable encryption" later would mean a second
     password prompt and a second chance to lose access.
     """
     global _dek
@@ -84,8 +84,8 @@ def set_key(dek: bytes) -> None:
     """Replace the in-memory DEK after a key rotation.
 
     Only ever called AFTER the rotation's database commit has already
-    succeeded. Swapping the key first — or on any path that might still
-    fail — would leave memory holding a key that disagrees with what is
+    succeeded. Swapping the key first, or on any path that might still
+    fail: would leave memory holding a key that disagrees with what is
     actually on disk if the process died between the two.
     """
     global _dek
@@ -95,7 +95,7 @@ def set_key(dek: bytes) -> None:
 def rewrap(session: Session, new_password: str) -> bool:
     """Point the vault at a new password. Notes are never re-encrypted.
 
-    Only possible while unlocked, because the DEK has to be in hand — which
+    Only possible while unlocked, because the DEK has to be in hand, which
     also means a password change can't be used to lock yourself out.
     """
     row = _row(session)

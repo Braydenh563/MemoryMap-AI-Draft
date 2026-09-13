@@ -1,7 +1,7 @@
 """What a read-only tool call contributes to the answer's Sources panel.
 
-Reported twice — *"improve the ui of the sources as well in the chat"*, then
-*"what is shown about the sources, dropdown previews, hyperlinks etc."* — and
+Reported twice: *"improve the ui of the sources as well in the chat"*, then
+*"what is shown about the sources, dropdown previews, hyperlinks etc."*, and
 the front end could show none of it because none of it was ever sent: a tool
 event carried a prose label and a bounded `result_summary` blob, so the panel
 had a sentence where it needed a title, an address and a line of the page.
@@ -44,7 +44,7 @@ def test_a_page_read_yields_the_page_itself():
 
 def test_a_url_with_no_title_still_becomes_a_row():
     """A card needs something to name it, and the address is the honest
-    fallback — dropping the source entirely would under-report what the
+    fallback: dropping the source entirely would under-report what the
     answer actually read."""
     rows = _tool_sources("read_url", {"url": "https://example.com/a", "text": "x"})
     assert rows[0]["title"] == "https://example.com/a"

@@ -1,84 +1,128 @@
-"""Module-level state is declared before anything that runs at load reads it.
+"""A shared helper lives in a file every caller is loaded after.
 
-**This exists because of a crash that reached the user.** The staging list
-for files attached to an unsaved note (`captureStagedFiles`) was declared with
-`let` near the end of `app.js`, beside the function that fills it — while
-`renderCaptureFiles`, which reads it, is called at module load time by the
-draft-restore block much earlier in the file. `let` is hoisted into the
-temporal dead zone rather than initialised, so that read threw:
+There is no bundler and no module system here: `index.html` lists the scripts
+and the browser runs them in that order. A `function` declaration is hoisted
+inside its own file only, so code that runs while the page is still loading can
+reach helpers from a script that has already run, and nothing else.
 
-    Uncaught ReferenceError: Cannot access 'captureStagedFiles'
-    before initialization
+The report this exists for, from the running app:
 
-which aborted the rest of `app.js`. `initAuth` never ran, `hideBootSplash`
-was never called, and the app sat on its loading screen forever. Reported
-exactly that way.
+    ReferenceError: apiPagedList is not defined
+        at loadCaptureDocuments (app.js:10059)
+        at showNotesSection (app.js:25240)
+        at initNotesSubtabs (app.js:25290)
+        at app.js:32441
 
-**Three things made it survive every check the project already had**, and
-each is the reason this file is a lint rather than a note in a handover:
+`apiPagedList` was defined in documents.js, which index.html loads ten lines
+after app.js. Its own comment argued the placement was safe because "both call
+it from inside a function body, so load order is satisfied either way": true
+when it was written, false the moment app.js called it from boot code. The
+Notes tab died before drawing anything, and no other test here could see it,
+because a Python test cannot run the page and every call site reads as correct
+on its own.
 
-1. `node --check` passes. It is valid syntax and a runtime ordering fault.
-2. Every cold-boot check in the browser passed, because the draft-restore
-   block returns early when there is no saved draft — so on a fresh profile
-   the crashing line never ran. The bug needed exactly one condition: an
-   unsaved note left in the capture box.
-3. The declaration and the read are 19,000 lines apart, so neither diff nor
-   review puts them on the same screen.
-
-**What this file checks, and what it does not.** It pins the one
-declaration by name. A general "nothing read at load is declared below it"
-lint was written first and removed — see the comment below for why it could
-not be made sound with a regex, and what guards the general case instead.
+**What this checks, and what it does not.** Two cheap rules: a call written as
+a statement in a script's own top-level code, and the placement of the helpers
+that are shared widely enough for the question to arise at all. The general
+version, following the call graph from every top-level statement, was written
+and then cut: the walk has to know which bodies are callbacks (a body handed to
+`addEventListener` runs later, not now), and getting that right without a
+parser took longer to run than the whole lint set. `errors.js` in the sweeps
+catches the runtime half by loading the page and reading the console, which is
+how this one would have been caught before it shipped. Recorded in BACKLOG.
 """
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
-FRONTEND = Path(__file__).resolve().parents[1] / "frontend"
+ROOT = Path(__file__).resolve().parents[1]
+FRONTEND = ROOT / "frontend"
+INDEX = FRONTEND / "index.html"
 
-#: The one file this pins. Kept as a constant so the path appears once.
-APP_JS = FRONTEND / "app.js"
+#: Scripts that run before the app's own code and guard every cross-file call
+#: they make (`typeof x === "function"`, `window.x?.()`). They are the boot
+#: shims, and the guard is the point of them.
+BOOT_SHIMS = {"boot-guard.js", "theme-boot.js"}
 
-
-# A general version of this check was written first and **deliberately
-# removed**, which is worth recording rather than quietly retrying.
-#
-# It scanned for top-level statements that execute (an IIFE, a bare call, an
-# `addEventListener` registration) and flagged any that mentioned a
-# `let`/`const` declared further down. It found nine, and **every one was a
-# false positive**: they were `document.addEventListener("keydown", (e) => …)`
-# registrations whose *callbacks* read `shortcuts` and `TAB_JUMP_KEYS` at
-# event time, long after the file finished evaluating. The TDZ only bites a
-# read that happens during evaluation, and telling those apart needs to know
-# which text is inside a nested function body — that is a parser, not a
-# regex.
-#
-# A lint that reports nine false alarms is a lint someone silences, and the
-# usual way to silence one is to widen its rule until it catches nothing —
-# which is worse than not having it, because the file still claims to be
-# protecting something. So this keeps only the check that is *exact*, and
-# says plainly what actually guards the general case: the browser. The
-# regression check in `scratchpad/draftboot.js` sets a `captureDraft` and
-# reloads, which is the condition the crash needed; running the app under
-# Playwright with a saved draft is the real test, and CLAUDE.md's own
-# "measure and look before you claim a UI change works" is the rule it falls
-# under.
+def _script_order() -> list[str]:
+    html = INDEX.read_text(encoding="utf-8")
+    names: list[str] = []
+    for match in re.finditer(r'<script src="/([A-Za-z0-9_.-]+\.js)', html):
+        name = match.group(1)
+        if (FRONTEND / name).exists() and name not in names:
+            names.append(name)
+    assert names, "no local scripts found in index.html"
+    return names
 
 
-def test_the_capture_staging_list_is_declared_early():
-    """The specific regression, pinned by name.
+def _top_level(source: str) -> str:
+    """Everything outside a top-level `function` declaration: the code that
+    runs the moment the browser reaches the line."""
+    out: list[str] = []
+    depth = 0
+    for line in source.split("\n"):
+        stripped = line.strip()
+        if depth == 0 and not stripped.startswith(("//", "/*", "*")):
+            out.append(line)
+        depth += line.count("{") - line.count("}")
+        depth = max(depth, 0)
+    return "\n".join(out)
 
-    Exact rather than clever: it says what the fix actually was, so a later
-    refactor cannot quietly undo it and still be green. `import re` stays
-    unused-free by not being needed here at all.
+
+STATEMENT_CALL = re.compile(r"^\s*(?:await\s+|void\s+)?([A-Za-z_$][\w$]*)\s*\(", re.M)
+NOT_CALLS = {"if", "for", "while", "switch", "catch", "return", "typeof", "function"}
+
+
+def test_no_script_calls_a_later_script_from_its_own_top_level():
+    order = _script_order()
+    sources = {name: (FRONTEND / name).read_text(encoding="utf-8") for name in order}
+    defined_in: dict[str, str] = {}
+    for name in order:
+        for function in re.findall(r"^(?:async )?function ([A-Za-z_$][\w$]*)\(", sources[name], re.M):
+            defined_in.setdefault(function, name)
+
+    problems = []
+    for index, name in enumerate(order):
+        if name in BOOT_SHIMS:
+            continue
+        already = set(order[: index + 1])
+        called = {m.group(1) for m in STATEMENT_CALL.finditer(_top_level(sources[name]))} - NOT_CALLS
+        for function in sorted(called):
+            home = defined_in.get(function)
+            if home and home not in already:
+                problems.append(f"{name} calls {function}() at load, defined in {home}")
+
+    assert not problems, (
+        "these calls run while the page is loading and name a helper from a "
+        "script that has not run yet, which is a ReferenceError in the browser "
+        "and invisible to every other test here: " + "; ".join(problems)
+    )
+
+
+def test_the_paging_helper_is_reachable_from_the_script_that_boots_with_it():
+    """The specific case, named, because the walk above only sees the direct
+    call and this one arrived three frames deep: `initNotesSubtabs()` at the
+    bottom of app.js, into `showNotesSection`, into `loadCaptureDocuments`.
+
+    Six frontend files call `apiPagedList` now. The one they are all loaded
+    after is app.js, so that is where it lives.
     """
-    body = APP_JS.read_text(encoding="utf-8")
-    decl = body.find("let captureStagedFiles")
-    first_read = body.find("captureStagedFiles.length")
-    assert decl != -1, "`captureStagedFiles` is gone — update or delete this test"
-    assert first_read == -1 or decl < first_read, (
-        "`captureStagedFiles` is declared after something reads it again. It "
-        "belongs beside the other capture state, ~19,000 lines before its "
-        "first use — see this module's docstring for what happens otherwise."
+    order = [name for name in _script_order() if name not in BOOT_SHIMS]
+    callers = [
+        name
+        for name in order
+        if re.search(r"(?<![\w$.])apiPagedList\s*\(", (FRONTEND / name).read_text(encoding="utf-8"))
+    ]
+    assert callers, "nothing calls apiPagedList any more; is it still needed?"
+    home = [
+        name
+        for name in order
+        if re.search(r"^(?:async )?function apiPagedList\(", (FRONTEND / name).read_text(encoding="utf-8"), re.M)
+    ]
+    assert len(home) == 1, f"apiPagedList is defined in {home}"
+    assert order.index(home[0]) <= order.index(callers[0]), (
+        f"apiPagedList lives in {home[0]}, which index.html loads after "
+        f"{callers[0]}, and app.js reaches it from `initNotesSubtabs` at load"
     )

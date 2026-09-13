@@ -3,8 +3,8 @@ by a person before it replaces anything (§37I).
 
 *"make compressing the chat an agent tool so the agent can do it
 automatically."* The machinery already existed as a **human-gated** two-step
-flow — `POST /chat/compress` summarises, `showCompressReview` shows the
-result before `applyCompression` uses it — built that way on purpose: a
+flow: `POST /chat/compress` summarises, `showCompressReview` shows the
+result before `applyCompression` uses it: built that way on purpose: a
 summary nobody can correct is one they have to trust blindly.
 
 `compress_chat` is the agent's way in, and it keeps the same shape: the tool
@@ -49,7 +49,7 @@ def test_no_history_at_all_is_refused():
 
 def test_the_two_most_recent_turns_are_left_alone(ai_client, fake_ollama):
     """Compressing the exchange still in progress is how a summary loses the
-    thing being talked about right now — the same reason app.js's
+    thing being talked about right now, the same reason app.js's
     KEEP_RECENT_TURNS exists."""
     fake_ollama.librarian_reply = "a summary"
     result = tools.validate_compress_chat({}, _turns(6))
@@ -84,7 +84,7 @@ def test_an_empty_summary_is_a_tool_error(ai_client, fake_ollama):
 
 def test_the_model_being_off_is_still_a_tool_error(client):
     """`client` has Ollama unavailable. The agent loop only knows how to
-    recover from a `ToolError` — an `OllamaError` escaping here would crash
+    recover from a `ToolError`, an `OllamaError` escaping here would crash
     the turn instead of letting the model try something else."""
     with pytest.raises(tools.ToolError):
         tools.validate_compress_chat({}, _turns(6))
@@ -120,7 +120,7 @@ def test_the_confirm_endpoint_will_not_run_it(ai_client):
 
 
 def test_it_is_not_offered_for_an_ordinary_question():
-    """Not in CORE_TOOLS — a registry that offered this on every turn would
+    """Not in CORE_TOOLS: a registry that offered this on every turn would
     pay for it on the turns that are never about the chat's own length."""
     focused = tools.focus_for("what did I write about beans")
     assert focused is not None
@@ -134,7 +134,7 @@ def test_it_is_offered_when_asked_to_compress_the_chat():
 
 
 def test_summarising_notes_does_not_cue_it():
-    """The two are different jobs — summarising what's *in* the notebook is
+    """The two are different jobs, summarising what's *in* the notebook is
     not the same as shrinking the conversation itself."""
     focused = tools.focus_for("summarise my notes about the trip")
     assert focused is not None

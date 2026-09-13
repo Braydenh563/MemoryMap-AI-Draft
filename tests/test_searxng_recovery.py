@@ -1,7 +1,7 @@
 """Getting SearXNG unstuck without deleting folders by hand.
 
 Reported directly: "I can't get my searxng to work, is there a way I can
-reinstall it or make sure it is on the right port?" There was not — a
+reinstall it or make sure it is on the right port?" There was not: a
 part-finished install looked installed and died on start, and the only advice
 a failed start could give was "check the port isn't in use", which assumes the
 person can check.
@@ -92,7 +92,7 @@ def test_uninstall_removes_the_install_but_keeps_your_settings(app_state):
     assert not searxng_manager._source_dir(data_dir).exists()
     assert not searxng_manager._pid_file(data_dir).exists()
     assert sorted(result["removed"]) == ["src", "venv"]
-    # The settings file holds the instance's secret key and any edits — it is
+    # The settings file holds the instance's secret key and any edits, it is
     # not what breaks, and regenerating it would change the key for nothing.
     assert searxng_manager.settings_path(data_dir).exists()
 
@@ -156,7 +156,7 @@ def test_a_failed_start_quotes_what_searxng_said(app_state, monkeypatch):
 
 
 def test_a_start_that_says_nothing_at_all_says_so(app_state, monkeypatch):
-    """Silence is itself a diagnosis — the process died before writing."""
+    """Silence is itself a diagnosis, the process died before writing."""
     monkeypatch.setattr(searxng_manager, "source_installed", lambda d: True)
     monkeypatch.setattr(searxng_manager, "docker_available", lambda: False)
     monkeypatch.setattr(searxng_manager, "_source_state", lambda d: "stopped")
@@ -212,7 +212,7 @@ def _start_that_fails_on_taken_ports(monkeypatch, ready_answers):
 
 
 def test_a_taken_port_moves_to_the_next_until_one_works(app_state, monkeypatch):
-    """choose_port() checks before the start, but checking is racy — the
+    """choose_port() checks before the start, but checking is racy, the
     honest signal is SearXNG itself dying with a bind error, and the fix is
     to move along automatically, not to report a port number."""
     ports = _start_that_fails_on_taken_ports(monkeypatch, [False, False, True])
@@ -247,7 +247,7 @@ class _Result:
 def test_pips_upgrade_notice_is_never_reported_as_the_failure():
     """Reported with a screenshot: "Couldn't install SearXNG: [notice] To
     update, run: …pip install --upgrade pip". pip prints that on almost every
-    run and it is always last, so the last line was the wrong line to take —
+    run and it is always last, so the last line was the wrong line to take, 
     and it sent people off to fix pip, which was never the problem."""
     result = _Result(
         stdout=(
@@ -281,7 +281,7 @@ def test_a_configured_port_is_used_instead_of_the_default(monkeypatch):
     assert searxng_manager.host_port() == 8080
     # An IP literal, never localhost: the probe must dial the exact address
     # SearXNG binds (SEARXNG_BIND_ADDRESS=127.0.0.1). On Windows, localhost
-    # can resolve to IPv6 ::1 first — a door the instance is not behind.
+    # can resolve to IPv6 ::1 first, a door the instance is not behind.
     assert searxng_manager.base_url() == "http://127.0.0.1:8080"
 
 
@@ -325,7 +325,7 @@ def test_a_searxng_already_answering_wins_over_a_free_port(monkeypatch):
 
 
 def test_searxng_status_without_docker_falls_back_to_source(client, monkeypatch):
-    """No Docker isn't a dead end — SearXNG also runs from a virtualenv."""
+    """No Docker isn't a dead end, SearXNG also runs from a virtualenv."""
     monkeypatch.setattr(searxng_manager, "docker_available", lambda: False)
     monkeypatch.setattr(searxng_manager, "source_available", lambda: True)
     body = client.get("/websearch/searxng/status").json()

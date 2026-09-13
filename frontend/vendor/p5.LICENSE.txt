@@ -1,0 +1,8 @@
+p5.js (p5.min.js beside this file), version 1.9.4.
+
+Copyright the p5.js contributors. Licensed under the GNU Lesser General Public
+License, version 2.1: https://github.com/processing/p5.js/blob/v1.9.4/license.txt
+and https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
+
+MemoryMap AI is AGPL-3.0; the LGPL-2.1 library is used unmodified, as a
+separate file the page loads, and this notice is the one it asks for.

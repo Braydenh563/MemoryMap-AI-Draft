@@ -1,6 +1,6 @@
-// settings.js — the settings modal, the logs console, and appearance
+// settings.js: the settings modal, the logs console, and appearance
 // (theme, accent, curated palettes, saved looks, the generative background
-// preview) — split out of app.js. §88.3, the fourth and last file in the
+// preview): split out of app.js. §88.3, the fourth and last file in the
 // app.js split.
 //
 // Loaded after app.js AND after documents.js/whiteboard.js/library.js/
@@ -12,17 +12,17 @@
 // browserLogs, OVERRIDABLE_KEYS, LOOK_KEYS, manualOverrides's own callers,
 // and more) is a runtime call inside a function body or an event-listener
 // closure, never a parse-time reference, so normal load order only matters
-// for the reverse direction — see the two relocated calls at the very end of
+// for the reverse direction, see the two relocated calls at the very end of
 // this file for the one place that was not already true.
 //
 // Two hazards found doing this split, the same `initDocSidebarTabs()` shape
-// documents.js's/dashboard.js's own splits found — a bare top-level
+// documents.js's/dashboard.js's own splits found, a bare top-level
 // statement in app.js resolving before this file has loaded:
 //
 // 1. `applyAppearance(); if (bgArtOn()) startBgArt();` ran from a bare
 //    top-level pair of lines in app.js's own wiring, to paint the saved
 //    look before first render. `applyAppearance()` calls `applyPalette()`
-//    (app.js, stays there — see its own comment) which itself calls
+//    (app.js, stays there: see its own comment) which itself calls
 //    `bgArtOn()`/`startBgArt()` unconditionally, both of which moved here.
 //    Left as two lines in app.js, this would have thrown `ReferenceError:
 //    bgArtOn is not defined` and aborted the rest of app.js's synchronous
@@ -34,12 +34,12 @@
 //    already stamps every load-bearing `data-*`/custom-property from
 //    localStorage before any `<script>` tag runs specifically to prevent a
 //    flash, so `applyAppearance()`'s own re-application arriving after every
-//    split file has loaded — still well before the browser's first paint,
-//    since none of these `<script>` tags defer or fetch anything remote —
+//    split file has loaded, still well before the browser's first paint,
+//    since none of these `<script>` tags defer or fetch anything remote, 
 //    changes nothing a user could see.
-// 2. `renderBrandLogo();` — the initial draw of the generative brand emblem
+// 2. `renderBrandLogo();`, the initial draw of the generative brand emblem
 //    (stays in app.js; used on the lock screen, onboarding, the chat avatar
-//    and more, not just here) — sat at a second bare top-level line further
+//    and more, not just here), sat at a second bare top-level line further
 //    down in app.js. `renderEmblem()` reads `ACCENTS`/`activeAccent()`/
 //    `appearancePref()`, all of which moved here, so this call had the exact
 //    same shape as hazard 1 and got the same fix: relocated to this file's
@@ -47,35 +47,35 @@
 //
 // **What stayed in app.js despite reading like "appearance"**, each for a
 // concrete reason rather than by default:
-// - `applyPalette()` — precedent from the dashboard.js split (§88.3 item 3):
+// - `applyPalette()`, precedent from the dashboard.js split (§88.3 item 3):
 //   "it does real app.js-only work, the whole-app palette." Its own comment
 //   (updated by this split) explains the guard it already carries.
 // - `renderEmblem()`/`renderBrandLogo()`/`EMBLEM_SLOTS`/`emblemSeed` (the
-//   generative brand mark) — used far outside Settings: the lock screen, the
+//   generative brand mark): used far outside Settings: the lock screen, the
 //   onboarding tour, the chat avatar, the graph's empty state. The same test
 //   documents.js's and library.js's splits used for their own functions
 //   (grep every call site, decide by what actually calls it, not by which
 //   comment block it happened to be written under).
 // - `MIRRORED_UI_EXTRAS`/`mirroredUiKeys()`/`watchMirroredUiKeys()`/
 //   `saveUiState()`/`seedUiStateFromServer()` (§35E, "keeping the look
-//   across restarts") — despite the section's own name, this mirrors far
+//   across restarts"), despite the section's own name, this mirrors far
 //   more than appearance: `activeTab`, every graph/whiteboard view
 //   preference, the chat composer's dragged height. It is called from a
 //   bare top-level line in app.js (`watchMirroredUiKeys();`) that runs
 //   before this file loads, so it has to stay resident there regardless.
-// - `OVERRIDABLE_KEYS`/`LOOK_KEYS` — small data tables, genuinely about
+// - `OVERRIDABLE_KEYS`/`LOOK_KEYS`, small data tables, genuinely about
 //   appearance, but `mirroredUiKeys()` above spreads `LOOK_KEYS` into its
 //   own list synchronously at that same bare top-level call, so it has to be
 //   defined in app.js by then too. Kept there with a comment pointing here,
-//   rather than duplicated. `manualOverrides()` itself moved — its only
+//   rather than duplicated. `manualOverrides()` itself moved: its only
 //   callers are Settings' own UI, called well after everything has loaded.
 //
 // **The sibling `dashboard.js` split (§88.3 item 3) explicitly flagged two
 // zones as not its own and left them in app.js for this split to judge:**
-// "Wave J: accent themes + generative background" (this file's own —
+// "Wave J: accent themes + generative background" (this file's own: 
 // confirmed: curated/saved themes and the second, ambient p5 instance used
 // as Settings' own live accent preview, not a dashboard widget) and "SKILLS
-// DASHBOARD TAB" (`renderSkillsDashboard`, `#skills-dashboard-list` — the AI
+// DASHBOARD TAB" (`renderSkillsDashboard`, `#skills-dashboard-list`, the AI
 // Skills library page, an unrelated feature that happens to share the word
 // "dashboard" in its own internal naming; confirmed NOT this file's either,
 // and left in app.js since library.js's own split already owns the AI
@@ -92,16 +92,16 @@
 // manager, personas, skills, tools, memory, capture templates, background
 // tasks, backups, and rebindable shortcuts. Every one of these already
 // renders inside the settings modal `showSettingsSection()` now drives from
-// here, exactly as it did from app.js before this split — moving the shell
+// here, exactly as it did from app.js before this split, moving the shell
 // does not require moving what it shows.
 //
 // No code sharing found between this file's own generative-background p5
 // instance (`startBgArt()`, five self-contained style builders) and
 // dashboard.js's "notebook constellation" widget beyond the same visual
-// motif in a comment — read both fully before concluding that; they do not
+// motif in a comment, read both fully before concluding that; they do not
 // share a helper function.
 
-//: Every section id, and a new one is invisible until it is in this list —
+//: Every section id, and a new one is invisible until it is in this list, 
 //: `showSettingsSection` un-hides by iterating it, so a section left out is
 //: rendered, in the DOM, and never shown. Found by driving it: the Extras
 //: panel had five rows in it and a nav button that appeared to do nothing.
@@ -112,9 +112,20 @@ const SETTINGS_SECTIONS = ["models", "personas", "skills", "tools", "memory", "w
 let currentSettingsSection = "models";
 
 function showSettingsSection(name) {
+  //: Reported: reopening Settings lands on Models "but the scroll doesn't
+  //: reset", so the first section opened halfway down. The section's own
+  //: scrolling ancestor goes back to the top whenever the section changes.
+  const box = $(`settings-${name}`);
+  for (let el = box && box.parentElement; el; el = el.parentElement) {
+    const overflow = getComputedStyle(el).overflowY;
+    if (overflow === "auto" || overflow === "scroll") {
+      el.scrollTop = 0;
+      break;
+    }
+  }
   currentSettingsSection = name;
   // Part of the same back/forward stack every tab and sub-tab already lives
-  // in (app.js's tabHistory) — asked for directly. Safe to call on every
+  // in (app.js's tabHistory): asked for directly. Safe to call on every
   // section switch, restores included: recordTabVisit no-ops both when
   // nothing actually changed and while a back/forward move is in progress
   // (tabHistory.navigating), the same guard showNotesSection already relies
@@ -156,19 +167,20 @@ function showSettingsSection(name) {
   }
   if (name === "tasks") renderTasks(); // fill it in now, then poll
   if (name === "extras") renderExtras();
+  if (name === "about") renderHealthBlock().catch(() => {});
 }
 
 // Peek fades the settings panel so a colour change is visible on the page
 // behind it. Two details make it work: the fade is on the BACKGROUND via
 // color-mix rather than element opacity (opacity would fade the swatches and
 // controls too, making the thing you are judging harder to see), and it clears
-// itself whenever the panel is closed or you leave Appearance — a settings
+// itself whenever the panel is closed or you leave Appearance, a settings
 // panel left semi-transparent on the Logs screen just looks broken.
 function setSettingsPeek(on) {
   const modal = $("settings-modal");
   const button = $("settings-peek");
   modal.classList.toggle("peeking", !!on);
-  // A button that toggles has to *say* it is pressed — the class on the modal
+  // A button that toggles has to *say* it is pressed, the class on the modal
   // is the visible half, and `aria-pressed` is the half a screen reader hears.
   if (button) {
     button.setAttribute("aria-pressed", String(!!on));
@@ -190,7 +202,7 @@ function updatePeekAvailability(section) {
 // `scrollToId`: a quick-access link into one setting buried in a long
 // section (e.g. "Search relevance (advanced)" from the Dashboard, the Ask
 // sub-tab, or Chat) needs to land on that control, not just the top of
-// Preferences — otherwise it's a link to "somewhere in here, scroll and
+// Preferences: otherwise it's a link to "somewhere in here, scroll and
 // find it yourself", which is what it was before this existed.
 async function openSettingsModal(section = "models", scrollToId = null) {
   overlayReturnFocus = document.activeElement;
@@ -221,10 +233,10 @@ async function openSettingsModal(section = "models", scrollToId = null) {
   // Same reasoning as the tray/console rows above: /system/restart can only
   // ever do something in the packaged desktop app on Windows specifically
   // (the one platform _spawn_desktop knows how to relaunch), not desktop in
-  // general — but this app's own convention (the console row just above)
+  // general: but this app's own convention (the console row just above)
   // is to gate on desktop-ness alone and let the backend's own platform
   // check be the final word, so a browser tab never even offers the button
-  // while a desktop build on macOS/Linux still can — and finds out only
+  // while a desktop build on macOS/Linux still can, and finds out only
   // when it actually tries, rather than a client-side guess going stale
   // the moment this app ships a real relaunch for those platforms too.
   $("about-restart-row").classList.toggle("hidden", !isDesktop);
@@ -259,11 +271,11 @@ async function openSettingsModal(section = "models", scrollToId = null) {
       // value.** Every `<select>` in this app is replaced at runtime by an
       // opener button plus a menu (`enhanceSelect`), and the native control
       // is kept only for its value, its label association and the
-      // accessibility tree — as a 1x1 clipped, fully transparent box.
+      // accessibility tree: as a 1x1 clipped, fully transparent box.
       //
       // A deep link that targets a select id therefore scrolled to a point
-      // with no visible control at it, and — worse, because it fails
-      // silently — put the `flash` highlight on an invisible element, so the
+      // with no visible control at it, and, worse, because it fails
+      // silently: put the `flash` highlight on an invisible element, so the
       // "here is the setting you asked for" cue never appeared at all. Found
       // by measuring: the modal opened on the right section with the select
       // present and `selectInView: false`.
@@ -279,7 +291,7 @@ async function openSettingsModal(section = "models", scrollToId = null) {
       // gated on a backend being present (`#models-config` is hidden outright
       // when no local model server is detected), so a link into one of them
       // legitimately lands on a `display: none` control. Opening the section
-      // is still right — it is where the explanation lives — so only the
+      // is still right, it is where the explanation lives, so only the
       // scroll and flash are skipped.
       if (!target.getClientRects().length) return;
       const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -292,7 +304,7 @@ async function openSettingsModal(section = "models", scrollToId = null) {
       // highlighted permanently and doesn't return to normal."
       //
       // This was the one of the three flash call sites with no cleanup, and it
-      // looked harmless because the animation ends on `transparent` — so on an
+      // looked harmless because the animation ends on `transparent`, so on an
       // ordinary machine the highlight does fade and the stuck class is
       // invisible. Under `prefers-reduced-motion: reduce` the stylesheet
       // deliberately swaps the animation for a *static* outline and background
@@ -307,16 +319,16 @@ async function openSettingsModal(section = "models", scrollToId = null) {
 }
 
 // CHANGELOG.md, rendered in Settings → About (§36E). Loaded once per session
-// and only when the settings panel is opened — it is several thousand words
+// and only when the settings panel is opened, it is several thousand words
 // and nobody is waiting for it at startup.
 let changelogLoaded = false;
 //: **The changelog renders when it is opened, not when Settings is.**
 //:
-//: Measured during the first audit of Settings (ROADMAP.md item 7 — it had
+//: Measured during the first audit of Settings (ROADMAP.md item 7: it had
 //: never been measured): `#changelog-body` held **21,452 words across ~505
 //: paragraphs**, laid out on every single open of Settings -> About, while
 //: the `<details>` around it showed 47 pixels of that. It is not a visual
-//: problem — the fold clips it, and the panel reads as compact — which is
+//: problem, the fold clips it, and the panel reads as compact, which is
 //: exactly why it went unnoticed. It is DOM weight and layout work for
 //: content nobody has asked to see yet.
 //:
@@ -353,10 +365,58 @@ async function loadChangelog() {
   });
 }
 
+//: PLAN.md B9's frontend half: `GET /debug/health` already assembled every
+//: number cheaply (its own docstring's whole design constraint is <20ms on
+//: an empty notebook), so this just paints them, no polling, since About is
+//: somewhere you glance at, not a status bar. Read once per section open,
+//: the same "rebuilt each open rather than cached" rule `openSettingsModal`
+//: already uses for the model-status and backup rows just above this one in
+//: the file.
+async function renderHealthBlock() {
+  const dbSize = $("health-db-size");
+  const counts = $("health-counts");
+  const jobs = $("health-jobs");
+  const lastError = $("health-last-error");
+  const latency = $("health-latency");
+  if (!dbSize || !counts || !jobs || !lastError) return; // markup not present yet
+  const health = await apiJson("/debug/health", { silent: true }).catch(() => null);
+  if (!health) {
+    // The endpoint itself is one more thing that can be down (offline
+    // build, a locked notebook mid-request), a dash across the board reads
+    // as "couldn't check", not "empty", so nothing here claims a zero it
+    // never actually measured.
+    for (const el of [dbSize, counts, jobs, lastError, latency]) if (el) el.textContent = ", ";
+    return;
+  }
+  dbSize.textContent = `${formatFileSize(health.db?.size_bytes) || "0 B"} · ${health.data_dir}`;
+  const c = health.counts || {};
+  counts.textContent =
+    `${c.entries ?? 0} notes · ${c.documents ?? 0} documents · ` +
+    `${c.media ?? 0} files · ${c.attachments ?? 0} attachments · ${c.reminders ?? 0} reminders`;
+  const running = health.jobs?.running || [];
+  jobs.textContent = running.length
+    ? running.map((job) => job.label).join(", ")
+    : "Nothing running";
+  const errors = health.recent_errors || [];
+  const last = errors[errors.length - 1];
+  lastError.textContent = last ? `[${last.level}] ${last.message}` : "None recorded";
+  // PLAN B9's p50/p95, per task kind. The endpoint carried them from the
+  // start; the block did not draw them (BACKLOG §116.1 item 2). Seconds with
+  // one decimal, because a caption takes 3.2s and a re-index 40s, and "3210
+  // ms" is a number nobody reads at a glance.
+  if (latency) {
+    const secs = (ms) => `${(ms / 1000).toFixed(ms >= 10000 ? 0 : 1)}s`;
+    const rows = Object.entries(health.latency_ms_by_kind || {})
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([kind, stat]) => `${kind}: ${secs(stat.p50_ms)} typical, ${secs(stat.p95_ms)} slow (${stat.count})`);
+    latency.textContent = rows.length ? rows.join(" · ") : "No timed jobs yet";
+  }
+}
+
 // --- finding a setting (§36B) ------------------------------------------------------
 //
 // Fourteen sections, grouped three ways. The grouping helps, and it is only
-// ever right for some people — "where do I turn off web search?" is a guess
+// ever right for some people, "where do I turn off web search?" is a guess
 // between The AI and System until you have learned the layout, and "where is
 // the corner rounding?" is a guess even after you have.
 //
@@ -434,7 +494,7 @@ function closeSettingsModal() {
 // The ring buffer discards its oldest record silently once it is full, which
 // makes a busy hour and a quiet one look identical: 200 rows either way, with
 // no way to tell whether the top row is the start of the story or the middle.
-// That is worst in exactly the case the viewer exists for — chasing something
+// That is worst in exactly the case the viewer exists for, chasing something
 // that keeps failing, where the repetition is what pushed the first occurrence
 // out of the window.
 // --- the log console (§1) -------------------------------------------------
@@ -459,7 +519,7 @@ let logFollowPinned = true; // false once the user scrolls up to read something
 let logErrorsSinceOpened = 0;
 let logScreenOpen = false;
 // "List" (structured rows, foldable tracebacks) or "Terminal" (raw lines,
-// styled like a real console — see .log-terminal). Same persistence pattern
+// styled like a real console, see .log-terminal). Same persistence pattern
 // as reminderView/timeline-view: a per-browser display preference, not
 // something worth round-tripping through /preferences.
 let logView = localStorage.getItem("logView") === "terminal" ? "terminal" : "list";
@@ -471,7 +531,7 @@ function logLevelRank(level) {
 // The ring buffer discards its oldest record silently once it is full, which
 // makes a busy hour and a quiet one look identical: the same rows either way,
 // with no way to tell whether the top row is the start of the story or the
-// middle. That is worst in exactly the case the viewer exists for — chasing
+// middle. That is worst in exactly the case the viewer exists for, chasing
 // something that keeps failing, where the repetition is what pushed the first
 // occurrence out of the window.
 function renderLogGap(stats) {
@@ -486,7 +546,7 @@ function renderLogGap(stats) {
     : "";
   note.textContent =
     `${stats.dropped.toLocaleString()} earlier record${stats.dropped === 1 ? "" : "s"} ` +
-    `dropped — this log keeps the most recent ${stats.capacity.toLocaleString()}.${since}`;
+    `dropped: this log keeps the most recent ${stats.capacity.toLocaleString()}.${since}`;
   note.classList.remove("hidden");
 }
 
@@ -543,7 +603,7 @@ function logRow(record) {
   level.className = "what";
   level.textContent = record.level;
 
-  // Which side of the app said it. Only worth showing in the merged view —
+  // Which side of the app said it. Only worth showing in the merged view, 
   // in a single-source view every row would carry the same tag.
   const line = document.createElement("span");
   line.className = "log-line";
@@ -554,12 +614,12 @@ function logRow(record) {
     line.appendChild(tag);
   }
   const text = document.createElement("span");
-  text.textContent = record.logger ? `${record.logger} — ${record.message}` : record.message;
+  text.textContent = record.logger ? `${record.logger}: ${record.message}` : record.message;
   line.appendChild(text);
 
   // One record, copyable on its own. "Copy all" plus the filters can already
   // narrow to a single error, but that is a three-step answer to "send me that
-  // error" — and hand-selecting a row whose traceback lives in its own
+  // error", and hand-selecting a row whose traceback lives in its own
   // scrolling box is worse. This copies the record AND its traceback together,
   // which is the thing anyone actually wants to paste.
   const copy = document.createElement("button");
@@ -583,7 +643,7 @@ function logRow(record) {
     const summary = document.createElement("summary");
     summary.textContent = "Traceback";
     const pre = document.createElement("pre");
-    pre.textContent = record.trace; // real newlines here — it is not a row
+    pre.textContent = record.trace; // real newlines here: it is not a row
     const copyTrace = document.createElement("button");
     copyTrace.type = "button";
     copyTrace.className = "ghost small";
@@ -598,7 +658,7 @@ function logRow(record) {
 }
 
 // One record as the text you would paste into a bug report. The source tag is
-// always included here even though the row only shows it in the merged view —
+// always included here even though the row only shows it in the merged view, 
 // out of context, "which half of the app said this" is the first question.
 function logRecordText(record) {
   const head =
@@ -647,7 +707,7 @@ function renderLogList() {
   list.replaceChildren();
   // **Deliberately not `renderIncrementally`, unlike every other list here.**
   // Two reasons, and the second is the disqualifying one. This list is already
-  // bounded — `MAX_LOG_ROWS` (1000) is a real cap, not an unbounded notebook —
+  // bounded, `MAX_LOG_ROWS` (1000) is a real cap, not an unbounded notebook , 
   // so the problem the incremental renderer solves is one the cap has already
   // solved. And the log's "follow" mode scrolls to the *newest* row, which
   // sits at the end: a renderer that paints the first chunk and fills in
@@ -662,12 +722,12 @@ function renderLogList() {
 }
 
 // One line the way it would print to a real console: "HH:MM:SS LEVEL   logger
-// — message", level padded like uvicorn's own default formatter pads
+//, message", level padded like uvicorn's own default formatter pads
 // "INFO:"/"WARNING:"/"ERROR:" so a column of mixed levels still lines up.
 function logTerminalLineText(record) {
   const when = new Date(record.time).toLocaleTimeString();
   const level = `${record.level}:`.padEnd(9);
-  const body = record.logger ? `${record.logger} — ${record.message}` : record.message;
+  const body = record.logger ? `${record.logger}: ${record.message}` : record.message;
   return `${when} ${level}${body}`;
 }
 
@@ -682,7 +742,7 @@ function logTerminalRow(record) {
 }
 
 // A real terminal never folds a traceback behind a click, so this view
-// doesn't either — every line prints, indented, right under the record that
+// doesn't either: every line prints, indented, right under the record that
 // raised it. That is the one real advantage this view has over List, not
 // just a different coat of paint on the same data.
 function logTerminalTraceRow(record) {
@@ -738,7 +798,7 @@ function renderLogErrorBadge() {
     badge = document.createElement("span");
     badge.className = "log-error-badge";
     // Clicking the badge opens the Logs screen already filtered to errors.
-    // Set synchronously so it is in place before renderLogs() draws — the
+    // Set synchronously so it is in place before renderLogs() draws: the
     // badge is the only place a failure announces itself, so it should also
     // be the shortest way to the failure itself.
     badge.addEventListener("click", () => {
@@ -749,7 +809,7 @@ function renderLogErrorBadge() {
     link.appendChild(badge);
   }
   badge.textContent = logErrorsSinceOpened > 99 ? "99+" : String(logErrorsSinceOpened);
-  badge.title = `${logErrorsSinceOpened} error${logErrorsSinceOpened === 1 ? "" : "s"} since you last looked at the logs — click to show just those`;
+  badge.title = `${logErrorsSinceOpened} error${logErrorsSinceOpened === 1 ? "" : "s"} since you last looked at the logs, click to show just those`;
 }
 
 // NDJSON over fetch rather than an EventSource, for one blunt reason:
@@ -852,14 +912,14 @@ function closeLogs() {
   stopLogStream();
   // Said here rather than left to the stream's own exit path: a deliberate
   // abort returns early from there, so the pill would still read "● live"
-  // with nothing behind it — a status that lies is worse than none.
+  // with nothing behind it, a status that lies is worse than none.
   setLogLive("paused", "paused");
 }
 
 async function copyLogs() {
   const shown = logRecords.filter(logMatchesFilters);
   if (!shown.length) {
-    toast("Nothing to copy — the filters above are hiding every record.", true);
+    toast("Nothing to copy: the filters above are hiding every record.", true);
     return;
   }
   const text = shown.map(logRecordText).join("\n");
@@ -870,13 +930,18 @@ async function copyLogs() {
 
 // The button copies what is ON SCREEN, not the whole buffer, so it has to say
 // which. "Copy all" while a filter hides 400 records is a promise it does not
-// keep — and the reader would not find out until they pasted it.
+// keep: and the reader would not find out until they pasted it.
 function renderCopyLogsLabel() {
   const button = $("logs-copy");
   if (!button) return;
   const shown = logRecords.filter(logMatchesFilters).length;
   const filtering = shown !== logRecords.length;
-  button.textContent = filtering ? `Copy ${shown} shown` : "Copy all";
+  //: `setLabel`, not `textContent`: this is a row in the Logs dock's kebab
+  //: now, so the label carries an icon, and writing the text directly would
+  //: delete it the first time a filter changed. The same trap the Support
+  //: bundle button was already in (it restored `textContent` after a run and
+  //: dropped its own icon), fixed the same way.
+  setLabel(button, filtering ? `ph:copy Copy ${shown} shown` : "ph:copy Copy all");
   button.title = filtering
     ? "Copies only the records the filters are showing"
     : "Copies every record in this list, tracebacks included";
@@ -898,13 +963,17 @@ async function clearLogs() {
 }
 
 // The bundle is built server-side and downloaded straight to disk. Nothing is
-// transmitted anywhere — that is the whole difference between this and the
+// transmitted anywhere: that is the whole difference between this and the
 // crash reporting the roadmap turned down.
 async function downloadSupportBundle() {
   const button = $("logs-bundle");
   button.disabled = true;
-  const original = button.textContent;
-  button.textContent = "Collecting…";
+  //: The label is an icon plus words, so it is saved and restored as one:
+  //: `textContent` alone read back "Support bundle" and put it back without
+  //: the glyph, so the button lost its icon the first time anyone built a
+  //: bundle and never got it back until a reload.
+  const original = button.textContent.trim();
+  setLabel(button, "ph:hourglass-medium Collecting…");
   try {
     const response = await fetch("/support-bundle", {
       headers: { "X-Auth-Token": localStorage.getItem("token") || "" },
@@ -916,7 +985,7 @@ async function downloadSupportBundle() {
     toast(error.message || "Couldn't build the support bundle.", true);
   } finally {
     button.disabled = false;
-    button.textContent = original;
+    setLabel(button, `ph:download-simple ${original}`);
   }
 }
 
@@ -952,7 +1021,7 @@ function toggleTheme() {
 // (:root[data-accent="…"]); this list just drives the swatch picker and
 // gives the background art a hue to paint with.
 const ACCENTS = [
-  { name: "indigo", label: "Indigo", swatch: "#4f6df5" },
+  { name: "indigo", label: "Indigo", swatch: "#4664f0" },
   { name: "emerald", label: "Emerald", swatch: "#0e9f6e" },
   { name: "rose", label: "Rose", swatch: "#ec4899" },
   { name: "amber", label: "Amber", swatch: "#d97706" },
@@ -977,7 +1046,7 @@ function activeAccent() {
 
 // The colour the app is *actually* wearing right now. The generative art used
 // to look this up from the ACCENTS list via localStorage, which only knows
-// about the accent picker — so a curated palette changed every surface in the
+// about the accent picker, so a curated palette changed every surface in the
 // app except the two canvases, leaving them wearing the previous theme. The
 // computed variable is the one source of truth once palettes can set it too.
 function currentAccentHex() {
@@ -993,7 +1062,7 @@ function currentAccentHex() {
 
 function applyAccent(name, remember = true) {
   // applyThemePreset re-applies the theme's accent without recording it as a
-  // manual choice — otherwise merely picking a theme would pin its colour as
+  // manual choice: otherwise merely picking a theme would pin its colour as
   // an override and the next theme couldn't change it.
   if (remember) localStorage.setItem("accent", name);
   applyEffectiveAccent();
@@ -1009,7 +1078,7 @@ function applyAccent(name, remember = true) {
 //
 // 1. The accent swatches did nothing under any theme. `[data-accent]` rules
 //    live at the top of the stylesheet and `[data-palette]` rules near the
-//    bottom, both `:root[data-…]` and so both specificity (0,2,0) — so the
+//    bottom, both `:root[data-…]` and so both specificity (0,2,0): so the
 //    palette won on source order alone, every time. Since every theme selects
 //    a palette, picking an accent was visibly dead the moment a theme was on.
 // 2. Clearing a manual accent left it applied. `applyAppearance` re-applied
@@ -1020,7 +1089,7 @@ function applyAccent(name, remember = true) {
 // An explicit pick is written as an inline custom property, which beats any
 // stylesheet rule and so beats the palette. No pick means no inline property,
 // leaving the palette to supply the colour as it should. That is the
-// documented layering — your change → theme → default — applied to colour.
+// documented layering, your change → theme → default, applied to colour.
 // It owns `data-accent` as well as the inline property. Keeping the attribute
 // in step matters even though the inline colour is what wins: the pre-paint
 // script in index.html sets it from localStorage to avoid a flash, so a stale
@@ -1057,16 +1126,23 @@ const APPEARANCE_DEFAULTS = {
   font: "system", // system | serif | mono
   density: "comfortable", // comfortable | compact | spacious
   glass: "on",
+  // Performance mode (INBOX 49): "auto" turns it on for a small machine, 4
+  // cores or 4 GB or fewer, and when the operating system asks for reduced
+  // transparency; "on" and "off" are the person's own word. On, it takes the
+  // glass blur and the animations off and runs the graph's physics at half
+  // rate, whatever the three settings below say, without rewriting them, so
+  // turning it back off restores exactly the look that was chosen.
+  perf: "auto", // auto | on | off
   motion: "auto", // "auto" = follow the OS; "reduced" = force-still
   // Background movement, separate from the interface-wide motion setting.
   // "auto" follows reduced-motion; "moving" is an explicit request that
   // overrides it; "still" never moves. This key was missing entirely, which
-  // left the picker rendering blank (selectedIndex -1) — so choosing "Moving"
+  // left the picker rendering blank (selectedIndex -1): so choosing "Moving"
   // looked like it did nothing, and there was no way at all to get the art
   // moving on a machine with reduced motion turned on.
   // "auto" follows the reduced-motion setting; "moving" is an explicit
   // request that overrides it; "still" never moves. This key was declared
-  // twice — once here as "auto" and again below as "moving" — after two
+  // twice, once here as "auto" and again below as "moving", after two
   // sessions fixed the same blank-picker bug independently. The later
   // declaration silently won, so the documented default was not the one
   // anybody got. One declaration, matching the <option> list and the hint
@@ -1077,7 +1153,7 @@ const APPEARANCE_DEFAULTS = {
   //: copies; the *default* is what differs, and the reason is the whole point
   //: of the setting. Reported with a screenshot of a frozen "Thinking…":
   //: "the thinking and writing animation is completely broken, doesn't move."
-  //: The app's Reduce motion had turned it into one static italic word —
+  //: The app's Reduce motion had turned it into one static italic word, 
   //: which is also exactly what a hung app shows, so the setting had made the
   //: interface unable to tell the user whether anything was happening.
   //:
@@ -1087,7 +1163,10 @@ const APPEARANCE_DEFAULTS = {
   //: still obeyed (see `progressMotionWanted` in app.js), and the indicator
   //: steps through a colour rather than freezing when it is.
   "progress-motion": "always", // always | auto | still
-  "bg-intensity": "90",
+  // Half strength (was 90): a professional product has a quiet page
+  // (UI_MODERNISATION_PLAN Phase 3). theme-boot.js and index.html carry the
+  // same default: keep the three in step.
+  "bg-intensity": "45",
   radius: "14", // global corner rounding, px
   // 14px, not 18. Blur radius is the exponential term in a backdrop-filter's
   // cost, and the published band worth staying inside is 8-15px. The slider
@@ -1095,21 +1174,21 @@ const APPEARANCE_DEFAULTS = {
   // profile gets. See `.glass` in css/03-dashboard-widgets.css for the
   // measured layer counts this multiplies across.
   "glass-blur": "14", // frosted-glass blur strength, px
-  // Percent of a card's own base alpha that survives — separate dial from
+  // Percent of a card's own base alpha that survives, separate dial from
   // blur strength above (how frosted vs. how clear). 100 renders identically
   // to before this setting existed.
   "glass-opacity": "100",
-  // Off by default even while glass itself is on — a diagonal highlight is a
+  // Off by default even while glass itself is on, a diagonal highlight is a
   // stronger visual statement than the blur/opacity dials above, worth
   // opting into rather than imposing. Turning glass on from off auto-sets
   // this to "on" (see #glass-toggle's own listener), so the full look shows
   // up without a second trip to Settings; unchecking #glass-sheen-toggle
   // afterward turns just the sheen back off without touching glass itself.
   "glass-sheen": "off",
-  // 0-100, how strong the sheen reads when it's on — its own dial, separate
+  // 0-100, how strong the sheen reads when it's on: its own dial, separate
   // from whether it's on at all.
   "glass-sheen-strength": "100",
-  zoom: "100", // §37E: interface-wide scale, percent — multiplies the root font-size
+  zoom: "100", // §37E: interface-wide scale, percent: multiplies the root font-size
   "bg-style": "aurora", // aurora | constellation | waves | bubbles | mesh
   palette: "default", // which curated colour set; themes select one
   // No accent by default: the palette supplies the colour until you pick one
@@ -1117,13 +1196,13 @@ const APPEARANCE_DEFAULTS = {
   // rather than returning undefined and relying on a lookup miss.
   accent: "indigo",
   // Both of these arrived with their Settings controls and neither was listed
-  // here, which is not a cosmetic omission — it took the borders and shadows
+  // here, which is not a cosmetic omission, it took the borders and shadows
   // off the entire interface. `applyAppearance` writes them onto <html> as
   // custom properties, so a missing default became the literal strings
   // "undefined" and "NaN" on the root element. `border-style: undefined` is
-  // invalid, so `border-style: var(--border-style) !important` — which is
+  // invalid, so `border-style: var(--border-style) !important`, which is
   // `!important` and matches .card, input, textarea, select, .modal and
-  // .sidebar — computed to `none` for all of them. `--shadow-intensity: NaN`
+  // .sidebar: computed to `none` for all of them. `--shadow-intensity: NaN`
   // poisoned `--glass-shadow`'s rgba(), so every card's box-shadow computed to
   // `none` as well. The app rendered completely flat and borderless on a fresh
   // profile, and stayed that way until you happened to touch both controls.
@@ -1132,7 +1211,7 @@ const APPEARANCE_DEFAULTS = {
   // Matches the pre-paint script's own `pref("theme", "system")`. Without it
   // `applyThemeChoice(undefined)` took the else branch and stamped
   // `data-theme="undefined"` onto <html> on every fresh profile. The app still
-  // looked right, because the palettes key off the resolved `data-mode` — but
+  // looked right, because the palettes key off the resolved `data-mode`, but
   // it left a live element attribute that is neither "light", "dark" nor
   // absent, so any rule written as `:root:not([data-theme])` to mean "following
   // the system" would quietly never match.
@@ -1151,7 +1230,7 @@ const APPEARANCE_DEFAULTS = {
 // manual setting falls back to the theme rather than to the app default.
 // A theme is a COMPLETE look: which colour palette to wear, plus the
 // typography and shape that go with it. It deliberately does not carry colours
-// of its own — main's palettes already own colour, with a matched light and
+// of its own: main's palettes already own colour, with a matched light and
 // dark set each, and a theme that also set `accent` would silently lose to
 // them ([data-palette] rules come later in the stylesheet and win at equal
 // specificity). One mechanism for colour, one for everything else.
@@ -1244,7 +1323,7 @@ function appearancePref(key, fallback) {
   // `fallback` is the last resort, after the stored value, the active theme
   // and APPEARANCE_DEFAULTS. It exists because five call sites were already
   // passing one to a function that took a single parameter and dropped it on
-  // the floor — so two settings resolved to `undefined` and wrote that word
+  // the floor: so two settings resolved to `undefined` and wrote that word
   // into a CSS custom property. A defaulted parameter that is silently ignored
   // is worse than no parameter at all: it reads as a guarantee.
   //
@@ -1261,7 +1340,7 @@ function appearancePref(key, fallback) {
 // leaving your manual choices sitting on top of it, untouched.
 function applyThemePreset(name, chosenByUser = false) {
   // Picking a theme has to *win*. `appearancePref` reads the manual layer
-  // first, so a single earlier tweak — one accent, one corner radius — sat on
+  // first, so a single earlier tweak, one accent, one corner radius, sat on
   // top of every theme picked afterwards and silently cancelled that part of
   // it. With several tweaks stored, a theme could change nothing visible at
   // all, which is what "the themes don't work half the time" was.
@@ -1300,7 +1379,7 @@ function manualOverrides() {
   return OVERRIDABLE_KEYS.filter((key) => localStorage.getItem(key) !== null);
 }
 
-// Drop the manual layer, keeping the chosen theme — the counterpart to
+// Drop the manual layer, keeping the chosen theme, the counterpart to
 // "reset the theme" below.
 function clearManualOverrides() {
   for (const key of manualOverrides()) localStorage.removeItem(key);
@@ -1308,10 +1387,10 @@ function clearManualOverrides() {
   applyPageBackground(null);
   applyThemePreset(activeThemePreset());
   renderAppearance();
-  toast("Your manual changes are cleared — the theme is showing on its own.");
+  toast("Your manual changes are cleared, the theme is showing on its own.");
 }
 
-// Drop the theme, keeping every manual change — so "reset the theme to
+// Drop the theme, keeping every manual change, so "reset the theme to
 // default because I want my own colours instead" does exactly that, rather
 // than wiping the colours too (user request).
 function resetThemeOnly() {
@@ -1324,7 +1403,7 @@ function resetThemeOnly() {
 // --- building a scheme from one colour ---------------------------------------
 //
 // Picking an accent is easy. Picking a page background that *goes* with it is
-// the part people give up on and end up with a default they didn't choose — so
+// the part people give up on and end up with a default they didn't choose: so
 // the relationship is arithmetic rather than judgement: rotate the hue by a
 // known amount, drop the saturation hard, and push the lightness to whichever
 // end the current mode needs.
@@ -1388,7 +1467,7 @@ function harmonyScheme(baseHex, kind, dark) {
   const [h, s] = hsl;
   const rotation = HARMONY_ROTATIONS[kind] ?? 0;
   // A page background carrying the accent's full saturation is exhausting to
-  // read against, so it keeps only a trace of it — enough to feel related, far
+  // read against, so it keeps only a trace of it, enough to feel related, far
   // too little to compete with the text.
   const bgSaturation = Math.max(3, s * 0.14);
   const bgLightness = dark ? 12 : 96;
@@ -1408,11 +1487,11 @@ function applyHarmony() {
   const scheme = harmonyScheme(base, kind, resolvedTheme() === "dark");
   const note = $("harmony-note");
   if (!scheme) {
-    note.textContent = "That colour didn't parse — try picking it again.";
+    note.textContent = "That colour didn't parse: try picking it again.";
     return;
   }
   localStorage.setItem("accent-custom", scheme.accent);
-  // A scheme's background is worked out *for a mode* — the same accent wants a
+  // A scheme's background is worked out *for a mode*, the same accent wants a
   // near-white page in light and a near-black one in dark. Storing only the one
   // for whichever mode happened to be on is what made the light/dark toggle
   // "stop working on the background": the stored value is written inline on
@@ -1436,19 +1515,19 @@ function applyHarmony() {
 //
 // A saved theme is a snapshot of the same localStorage keys every appearance
 // control already writes, so it is not a second system that could drift from
-// them — the same idea as the built-in presets, which are also just bundles of
+// them: the same idea as the built-in presets, which are also just bundles of
 // those values.
 //
 // Stored server-side with the rest of the preferences rather than in the
 // browser. The look itself lives in localStorage because it has to be applied
 // before first paint, but a *saved* look is something you would be upset to
-// lose to a cleared cache — and in preferences it also rides along in the
+// lose to a cleared cache, and in preferences it also rides along in the
 // daily backup and is there in the desktop window as well as the browser tab.
 
 const MAX_CUSTOM_THEMES = 20;
 
 //: Everything a saved look captures: every manual override, plus the
-//: background-art switch. `bgArt` is deliberately NOT in OVERRIDABLE_KEYS —
+//: background-art switch. `bgArt` is deliberately NOT in OVERRIDABLE_KEYS, 
 //: that list also drives "clear my manual changes", and turning someone's
 //: background off is not what clearing a colour override should do. But a
 //: look that remembers *which* art and how intense, and not whether it is on,
@@ -1456,7 +1535,7 @@ const MAX_CUSTOM_THEMES = 20;
 //: (§35J): the generative background had to be switched on by hand, separately
 //: from the saved theme it belongs to.
 //
-// LOOK_KEYS itself lives in app.js, not here — see the comment there. It is
+// LOOK_KEYS itself lives in app.js, not here, see the comment there. It is
 // read across the file boundary below, which is safe: currentLookValues()
 // only ever runs from saveCurrentLook(), itself only ever run from a click,
 // long after every script (app.js included) has loaded.
@@ -1489,7 +1568,7 @@ async function saveCurrentLook() {
   }
   const existing = savedThemes();
   if (existing.length >= MAX_CUSTOM_THEMES && !existing.some((t) => t.name === name)) {
-    toast(`You can keep ${MAX_CUSTOM_THEMES} saved looks — delete one first.`, true);
+    toast(`You can keep ${MAX_CUSTOM_THEMES} saved looks: delete one first.`, true);
     return;
   }
   const snapshot = { name, ...currentLookValues() };
@@ -1552,7 +1631,7 @@ function renderCustomThemes() {
   if (!themes.length) {
     const empty = document.createElement("p");
     empty.className = "muted";
-    empty.textContent = "Nothing saved yet — set the app up how you like it, then save it here.";
+    empty.textContent = "Nothing saved yet: set the app up how you like it, then save it here.";
     box.appendChild(empty);
     return;
   }
@@ -1563,7 +1642,7 @@ function renderCustomThemes() {
 
 //: One saved look, shown as the look rather than as its name.
 //:
-//: It was a text pill and a ✕ — which told you a look called "Sea of
+//: It was a text pill and a ✕, which told you a look called "Sea of
 //: Prosperity" existed but nothing about what it was, so picking between five
 //: of them meant applying each in turn and undoing it. A saved *look* is a set
 //: of colours; showing the colours is the whole job of this control.
@@ -1596,7 +1675,7 @@ function savedThemeCard(theme) {
   preview.setAttribute("aria-label", `Apply the saved look “${theme.name}”`);
   preview.style.background = page;
   // A miniature of the thing itself: a card on the page colour, a line of ink
-  // on it, and the accent as the one saturated element — which is how the real
+  // on it, and the accent as the one saturated element, which is how the real
   // interface is composed.
   const mini = document.createElement("span");
   mini.className = "saved-look-mini";
@@ -1679,7 +1758,7 @@ function currentPageBackground() {
 //
 // A constructed stylesheet rather than a <style> tag, because the app now
 // sends `style-src 'self'`, and an injected <style> is exactly what that
-// refuses — this feature was the one thing the strict policy broke. Adopted
+// refuses: this feature was the one thing the strict policy broke. Adopted
 // sheets are not inline content, so they are unaffected, and this is what the
 // API was added for. Keeping the tag would have meant 'unsafe-inline' on every
 // page, which would also have re-permitted style injected through note text.
@@ -1719,16 +1798,54 @@ function applyCustomCssLegacy(css) {
 }
 
 // Applied once at startup (called from the pre-paint path) and on change.
+// A machine that will feel every blurred layer: the two signals a browser
+// gives without a permission prompt. `deviceMemory` is Chromium-only and
+// capped at 8, so a missing value never counts as small on its own. Two
+// cores, not four: a 4-thread laptop is common and runs the glass fine, and
+// the owner wants the frosted art on by default, so only a machine that is
+// small on memory or down to two threads is switched without being asked.
+function smallMachine() {
+  return (
+    (navigator.deviceMemory && navigator.deviceMemory <= 4) ||
+    (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2)
+  ) === true;
+}
+
+function lessTransparencyWanted() {
+  return window.matchMedia("(prefers-reduced-transparency: reduce)").matches;
+}
+
+// What Performance mode resolves to right now. theme-boot.js repeats this
+// reading for the first paint; keep the two in step.
+function perfModeOn() {
+  const pref = appearancePref("perf");
+  if (pref === "on") return true;
+  if (pref === "off") return false;
+  return smallMachine() || lessTransparencyWanted();
+}
+
+// Why it is on, for the hint under the setting: the person's own choice
+// needs no explanation; an automatic one does.
+function perfModeReason() {
+  if (appearancePref("perf") !== "auto" || !perfModeOn()) return "";
+  if (lessTransparencyWanted()) return "On: your system asks for less transparency.";
+  return "On for this machine: 2 cores or 4 GB of memory or fewer.";
+}
+
 function applyAppearance() {
   const root = document.documentElement;
   root.dataset.fontsize = appearancePref("fontsize");
   root.dataset.font = appearancePref("font");
   root.dataset.density = appearancePref("density");
-  root.dataset.glass = appearancePref("glass");
+  const perf = perfModeOn();
+  root.dataset.perf = perf ? "on" : "off";
+  // The preferences themselves are untouched: Performance mode overrides
+  // what the page shows, not what the person chose.
+  root.dataset.glass = perf ? "off" : appearancePref("glass");
   root.dataset.glassSheen = appearancePref("glass-sheen");
   root.style.setProperty("--glass-sheen-strength", Number(appearancePref("glass-sheen-strength")) / 100);
   root.dataset.themePreset = activeThemePreset();
-  root.dataset.motion = appearancePref("motion");
+  root.dataset.motion = perf ? "reduced" : appearancePref("motion");
   root.dataset.progressMotion = appearancePref("progress-motion");
   root.style.setProperty("--bg-art-opacity", Number(appearancePref("bg-intensity")) / 100);
   // Cards thin out slightly while the art is on, so it reads through the page
@@ -1741,7 +1858,7 @@ function applyAppearance() {
   root.style.setProperty("--border-style", appearancePref("border-style", "solid"));
   // Belt and braces over the two fixes above. A custom property will happily
   // hold the string "NaN"; it is only invalid where it gets *used*, which here
-  // is inside `--glass-shadow`'s rgba() — so a bad number silently removes
+  // is inside `--glass-shadow`'s rgba(), so a bad number silently removes
   // every shadow in the app rather than failing anywhere near this line.
   const shadow = Number(appearancePref("shadow-intensity", "5"));
   root.style.setProperty(
@@ -1749,7 +1866,7 @@ function applyAppearance() {
   );
   applyResolvedMode();
   // remember=false: this runs on every startup, and recording the resolved
-  // value would pin whatever the theme supplied as a manual override — after
+  // value would pin whatever the theme supplied as a manual override, after
   // which no other theme could ever change the palette again.
   applyPalette(activePalette(), false);
   // After the palette, never before: the accent has to be able to override
@@ -1768,7 +1885,7 @@ function effectiveTheme() {
 
 // What the app is *actually* showing right now: "system" is a choice, not a
 // colour. The curated palettes need the resolved answer, because under
-// "System" there is no data-theme attribute for CSS to match on — and writing
+// "System" there is no data-theme attribute for CSS to match on, and writing
 // each palette twice, once in a prefers-color-scheme block, is exactly how two
 // copies of a palette drift apart.
 function resolvedTheme() {
@@ -1781,7 +1898,7 @@ function resolvedTheme() {
 //
 // Reported as "the toggle light/dark button doesn't change". It was a fixed
 // half-filled circle in both modes, so the one control whose entire job is to
-// say which way it will flip looked identical either way — and there was no
+// say which way it will flip looked identical either way, and there was no
 // way to tell from it whether pressing it would darken or lighten.
 //
 // Showing the destination rather than the current state is the convention
@@ -1802,7 +1919,7 @@ function applyResolvedMode() {
   document.documentElement.dataset.mode = resolvedTheme();
   renderThemeToggle();
   // Light and dark can want different custom backgrounds, and the stored one
-  // is written inline — so it has to be re-picked here rather than left to the
+  // is written inline: so it has to be re-picked here rather than left to the
   // stylesheet, which cannot outrank it.
   applyPageBackground(currentPageBackground());
 }
@@ -1836,7 +1953,7 @@ function applyThemeChoice(choice, remember = true) {
   applyResolvedMode();
   if (bgArtOn()) startBgArt();
   // The dashboard constellation reads light-or-dark when it is built, so it
-  // has to be rebuilt too — the background art already was, which is why only
+  // has to be rebuilt too, the background art already was, which is why only
   // this one appeared stuck on the old mode.
   refreshArtForTheme();
   renderBrandLogo();
@@ -1884,7 +2001,7 @@ function renderThemePresets() {
   const overrides = manualOverrides();
   const note = $("theme-override-note");
   if (!active && !overrides.length) {
-    note.textContent = "No theme selected — the app's default look.";
+    note.textContent = "No theme selected: the app's default look.";
   } else if (!overrides.length) {
     note.textContent = `${THEME_PRESETS[active].label} is showing exactly as designed.`;
   } else {
@@ -1935,9 +2052,15 @@ function renderAppearance() {
   $("bg-motion").value = appearancePref("bg-motion");
   $("bg-motion-row").classList.toggle("hidden", !bgArtOn());
   renderBgMotionHint();
+  $("perf-mode").value = appearancePref("perf");
+  const perfWhy = perfModeReason();
+  $("perf-mode-hint").textContent = perfWhy;
+  $("perf-mode-hint").classList.toggle("hidden", !perfWhy);
   $("glass-toggle").checked = appearancePref("glass") === "on";
+  $("glass-row").classList.toggle("disabled-row", perfModeOn());
+  $("reduce-motion-row").classList.toggle("disabled-row", perfModeOn());
   $("glass-sheen-toggle").checked = appearancePref("glass-sheen") === "on";
-  $("glass-sheen-row").classList.toggle("disabled-row", appearancePref("glass") !== "on");
+  $("glass-sheen-row").classList.toggle("disabled-row", appearancePref("glass") !== "on" || perfModeOn());
   $("glass-sheen-strength").value = appearancePref("glass-sheen-strength");
   $("glass-sheen-strength-value").textContent = `${appearancePref("glass-sheen-strength")}%`;
   $("glass-sheen-strength-row").classList.toggle(
@@ -1958,7 +2081,7 @@ function renderAppearance() {
   _segActive("border-style-seg", "borderChoice", appearancePref("border-style", "solid"));
   $("shadow-intensity").value = appearancePref("shadow-intensity", "5");
   $("shadow-intensity-value").textContent = `${appearancePref("shadow-intensity", "5")}%`;
-  $("accent-custom").value = localStorage.getItem("accent-custom") || "#4f6df5";
+  $("accent-custom").value = localStorage.getItem("accent-custom") || "#4664f0";
   $("page-bg-custom").value = localStorage.getItem("page-bg") || "#f5f7fb";
   $("custom-css").value = localStorage.getItem("custom-css") || "";
   // Blur strength and opacity only matter while glass is on.
@@ -1975,7 +2098,7 @@ function renderAppearance() {
   _segActive("density-seg", "density", appearancePref("density"));
 }
 
-// A frozen background with no explanation reads as a broken app — which is
+// A frozen background with no explanation reads as a broken app, which is
 // how it was reported. Say which setting is holding it still, and that
 // "Moving" will override it.
 //: The one case where this setting is *not* in charge, said where the choice
@@ -1990,7 +2113,7 @@ function renderProgressMotionHint() {
   const choice = appearancePref("progress-motion");
   let text = "";
   if (choice === "always" && osReduced) {
-    text = "Moving anyway — your system asks for reduced motion, and this setting overrides it. Choose Auto to follow the system instead.";
+    text = "Moving anyway: your system asks for reduced motion, and this setting overrides it. Choose Auto to follow the system instead.";
   } else if (choice === "still") {
     text = "Held still. The dots step through a colour once a second so you can still tell work is happening.";
   }
@@ -2025,7 +2148,7 @@ const PALETTES = [
     id: "default",
     name: "Aurora",
     note: "The original: indigo glass over a soft gradient.",
-    light: { page: "linear-gradient(135deg,#e9edfb,#f6f2ec 45%,#e6f1f2)", card: "rgba(255,255,255,0.75)", accent: "#4f6df5", border: "rgba(31,36,48,0.12)" },
+    light: { page: "linear-gradient(135deg,#e9edfb,#f6f2ec 45%,#e6f1f2)", card: "rgba(255,255,255,0.75)", accent: "#4664f0", border: "rgba(31,36,48,0.12)" },
     dark: { page: "linear-gradient(135deg,#0e1017,#171a26 45%,#0f1720)", card: "rgba(29,33,46,0.85)", accent: "#8b9df8", border: "rgba(255,255,255,0.14)" },
   },
   {
@@ -2052,7 +2175,7 @@ const PALETTES = [
   {
     id: "lagoon",
     name: "Lagoon",
-    note: "Indigo ground with a teal accent — both colours, not blended.",
+    note: "Indigo ground with a teal accent, both colours, not blended.",
     light: { page: "linear-gradient(135deg,#eef1fa,#eaf4f6 45%,#e6edf8)", card: "rgba(253,254,255,0.85)", accent: "#0b6b7d", border: "rgba(26,34,62,0.15)" },
     dark: { page: "linear-gradient(135deg,#10142a,#141b38 45%,#0e1626)", card: "rgba(28,35,62,0.85)", accent: "#5fd8d0", border: "rgba(200,218,255,0.16)" },
   },
@@ -2081,7 +2204,7 @@ const PALETTES = [
 
 function activePalette() {
   // Through appearancePref, so a theme supplies the palette until you pick one
-  // yourself — at which point yours wins and stays won.
+  // yourself: at which point yours wins and stays won.
   const saved = appearancePref("palette");
   return PALETTES.some((p) => p.id === saved) ? saved : "default";
 }
@@ -2118,7 +2241,7 @@ function renderPaletteGrid() {
     card.append(preview, name, note);
     card.addEventListener("click", () => {
       // A palette brings its own accent, and an accent chosen earlier sits at
-      // higher specificity — leaving it would make every palette come out the
+      // higher specificity: leaving it would make every palette come out the
       // same colour, which reads as the picker not working. The accent row
       // below is still there to deviate from the palette afterwards.
       const hadAccent =
@@ -2130,7 +2253,7 @@ function renderPaletteGrid() {
       renderAppearance();
       toast(
         hadAccent
-          ? `Palette: ${palette.name}. Its own accent is back — pick another below if you'd rather.`
+          ? `Palette: ${palette.name}. Its own accent is back, pick another below if you'd rather.`
           : `Palette: ${palette.name}.`
       );
     });
@@ -2140,7 +2263,7 @@ function renderPaletteGrid() {
 
 function resetAppearance() {
   for (const key of [
-    "fontsize", "font", "density", "glass", "motion", "progress-motion", "bg-intensity", "accent",
+    "fontsize", "font", "density", "glass", "perf", "motion", "progress-motion", "bg-intensity", "accent",
     "contrast", "bgArt", "theme", "radius", "glass-blur", "glass-opacity",
     "glass-sheen", "glass-sheen-strength", "bg-style", "bg-motion", "palette", "themePreset",
     "accent-custom", "page-bg", "custom-css", "zoom",
@@ -2248,13 +2371,25 @@ const BG_ART_BUILDERS = {
     };
   },
 
-  // Drifting stars joined by faint lines when they wander close — the same
+  // Drifting stars joined by faint lines when they wander close, the same
   // motif as the dashboard "constellation", full-screen.
   constellation(p, ctx) {
     let stars = [];
     return {
       init() {
-        const n = Math.min(140, Math.round((p.width * p.height) / 17000));
+        // `ctx.density` is the intensity slider, and this style was one of
+        // the two that never read it: aurora, bubbles and mesh all scale
+        // their population by it and the constellation and the waves did
+        // not, so on those two the slider moved the canvas's opacity and
+        // nothing else. Measured before the change
+        // (`scratchpad/ui-sweeps/bgart.js`): the constellation's frame cost
+        // was 39.5ms at intensity 10 and 37.2ms at 100, which is the same
+        // number twice, while mesh went 32.7ms to 45.6ms.
+        //
+        // It matters more here than anywhere else because the neighbour
+        // search is O(n squared): 19 stars is 171 pairs a frame and 84 is
+        // 3,486.
+        const n = Math.max(3, Math.min(140, Math.round((p.width * p.height) / 17000 * ctx.density)));
         for (let i = 0; i < n; i++) {
           stars.push({
             x: p.random(p.width), y: p.random(p.height),
@@ -2294,7 +2429,8 @@ const BG_ART_BUILDERS = {
     return {
       init() {},
       frame(t) {
-        const layers = 5;
+        // Same as the constellation: five layers whatever the slider said.
+        const layers = Math.max(2, Math.round(5 * ctx.density));
         for (let l = 0; l < layers; l++) {
           const yBase = p.height * (0.35 + l * 0.13);
           const amp = 26 + l * 10;
@@ -2387,12 +2523,27 @@ function startBgArt() {
   // the reduced-motion hint: the hint exists to protect people from motion
   // they didn't ask for, and this is someone asking for it, in a control that
   // does nothing else. Without that override there was no way to get the art
-  // moving at all on a machine with reduced motion on — which is exactly what
+  // moving at all on a machine with reduced motion on, which is exactly what
   // was reported.
   const bgMotion = appearancePref("bg-motion");
+  // **"Moving" wins over the reduced-motion hint, and does not win over
+  // Performance mode.** The hint exists to protect people from motion they
+  // did not ask for, and this setting is someone asking for it, in a control
+  // that does nothing else; without that override there was no way to get the
+  // art moving at all on a machine with reduced motion on, which was
+  // reported. Performance mode is a different kind of statement: not a
+  // preference about motion but a judgement about what this machine can
+  // afford to draw, and DESIGN.md rule 12 says every animation stops there
+  // except the progress indicators. Measured at 1440x900 in headless
+  // Chromium, the art costs between +17ms and +28ms a frame
+  // (`scratchpad/ui-sweeps/bgart.js`), which makes it the single most
+  // expensive thing Performance mode could switch off, and it was the one
+  // thing that kept running.
   const reduceMotion =
-    bgMotion === "still" || (bgMotion !== "moving" && reducedMotionWanted());
-  // Whatever colour the app is wearing — accent picker or curated palette.
+    bgMotion === "still" ||
+    perfModeOn() ||
+    (bgMotion !== "moving" && reducedMotionWanted());
+  // Whatever colour the app is wearing, accent picker or curated palette.
   const accentHex = currentAccentHex();
   const bgStyle = bgArtStyle();
   // Intensity drives how much is on screen, not just the CSS opacity.
@@ -2404,7 +2555,7 @@ function startBgArt() {
   const sketch = (p) => {
     // Each style is a self-contained builder returning {init, frame}. The
     // merge in #20 left this function holding pieces of two implementations
-    // at once — one branch's builders alongside the other's inline draw
+    // at once: one branch's builders alongside the other's inline draw
     // functions, with the `const style = build(...)` line lost between them.
     // So p.draw called `style.frame(t)` on an undefined `style`, and every
     // non-aurora background threw on its first frame.
@@ -2419,12 +2570,12 @@ function startBgArt() {
       // static positioning, and the art rendered as a block *below* the whole
       // UI instead of fixed behind it.
       c.elt.className = "bg-art-canvas";
-      // p5 parents new canvases to the first <main> it finds — which is the
+      // p5 parents new canvases to the first <main> it finds: which is the
       // one inside the Notes tab. That hid the background art on every other
       // tab (the whole panel is display:none). Pin it to <body> so it really
       // is a global background.
       c.parent(document.body);
-      // RGB for the wash rect, HSL for the coloured marks — p5 lets us
+      // RGB for the wash rect, HSL for the coloured marks, p5 lets us
       // switch, but simplest to keep one mode; use HSL and a grey wash.
       p.colorMode(p.HSL, 360, 100, 100, 1);
       p.noStroke();
@@ -2440,7 +2591,7 @@ function startBgArt() {
       style.init();
 
       if (reduceMotion) {
-        // One calm static frame — no motion for reduced-motion users.
+        // One calm static frame, no motion for reduced-motion users.
         p.background(0, 0, dark ? 12 : 98);
         style.frame(0);
         p.noLoop();
@@ -2507,11 +2658,21 @@ for (const b of document.querySelectorAll("#density-seg button")) {
     renderAppearance();
   });
 }
+$("perf-mode").addEventListener("change", (e) => {
+  localStorage.setItem("perf", e.target.value);
+  applyAppearance();
+  renderAppearance();
+});
+// The OS setting can change while the app is open; "auto" follows it.
+window.matchMedia("(prefers-reduced-transparency: reduce)").addEventListener("change", () => {
+  applyAppearance();
+  if (!$("settings-appearance").classList.contains("hidden")) renderAppearance();
+});
 $("glass-toggle").addEventListener("change", (e) => {
   const turningOn = e.target.checked && appearancePref("glass") !== "on";
   localStorage.setItem("glass", e.target.checked ? "on" : "off");
   // Asked for directly: switching glassmorphism on from off also turns the
-  // sheen on, so the full look shows up in one action — the sheen's own
+  // sheen on, so the full look shows up in one action, the sheen's own
   // checkbox can still turn it back off afterward without touching this.
   if (turningOn) localStorage.setItem("glass-sheen", "on");
   applyAppearance();
@@ -2531,7 +2692,7 @@ $("reduce-motion-toggle").addEventListener("change", (e) => {
   localStorage.setItem("motion", e.target.checked ? "reduced" : "auto");
   // The background-art picker has its own "Moving" override so someone can
   // ask for motion despite the OS-level reduced-motion hint (see
-  // startBgArt()'s comment — that fix was reported missing once already).
+  // startBgArt()'s comment: that fix was reported missing once already).
   // But flipping the in-app reduce-motion toggle is a direct, explicit ask,
   // and "Moving" silently surviving it read as the two settings being
   // unrelated. Turning it on selects "Still"; turning it back off only
@@ -2667,7 +2828,7 @@ for (const button of document.querySelectorAll("#settings-nav button")) {
 }
 $("settings-search")?.addEventListener("input", (e) => filterSettings(e.target.value));
 $("settings-search")?.addEventListener("keydown", (e) => {
-  // Escape clears the filter rather than closing the whole panel — closing on
+  // Escape clears the filter rather than closing the whole panel, closing on
   // Escape while someone is mid-search loses both the search and their place.
   if (e.key === "Escape" && e.target.value) {
     e.stopPropagation();
@@ -2683,7 +2844,7 @@ $("settings-modal").addEventListener("click", (event) => {
 });
 // Same idea, one step further: a Help topic about a *tab* (Reminders,
 // Graph, Library…) should be able to send you there directly, not just to
-// whatever Settings section happens to mention it — asked for directly,
+// whatever Settings section happens to mention it, asked for directly,
 // after the Settings-only links above shipped without this half. Closes
 // the modal first: a tab switch happening behind it would be invisible.
 $("settings-modal").addEventListener("click", (event) => {
@@ -2693,7 +2854,7 @@ $("settings-modal").addEventListener("click", (event) => {
   switchTab(link.dataset.gotoTab);
 });
 
-// Filters only re-draw what is already held — they never refetch, so changing
+// Filters only re-draw what is already held, they never refetch, so changing
 // one mid-incident cannot lose the records you were looking at.
 $("log-source").addEventListener("change", renderActiveLogView);
 $("log-level").addEventListener("change", renderActiveLogView);
@@ -2711,10 +2872,10 @@ $("log-follow").addEventListener("change", (event) => {
   if (event.target.checked) scrollLogToBottom();
 });
 
-// Scrolling up is how you say "stop moving, I am reading this" — so it pauses
+// Scrolling up is how you say "stop moving, I am reading this", so it pauses
 // the follow rather than fighting you for the scroll position. Scrolling back
 // to the bottom resumes it, which is the same gesture every terminal uses.
-// Both containers get the listener — only one is ever visible at a time, but
+// Both containers get the listener, only one is ever visible at a time, but
 // whichever it is has to pause Follow the same way.
 for (const id of ["log-list", "log-terminal"]) {
   $(id).addEventListener("scroll", () => {
@@ -2754,10 +2915,27 @@ $("log-terminal-hint").classList.toggle("hidden", logView !== "terminal");
 // original wiring (applyAppearance()/startBgArt() ran before renderBrandLogo()
 // there too).
 applyAppearance();
+
+// Said once, on the machine it applies to: the app has just switched the
+// glass and the animations off without being asked, and a person who set up
+// their look on a bigger machine deserves to know where that went. Never
+// repeated, and never shown when the mode was chosen by hand.
+function noticePerfMode() {
+  if (appearancePref("perf") !== "auto" || !perfModeOn()) return;
+  if (localStorage.getItem("perf-noticed") === "yes") return;
+  if (typeof toastAction !== "function") return;
+  localStorage.setItem("perf-noticed", "yes");
+  toastAction(
+    "Performance mode is on for this machine: flat panels, no animations.",
+    "Change",
+    () => openSettingsModal("appearance", "perf-mode")
+  );
+}
+window.setTimeout(noticePerfMode, 8000);
 if (bgArtOn()) startBgArt();
 // The generative brand emblem, unique each visit (Wave O). p5 is loaded long
 // before any of these split files (a vendor `<script>` tag, ahead of
-// app.js's own) — draw once everything this file owns is defined too.
+// app.js's own): draw once everything this file owns is defined too.
 renderBrandLogo();
 
 // --- advanced response settings (sampling) -------------------------------------
@@ -2769,7 +2947,7 @@ renderBrandLogo();
 // It is, and the detection is not a guess: a GGUF ships its author's
 // recommended parameters, Ollama reports them in /api/show, and the server
 // reads them (see ai/sampling.py). Every row therefore starts at what the
-// model itself asks for, and says so — "0.6 because this model recommends it"
+// model itself asks for, and says so, "0.6 because this model recommends it"
 // and "0.6 because you set it" are different facts and only the second has
 // anything to revert to.
 //
@@ -2834,9 +3012,9 @@ function renderSamplingRows() {
     readout.className = "sampling-value";
     //: **A number you can type, beside the one you can drag.**
     //:
-    //: Reported: the advanced response settings "don't work". They do — a
+    //: Reported: the advanced response settings "don't work". They do: a
     //: change persists and reaches the model (verified against
-    //: `GET /models/sampling` after a change) — but a slider alone cannot
+    //: `GET /models/sampling` after a change): but a slider alone cannot
     //: express the thing anyone opening this panel came to do: set
     //: temperature to exactly 0.7 because a model card said so. At a step of
     //: 0.05 across 0–2 that is a 40-position drag with no way to confirm the
@@ -2849,7 +3027,7 @@ function renderSamplingRows() {
     number.min = knob.min;
     number.max = knob.max;
     number.step = knob.step;
-    number.setAttribute("aria-label", `${knob.label} — type an exact value`);
+    number.setAttribute("aria-label", `${knob.label}: type an exact value`);
     const reset = document.createElement("button");
     reset.type = "button";
     reset.className = "ghost small icon-button";
@@ -2861,7 +3039,7 @@ function renderSamplingRows() {
       const overridden = knob.name in samplingState.overrides;
       const value = samplingState.effective[knob.name];
       // No value from any layer means the backend's own default, which is a
-      // real state and not zero — the slider has to show *something*, so it
+      // real state and not zero, the slider has to show *something*, so it
       // sits at the midpoint and the label says the number is not ours.
       const shown = value === undefined
         ? (Number(knob.min) + Number(knob.max)) / 2
@@ -2881,7 +3059,7 @@ function renderSamplingRows() {
     paint();
 
     // Dragging a slider fires `input` on every pixel. Saved on a trailing
-    // timer rather than per event — the same shape every other debounced
+    // timer rather than per event, the same shape every other debounced
     // control in this app uses, since there is no shared helper.
     const save = () => {
       clearTimeout(samplingSaveTimer);
@@ -2928,7 +3106,7 @@ function renderSamplingRows() {
       else paint();
     });
     reset.addEventListener("click", async () => {
-      // Deleting the override *is* the reset — there is no separate stored
+      // Deleting the override *is* the reset, there is no separate stored
       // "default", which is what lets a different model bring its own.
       delete samplingState.overrides[knob.name];
       try {
@@ -2969,18 +3147,18 @@ $("sampling-reset")?.addEventListener("click", async () => {
 // "fix and reimagine the ui design for the settings pages".
 //
 // Measured before this: **six paragraphs over 160 characters, the longest
-// 385**, and setting rows at 22px, 37px and 91px — a four-fold height spread
+// 385**, and setting rows at 22px, 37px and 91px, a four-fold height spread
 // decided entirely by whether a row happened to carry an explanation. A list
 // whose items are three different sizes is not a list you can scan, and the
 // scan is the whole job of a settings page: find the one switch you came for.
 //
-// The prose itself is good and worth keeping — it explains *consequences*,
+// The prose itself is good and worth keeping, it explains *consequences*,
 // which is exactly what a settings hint should do and what most apps omit.
 // So it is not cut; it is collapsed. Every row is the same height at rest,
 // with a hint one click away on the rows that have one.
 //
 // Long ones only. A six-word hint costs nothing to read and hiding it behind
-// a control would be more chrome than text — the threshold is where a hint
+// a control would be more chrome than text, the threshold is where a hint
 // stops being a label's tail and starts being a paragraph.
 const SETTINGS_HINT_INLINE_CHARS = 90;
 
@@ -2989,7 +3167,7 @@ function collapseLongSettingHints(root) {
   if (!scope) return;
   // Any depth, not `label > small`: most hints sit inside a `<span>` that
   // wraps the label's text, so a direct-child selector matched none of the
-  // twenty-three that exist. Checked live rather than assumed — the first
+  // twenty-three that exist. Checked live rather than assumed, the first
   // version of this ran, found nothing, and changed no measurement.
   for (const hint of scope.querySelectorAll("label small.muted")) {
     if (hint.dataset.collapsible) continue;
@@ -3012,7 +3190,7 @@ function collapseLongSettingHints(root) {
     toggle.setAttribute("aria-label", toggle.title);
     toggle.setAttribute("aria-expanded", "false");
     // The same popover every other "?" in this app opens (app.js), rather
-    // than this control's own inline expand — reported directly: "the search
+    // than this control's own inline expand, reported directly: "the search
     // relevance '?' popup tooltip is completely different from all other
     // tooltips like it, same with the 'keep the ai on this machine' tooltip".
     // `wireHelpPopover` handles the click (including the preventDefault a
@@ -3023,7 +3201,7 @@ function collapseLongSettingHints(root) {
     // screenshot ("the 'keep the ai on this machine' line in settings needs
     // visual fixing and alignment"): this used to be
     // `hint.insertAdjacentElement("afterend", toggle)`, which made the
-    // button a sibling of the label text inside `.setting-check > span` —
+    // button a sibling of the label text inside `.setting-check > span`, 
     // and that span is a flex *column*, so every element child becomes its
     // own row. The "?" sat on a line of its own beneath the setting it
     // explains, which reads as a broken row rather than a control.
@@ -3031,7 +3209,7 @@ function collapseLongSettingHints(root) {
     // Wrapping the label's leading nodes and the button together in one
     // flex row fixes it structurally instead of fighting the column with
     // margins: text and "?" share a line, the hint still opens underneath.
-    // The disclosure order stays correct for a screen reader too — the
+    // The disclosure order stays correct for a screen reader too, the
     // button now precedes the region its `aria-expanded` describes.
     const parent = hint.parentElement;
     // **A `.setting-check` row puts the "?" in the right-hand control
@@ -3039,7 +3217,7 @@ function collapseLongSettingHints(root) {
     // the AI on this machine' toggle and '?' icon need to be swapped and
     // properly aligned." Measured before the change: the label text ran to
     // x=724, the "?" sat at 732 as a 32px circle, and the switch was at
-    // 1089 — 325 pixels of empty row between two controls that belong to
+    // 1089: 325 pixels of empty row between two controls that belong to
     // each other, with the heavier of the two interrupting the sentence.
     //
     // `.setting-check` is a grid (04-chat-dock-appearance.css), and its
@@ -3048,7 +3226,7 @@ function collapseLongSettingHints(root) {
     // column beside the switch, rather than a child of the label span.
     // Every other label shape in Settings is flex or block flow with no
     // such column, and there the button still needs the wrapping row
-    // below — a bare child of `.setting-check > span` (a flex *column*)
+    // below: a bare child of `.setting-check > span` (a flex *column*)
     // lands on a line of its own under the label, which is what the
     // previous report about this same row was.
     const settingCheck = parent.closest(".setting-check");
@@ -3070,12 +3248,12 @@ window.collapseLongSettingHints = collapseLongSettingHints;
 // --- Help mini AI chat (ROADMAP.md item 40's second half) -------------------
 // App-guidance only, backed by /help/ask. Deliberately not persisted: the
 // spec asked for no database row at all, so the running transcript lives
-// only in this module-level array — it survives a tab switch (this module
+// only in this module-level array, it survives a tab switch (this module
 // never reloads) but not a page reload, exactly as specified.
 let helpChatHistory = [];
 let helpChatBusy = false;
 
-// Auto-scroll is only welcome while the reader is already at the bottom —
+// Auto-scroll is only welcome while the reader is already at the bottom, 
 // asked for directly: scrolling up to re-read an earlier answer must not
 // get yanked back down the moment the next reply lands. A ~40px slop covers
 // the last row's own height so "basically at the bottom" still counts.
@@ -3129,7 +3307,7 @@ async function submitHelpChatQuestion(question) {
   if (sendBtn) sendBtn.disabled = true;
   renderHelpChatMessage("user", question);
   // Same "thinking" indicator every other AI-backed surface uses
-  // (typingDots(), app.js) rather than a static "Thinking…" line — asked
+  // (typingDots(), app.js) rather than a static "Thinking…" line: asked
   // for directly, kept deliberately simple since this reply never streams
   // token-by-token: no "writing" phase, just the wait and then the caret
   // settling below.
@@ -3147,7 +3325,7 @@ async function submitHelpChatQuestion(question) {
     const content = result?.content || "Sorry, I couldn't answer that.";
     const row = renderHelpChatMessage("assistant", content, result?.badges || []);
     // The typewriter caret (`.is-streaming`, already built for Chat's real
-    // token stream) settles for a moment rather than blinking forever —
+    // token stream) settles for a moment rather than blinking forever, 
     // this reply arrived in one piece, so pretending it is still being
     // written would be the misleading kind of animation, not the honest one.
     row?.classList.add("is-streaming");
@@ -3156,7 +3334,7 @@ async function submitHelpChatQuestion(question) {
     helpChatHistory.push({ role: "assistant", content });
   } catch {
     pending.remove();
-    renderHelpChatMessage("assistant", "Something went wrong asking that — try again.");
+    renderHelpChatMessage("assistant", "Something went wrong asking that, try again.");
   } finally {
     helpChatBusy = false;
     if (sendBtn) sendBtn.disabled = false;

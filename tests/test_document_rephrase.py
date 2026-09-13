@@ -6,7 +6,7 @@ built-in checks catch spelling, spacing and sentence length and can offer a fix
 for the first two; for "this sentence is hard to follow" there is no mechanical
 answer, and the suggestion menu could only say so.
 
-Nothing is saved — the alternatives come back for the writer to pick from, the
+Nothing is saved: the alternatives come back for the writer to pick from, the
 same rule `ai_edit` follows. These tests are about the parsing, because that is
 where a small local model's reply actually goes wrong: numbering that varies,
 quotes half the time, and a fondness for handing back the original.

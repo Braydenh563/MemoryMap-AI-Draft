@@ -40,7 +40,7 @@ def test_search_matches_what_was_said_not_just_the_title(client):
     by_title = client.get("/conversations", params={"q": "Tuesday"}).json()
     assert [c["id"] for c in by_title] == [kept["id"]]
 
-    # An answer's text counts too — it's part of what was said.
+    # An answer's text counts too, it's part of what was said.
     by_answer = client.get("/conversations", params={"q": "90 psi"}).json()
     assert len(by_answer) == 1
 

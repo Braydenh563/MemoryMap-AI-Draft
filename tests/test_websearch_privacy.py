@@ -2,7 +2,7 @@
 matters as much as what it returns.
 
 Asked for directly: make it as untraceable as possible. None of this is a
-guarantee — a header is a request, not a control — but a request that
+guarantee, a header is a request, not a control, but a request that
 identifies the exact application, or that carries the click id a marketing
 campaign put in the link, is traceable by construction.
 """
@@ -20,7 +20,7 @@ from memorymap.search import websearch
 
 
 def test_the_user_agent_does_not_announce_this_app():
-    """It used to be "MemoryMapAI/0.1 (personal notebook)" — a near-unique
+    """It used to be "MemoryMapAI/0.1 (personal notebook)", a near-unique
     fingerprint linking every site visited back to one piece of software."""
     agent = websearch.PRIVACY_HEADERS["User-Agent"]
     for giveaway in ["MemoryMap", "memorymap", "notebook"]:
@@ -39,7 +39,7 @@ def test_every_request_carries_the_same_privacy_headers():
 
 
 def test_searxng_probe_keeps_the_privacy_headers_and_pins_the_host():
-    """The probe overrides Host to pin the address — it must not lose the rest."""
+    """The probe overrides Host to pin the address, it must not lose the rest."""
     target = websearch._searxng_target("http://127.0.0.1:8888")
     assert target is not None
     url, headers = target
@@ -151,7 +151,7 @@ def test_headings_keep_their_depth():
 
 
 def test_a_search_session_starts_with_an_empty_cookie_jar():
-    """Cookies are the other half of correlation — they link one query to the
+    """Cookies are the other half of correlation, they link one query to the
     next regardless of how careful the headers are."""
     session = websearch._private_session()
     try:
@@ -293,7 +293,7 @@ def test_read_url_reports_a_refused_address_to_the_model(app_state, session, mon
 def test_searxng_probe_rejects_a_public_address(monkeypatch):
     """SearXNG is self-hosted, so a public URL is refused rather than probed."""
 
-    def boom(*args, **kwargs):  # pragma: no cover — must never be reached
+    def boom(*args, **kwargs):  # pragma: no cover: must never be reached
         raise AssertionError("the guard should have stopped this request")
 
     monkeypatch.setattr(websearch.requests, "get", boom)

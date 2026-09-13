@@ -8,7 +8,7 @@ better continue."*
 difference is the whole design. A long chat does not overflow the window: the
 client sends at most the last few turns, and `context.fit_history` drops whole
 user/assistant pairs from the *oldest* end until the rest fits. So the failure
-is silent forgetting — the model stops knowing what it was told at the start
+is silent forgetting: the model stops knowing what it was told at the start
 and begins re-asking it.
 
 A summary is strictly better than a drop, because the same few hundred
@@ -22,7 +22,7 @@ matter more than the summary's quality, and both are tested here:
   conversation; it returns text. The transcript on screen and the saved
   conversation keep every turn, so undo is the client forgetting a variable.
 - **an empty summary is an error, not a result.** Handing back "" would let
-  the client send nothing in place of ten real turns — a compression that
+  the client send nothing in place of ten real turns, a compression that
   loses the conversation completely, reported as success.
 """
 
@@ -47,7 +47,7 @@ def test_it_summarises_the_turns_it_is_given(ai_client, fake_ollama):
 
 
 def test_it_reports_what_it_saved(ai_client, fake_ollama):
-    """The numbers are the reason to press the button again — or not to."""
+    """The numbers are the reason to press the button again, or not to."""
     body = ai_client.post("/chat/compress", json={"history": _turns(8)}).json()
     assert body["chars_before"] > 0
     assert body["chars_after"] > 0
@@ -64,8 +64,8 @@ def test_the_whole_transcript_reaches_the_model(ai_client, fake_ollama):
 
 
 def test_nothing_is_stored(ai_client, fake_ollama):
-    """The endpoint is pure. Everything it could have changed — the saved
-    conversation, the turns on screen — is the client's, and keeping it that
+    """The endpoint is pure. Everything it could have changed, the saved
+    conversation, the turns on screen, is the client's, and keeping it that
     way is what makes undo free."""
     before = ai_client.get("/conversations").json()
     ai_client.post("/chat/compress", json={"history": _turns(4)})

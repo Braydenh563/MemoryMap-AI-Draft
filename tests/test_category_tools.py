@@ -2,7 +2,7 @@
 
 Asked for indirectly: "more tools for managing… creating, editing, deleting,
 and applying categories". Renaming and deleting already existed as UI actions,
-but not as tools — so the agent could file a note into a category it had no
+but not as tools, so the agent could file a note into a category it had no
 way to create, which is the wrong half of the job.
 
 The interesting cases here are the ones where doing the obvious thing would be
@@ -84,7 +84,7 @@ def test_renaming_is_undoable_when_it_was_only_a_rename(session, app_state):
 def test_a_rename_that_merged_offers_no_undo(session, app_state):
     """Renaming onto a name already in use merges the two, and once both sets
     of notes sit in one category nothing records which came from where. An
-    "undo" would move all of them back — inventing a history that never
+    "undo" would move all of them back, inventing a history that never
     happened, which is worse than having no undo at all."""
     tools.execute_tool(session, "create_category", {"name": "Work"})
     tools.execute_tool(session, "create_category", {"name": "Job"})
@@ -132,7 +132,7 @@ def test_merging_a_category_into_itself_is_refused(session, app_state):
 
 def test_merge_is_its_own_tool_rather_than_a_side_effect_of_rename():
     """rename_category merges when the new name is taken, which is right for a
-    rename and a terrible way to *ask* for a merge — the model would have to
+    rename and a terrible way to *ask* for a merge, the model would have to
     know a name was already used to predict what its call did."""
     assert "merge_categories" in tools.TOOLS
 
@@ -170,7 +170,7 @@ def test_deleting_something_that_is_not_there_is_an_error_not_a_crash(session, a
 
 @pytest.mark.parametrize("name", ["merge_categories", "delete_category"])
 def test_the_irreversible_ones_need_the_user_to_approve_them(name):
-    """Neither can be undone from here — nothing records which notes moved —
+    """Neither can be undone from here, nothing records which notes moved , 
     so the agent loop parks them for the user instead of running them."""
     assert tools.TOOLS[name].destructive is True
 

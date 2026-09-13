@@ -13,7 +13,7 @@ Everything is authenticated (AES-GCM), so a wrong key fails loudly rather than
 returning garbage. The DEK exists in memory only while the app is unlocked; it
 is never written to disk unwrapped.
 
-What this protects against: someone reading the database file — a stolen
+What this protects against: someone reading the database file, a stolen
 laptop, a synced backup, a shared machine. What it cannot protect against:
 someone who has your password, or a running unlocked app.
 
@@ -103,7 +103,7 @@ def encrypt(dek: bytes, plaintext: str) -> str:
 def decrypt(dek: bytes, stored: str) -> str:
     """Reverse of encrypt. Raises DecryptionError on a wrong key."""
     if not is_encrypted(stored):
-        # Already plaintext — returning it unchanged makes the read path safe
+        # Already plaintext: returning it unchanged makes the read path safe
         # to call on any note, private or not.
         return stored
     try:

@@ -2,7 +2,7 @@
 
 Two halves, and the second is the one worth having. Compression is easy to add
 and easy to verify; what is easy to get wrong is a streaming response that
-still *arrives* correctly but no longer arrives *incrementally* — the chat
+still *arrives* correctly but no longer arrives *incrementally*, the chat
 reply appears all at once at the end instead of word by word, which no status
 code and no response body would ever show. That failure looks like "the model
 got slower", so it would be blamed on the model.

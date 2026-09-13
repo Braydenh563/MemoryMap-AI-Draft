@@ -52,7 +52,7 @@ def test_status_reports_embedding_error(client):
 def test_embedding_failure_is_recorded_not_swallowed(app_state, monkeypatch):
     # Force the model load to fail deterministically. An offline machine
     # fails because the model isn't cached, but a networked CI runner would
-    # download the real model and succeed — which isn't what this test is
+    # download the real model and succeed, which isn't what this test is
     # about. We're checking that a genuine failure is RECORDED (last_error)
     # and not swallowed into a forever "warming up…" state (user-reported bug).
     service = EmbeddingService(deps.get_model_manager(), FakeOllama(running=False))
@@ -147,7 +147,7 @@ def test_status_reports_utility_model(client):
 
 
 def test_set_utility_model_offline_still_saves(client):
-    # Ollama unavailable in this fixture — an empty name always applies.
+    # Ollama unavailable in this fixture, an empty name always applies.
     assert client.post("/models/utility-model", json={"name": ""}).status_code == 200
 
 
@@ -170,7 +170,7 @@ def test_vision_model_defaults_to_auto(app_state):
 def test_resolve_vision_model_explicit_choice_wins(app_state, fake_ollama):
     manager = deps.get_model_manager()
     manager.set_vision_model("llama3.2-vision")
-    # Wins even though nothing installed declares "vision" — the same trust
+    # Wins even though nothing installed declares "vision", the same trust
     # chat_model() already extends an unverified explicit choice.
     assert manager.resolve_vision_model(fake_ollama) == "llama3.2-vision"
 
@@ -216,8 +216,8 @@ def test_set_vision_model_persists(ai_client):
 # re-index because it has to (vectors from two models cannot be compared), and
 # that side effect was the whole mechanism.
 #
-# A stale index is not always the user's doing, though. `embedding_text` — what
-# a vector is actually built from — has changed in this app to include a note's
+# A stale index is not always the user's doing, though. `embedding_text`, what
+# a vector is actually built from, has changed in this app to include a note's
 # category, tags and attachment text, so vectors written before that encode
 # less than the same note would today. Reported directly: "I have a whole
 # category called hobbies but basically none came up in the semantic search."

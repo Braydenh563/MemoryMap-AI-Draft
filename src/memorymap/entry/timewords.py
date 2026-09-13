@@ -1,6 +1,6 @@
 """What "yesterday" meant, on the day it was written (roadmap §10A).
 
-Notes are full of relative time — "tomorrow", "last week", "in three days" —
+Notes are full of relative time, "tomorrow", "last week", "in three days" , 
 and every one of those phrases is correct when it is typed and misleading
 forever afterwards. Nothing recorded what they resolved to, so a note saying
 "the deadline is next Friday" is unanswerable a month later, and the AI
@@ -11,7 +11,7 @@ This resolves them at capture and stores the answer alongside the note.
 **Deliberately deterministic.** `ai/reminder_parser.py` asks the model to do
 the same job for a reminder, and that is the right trade there: one reminder,
 typed on purpose, worth a model call. This runs on *every* note that is saved,
-including when Ollama is off — the app's second design principle — so it is
+including when Ollama is off, the app's second design principle, so it is
 regular expressions and arithmetic, and nothing here can make a save fail or
 slow.
 

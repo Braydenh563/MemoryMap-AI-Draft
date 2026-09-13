@@ -3,7 +3,7 @@
 The prompt side of a turn has been budgeted carefully since the context work;
 the *output* side had one number for everything. `num_predict` was a flat 1,024
 whether the question was "when did I write about beans" or "draft me a summary
-of the last month" — and output tokens are generated one at a time, so they
+of the last month", and output tokens are generated one at a time, so they
 cost far more wall-clock each than prompt tokens do.
 
 Two properties matter more than the numbers, and both are about not breaking
@@ -42,7 +42,7 @@ def test_normal_still_sends_exactly_the_runtime_options_it_always_did(ollama):
     """1,024 output tokens, no temperature, no thinking toggle.
 
     The *runtime* half of "upgrading must not change everyone's chats" still
-    holds and is what this pins. The prompt half deliberately no longer does —
+    holds and is what this pins. The prompt half deliberately no longer does, 
     see the next test.
     """
     preset = presets.resolve("normal")
@@ -83,7 +83,7 @@ def test_quick_is_shorter_and_more_literal_than_detailed(ollama):
 
 def test_the_window_is_the_same_whichever_mode(ollama):
     """A preset is about the *output* side. Changing how much the model may
-    write must not change how much it is allowed to read — that is budgeted
+    write must not change how much it is allowed to read, that is budgeted
     against the model's real window and has nothing to do with effort."""
     windows = {
         ollama.runtime_options("m", mode=m)["num_ctx"]
@@ -96,7 +96,7 @@ def test_an_explicit_cap_still_beats_the_preset(ollama):
     """A caller that names a number has a reason the preset cannot know.
 
     It names an *answer* length, though, so the thinking headroom (§35A.3) is
-    still added on top — the caller has no more idea than the preset does how
+    still added on top, the caller has no more idea than the preset does how
     long the model will deliberate first, and a cap shared between the two is
     what produced a turn that thought and then said nothing.
     """
@@ -115,7 +115,7 @@ def test_no_preset_ever_asks_a_model_to_start_thinking():
 
 def test_the_thinking_toggle_needs_a_model_that_has_thinking(ollama):
     """Two guards, and this is the second one. Recent Ollama rejects `think`
-    outright for a model without the `thinking` capability — so `quick` mode
+    outright for a model without the `thinking` capability: so `quick` mode
     on an ordinary model would have failed *every* turn, the preset breaking
     the chat it was meant to speed up."""
     ollama._shown = {"thinker": {"capabilities": ["completion", "thinking"]}}
@@ -130,7 +130,7 @@ def test_a_model_without_thinking_is_not_sent_the_toggle(ollama):
 def test_an_unknown_capability_sends_nothing_rather_than_guessing(ollama):
     """An older Ollama reports no `capabilities` field at all. Sending nothing
     means "whatever the model does by default", which is exactly the behaviour
-    that predates presets — so unknown degrades to the old thing, not a broken
+    that predates presets: so unknown degrades to the old thing, not a broken
     one."""
     ollama._shown = {"ancient": {}}
     assert ollama.request_extras("quick", "ancient") == {}
@@ -201,13 +201,13 @@ def test_normal_steers_too_rather_than_saying_nothing():
 
     Correct, and the empty hint is the reason. Quick and Detailed both steer,
     so with no sentence of its own Normal inherited whatever the base prompt
-    implied — and the base prompt is written for a local model on a token
+    implied: and the base prompt is written for a local model on a token
     budget and leans terse. **A default that is the absence of an instruction
     is not a middle setting; it is whichever end the surrounding text pulls
     to.** The middle has to be asked for like the other two.
 
     The cap is untouched at 1,024 tokens (~750 words), which the short answers
-    were nowhere near — the ceiling was never what was binding.
+    were nowhere near: the ceiling was never what was binding.
     """
     hint = librarian.length_hint("normal")
     assert hint, "Normal must steer, or it drifts to whatever the base prompt implies"
@@ -235,7 +235,7 @@ def test_the_agent_prompt_gets_it_too():
 def test_the_hint_is_counted_in_the_budget():
     """The agent measures its own system prompt to size everything else
     against it. A hint added to the prompt but left out of the measurement is
-    a budget wrong by exactly the length of the thing just added — silently,
+    a budget wrong by exactly the length of the thing just added, silently,
     and only in the mode that has the longest hint.
 
     Checked against the measurement expression rather than the final number
@@ -251,7 +251,7 @@ def test_the_hint_is_counted_in_the_budget():
 
     # The guide is now window-dependent (agent.tools_guide picks a short one
     # below 8k), which makes this stricter rather than looser: measuring the
-    # long guide while sending the short one — or the reverse — would be a
+    # long guide while sending the short one, or the reverse, would be a
     # budget wrong by 1,800 characters, in the mode that can least afford it.
     # So both call sites must ask the same function, not just name a constant.
     prompt = source.split('"content": f"{persona} {AGENT_GROUNDING} "')[1][:300]
@@ -285,5 +285,5 @@ def test_a_request_can_override_the_preference(ai_client, app_state, fake_ollama
     ) as r:
         events = [json.loads(line) for line in r.iter_lines() if line.strip()]
     assert any(e["type"] == "answer" for e in events)
-    # The preference is untouched — the request said "this turn", not "always".
+    # The preference is untouched, the request said "this turn", not "always".
     assert app_state.get_preference("response_mode") == "detailed"

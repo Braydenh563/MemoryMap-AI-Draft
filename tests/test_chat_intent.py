@@ -39,7 +39,7 @@ def test_capability_questions_are_about_the_app(message):
      "hey, what have I saved about jokes"],
 )
 def test_real_questions_go_to_the_notebook(message):
-    """Including one wearing a greeting — the question is what matters."""
+    """Including one wearing a greeting, the question is what matters."""
     assert intent.classify(message) == intent.NOTES
 
 
@@ -119,7 +119,7 @@ def test_greeting_without_the_model_still_greets(ai_client, fake_ollama):
 # --- answering_agent (Tier 1 §4) -----------------------------------------------
 #
 # The reverse of the bug this file is otherwise about: the agent's own
-# `ask_user` question gets a one-word reply — "yes", "ok" — that
+# `ask_user` question gets a one-word reply, "yes", "ok", that
 # intent.classify correctly calls small talk in isolation. Routed as small
 # talk it lands in the tool-less conversational path, so even a model that
 # understood the reply perfectly could not act on it.
@@ -127,7 +127,7 @@ def test_greeting_without_the_model_still_greets(ai_client, fake_ollama):
 
 def test_a_bare_yes_is_ordinarily_smalltalk_not_the_agent(ai_client, fake_ollama):
     """The baseline the fix has to preserve: without the flag, "yes" behaves
-    exactly as intent.classify says it should — no tools offered."""
+    exactly as intent.classify says it should, no tools offered."""
     with ai_client.stream("POST", "/chat/stream", json={"question": "yes"}) as response:
         list(response.iter_lines())  # drain
     assert not fake_ollama.tool_rounds  # chat_tools_stream was never reached

@@ -1,7 +1,7 @@
 """The AI reaching documents, past chats, and skills.
 
 Three things the assistant couldn't do. Documents are deliberately kept out
-of retrieval — a note is a captured thought, a document is something you sat
+of retrieval: a note is a captured thought, a document is something you sat
 down and wrote, and mixing them would put every half-finished draft into
 every search result. But "never retrieved automatically" had become "cannot
 be read at all, even when asked". Past conversations were the same: each turn
@@ -74,7 +74,7 @@ def test_reading_a_missing_document_is_an_error_not_a_crash(client, session):
 
 def test_get_document_with_a_query_returns_the_relevant_paragraphs(client, session):
     """A query narrows a long document down to its most relevant chunks
-    instead of a plain head-of-document truncation — RAG snippet extraction."""
+    instead of a plain head-of-document truncation, RAG snippet extraction."""
     from tests.fakes import FakeEmbeddingService
 
     deps.override_ai(embeddings=FakeEmbeddingService(available=True))
@@ -89,7 +89,7 @@ def test_get_document_with_a_query_returns_the_relevant_paragraphs(client, sessi
     result = tools.execute_tool(
         session, "get_document", {"document_id": doc["id"], "query": "milk"}
     )
-    # The shopping paragraph is the only one that matches the query's topic —
+    # The shopping paragraph is the only one that matches the query's topic: 
     # it should rank first even though it's last in the document.
     assert result["content"].startswith("Need to buy milk")
     assert "(extracted snippets for query)" in result["label"]
@@ -129,7 +129,7 @@ def test_chat_excerpts_are_clipped(client, session):
 
 
 def _own(listed: dict) -> list[dict]:
-    """The user's own skills — list_skills also returns the built-in ones now,
+    """The user's own skills: list_skills also returns the built-in ones now,
     because the model used to answer "you have no skills" while the interface
     showed ten."""
     return [skill for skill in listed["skills"] if not skill["builtin"]]

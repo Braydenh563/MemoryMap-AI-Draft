@@ -1,4 +1,4 @@
-"""The OpenAI `/v1/chat/completions` dialect — LM Studio, llama.cpp, Jan, vLLM (§6).
+"""The OpenAI `/v1/chat/completions` dialect: LM Studio, llama.cpp, Jan, vLLM (§6).
 
 The ask was "support LM Studio". Building an LM Studio client would have been
 the smaller change and bought exactly one backend; LM Studio's API is the
@@ -10,20 +10,20 @@ Four things differ from Ollama's native API, and each is a place this file
 earns its keep:
 
 1. **There is no `num_ctx`.** The window is fixed when the server loads the
-   model, so unlike Ollama there is nothing to ask for — only something to
+   model, so unlike Ollama there is nothing to ask for, only something to
    discover and ration against. `runtime_options` therefore sends `max_tokens`
    alone, and `usable_context` becomes advisory rather than instructive. That
    is safe in the direction that matters: the app rations itself to at most
    what the server reported.
 2. **Tool-call arguments arrive as a JSON string**, and when streaming they
-   arrive in *fragments keyed by index* — `{"index": 0, "function":
+   arrive in *fragments keyed by index*, `{"index": 0, "function":
    {"arguments": "{\\"ti"}}` then `{"index": 0, "function": {"arguments":
    "tle\\": ...}}`. Concatenating them in arrival order without keying on the
    index interleaves two calls into one unparseable blob the moment a model
    asks for two things at once, which small models do constantly.
 3. **The stream is SSE**, not JSON lines: `data: {...}` with a `[DONE]`
    sentinel, deltas nested under `choices[0].delta`. `_ThinkTagSplitter` and
-   `_ToolTextGate` sit *above* this and needed no change — the split is kept
+   `_ToolTextGate` sit *above* this and needed no change, the split is kept
    at "parse one chunk" precisely so they don't.
 4. **Tool results are addressed by id.** Ollama accepts `{"role": "tool",
    "tool_name": ...}`; the OpenAI shape wants `tool_call_id` matching an id the
@@ -33,7 +33,7 @@ earns its keep:
 **The trap §6 named, restated because it is easy to reintroduce:** every
 generation path must send its options block. `tests/test_context_budget.py`
 asserts this for the four Ollama call sites, and
-`tests/test_providers.py` asserts the equivalent here — a payload that omits
+`tests/test_providers.py` asserts the equivalent here, a payload that omits
 `max_tokens` is a model running unbounded on the backend's defaults, which is
 the bug §11a was spent fixing, arriving again through a different door.
 """
@@ -69,7 +69,7 @@ def _looks_like_tools_rejection(status: int, body: str) -> bool:
 
     Same judgement Ollama's path makes, against a wider set of phrasings
     because there are more servers here. A capability gap is a thing to fall
-    back from — plain Q&A still works — so it must be told apart from an
+    back from, plain Q&A still works, so it must be told apart from an
     outage, which is a thing to report.
     """
     if status not in (400, 404, 422, 500):
@@ -92,7 +92,7 @@ def _looks_like_tools_rejection(status: int, body: str) -> bool:
 #: The sampling knobs the OpenAI chat-completions schema actually defines.
 #:
 #: llama.cpp's own server, LM Studio and vLLM all accept more than this, but
-#: they disagree about which — and a server that validates strictly rejects the
+#: they disagree about which, and a server that validates strictly rejects the
 #: entire request for one unknown field, which would break every turn rather
 #: than ignore one setting. The intersection is the only safe set to send
 #: blind; anything outside it stays an Ollama-dialect feature.
@@ -102,7 +102,7 @@ _OPENAI_SAMPLING = frozenset({"temperature", "top_p"})
 class OpenAICompatClient(Provider):
     """Anything that serves `/v1/chat/completions`.
 
-    `base_url` is the part before `/chat/completions` — `http://localhost:1234/v1`
+    `base_url` is the part before `/chat/completions`, `http://localhost:1234/v1`
     for LM Studio, `http://localhost:8080/v1` for llama.cpp, `http://localhost:8000/v1`
     for vLLM. `api_key` is optional and usually absent: local servers ignore it,
     and a gateway that wants one is still the same dialect.
@@ -122,7 +122,7 @@ class OpenAICompatClient(Provider):
         # of this comment: loading a model bigger than about 4B parameters
         # on modest hardware can take well past two minutes on its own, and
         # LM Studio/llama.cpp send nothing over the wire until that finishes
-        # — so the old timeout fired mid-load, and the app reported "no
+        #, so the old timeout fired mid-load, and the app reported "no
         # response" for a model that hadn't failed, just hadn't finished
         # loading yet. Reported live: "models larger than like 4B params
         # struggle to even load or respond". 600s covers a slow cold load on
@@ -131,7 +131,7 @@ class OpenAICompatClient(Provider):
         self.timeout = timeout
         self.api_key = (api_key or "").strip()
         # model id -> context length. Asked once per model per process, the
-        # same as Ollama's — a restarted llama.cpp with a different `-c` is a
+        # same as Ollama's: a restarted llama.cpp with a different `-c` is a
         # restarted app in practice, and re-probing per turn costs a round trip
         # on the path that is already the slowest thing the app does.
         self._context_lengths: dict[str, int | None] = {}
@@ -156,13 +156,13 @@ class OpenAICompatClient(Provider):
         return urlunparse((parsed.scheme, parsed.netloc, "", "", "", ""))
 
     def is_running(self) -> bool:
-        """Cheap reachability probe — short timeout so the UI never hangs
+        """Cheap reachability probe: short timeout so the UI never hangs
         just to discover the server is off."""
         try:
             response = requests.get(
                 f"{self.base_url}/models", headers=self._headers(), timeout=2
             )
-            # 401/403 means "reachable, and it wants a key" — which is a
+            # 401/403 means "reachable, and it wants a key", which is a
             # configuration problem to report, not an unreachable server. The
             # status pill would otherwise say "offline" about a server that is
             # plainly answering.
@@ -230,11 +230,11 @@ class OpenAICompatClient(Provider):
         `loaded_context_length` beats `max_context_length` when both are
         present, and that ordering is the whole point on LM Studio: a model
         *capable* of 128k that was loaded at 4k will drop the front of the
-        prompt — the system prompt, telling it that it has tools — if the app
+        prompt, the system prompt, telling it that it has tools, if the app
         budgets against what it could have held rather than what it did.
         `/props`' own `n_ctx` is the same fact for `llama-server`, which
         reports neither `loaded_context_length` nor `max_context_length` on
-        its plain `/v1/models` — the actual `-c` the server was started
+        its plain `/v1/models`, the actual `-c` the server was started
         with beats this app's guess-from-model-name table for the same
         "what it could hold vs. what it did" reason.
         """
@@ -261,9 +261,9 @@ class OpenAICompatClient(Provider):
         return length
 
     def _fetch_props(self) -> dict:
-        """`llama-server`'s own `/props` — ROADMAP.md item A.2: "detect it".
+        """`llama-server`'s own `/props`, ROADMAP.md item A.2: "detect it".
 
-        A sibling of `/v1`, the same shape `/api/v0/models` (LM Studio) is —
+        A sibling of `/v1`, the same shape `/api/v0/models` (LM Studio) is: 
         `self._origin()`, not `self.base_url`. Only `llama-server` answers
         this; every other OpenAI-compatible server 404s or times out, which
         is exactly why this is a *fallback* source in `context_length`
@@ -290,7 +290,7 @@ class OpenAICompatClient(Provider):
         """Whether this server is specifically `llama-server`, not just
         something OpenAI-shaped.
 
-        `/props` is llama.cpp's own endpoint — nothing else in the
+        `/props` is llama.cpp's own endpoint: nothing else in the
         OpenAI-compatible long tail implements it, so answering it at all
         (with the one field every version of it has always reported) is
         the identification itself, the same way LM Studio is told apart by
@@ -315,7 +315,7 @@ class OpenAICompatClient(Provider):
     def model_spec(self, model: str) -> dict:
         """What this server will say about the model, which varies a lot.
 
-        LM Studio is generous — quantisation, architecture, both context
+        LM Studio is generous, quantisation, architecture, both context
         numbers, whether it is currently loaded. Plain llama.cpp and vLLM
         report an id and little else, and that is fine: every field is optional
         and the UI omits what is missing rather than printing "unknown" six
@@ -323,7 +323,7 @@ class OpenAICompatClient(Provider):
 
         Capabilities are the one thing no OpenAI-compatible server reports in a
         standard way, so `supports` stays None here and the app keeps its
-        existing behaviour — offer tools, and find out from the 400 if the
+        existing behaviour: offer tools, and find out from the 400 if the
         model cannot do them. That fallback already exists and is tested.
         """
         entry = self._catalog_entry(model)
@@ -355,8 +355,8 @@ class OpenAICompatClient(Provider):
 
         Only half of the pair survives the translation, and deliberately:
         there is no `num_ctx` equivalent, because the window was fixed when the
-        server loaded the model. `context_tokens` is still computed — the
-        prompt is rationed against it upstream — it just has nowhere to be
+        server loaded the model. `context_tokens` is still computed: the
+        prompt is rationed against it upstream, it just has nowhere to be
         sent. `max_tokens` is the half that does, and it is the half that stops
         a rambling local model reading as a hang.
         """
@@ -365,7 +365,7 @@ class OpenAICompatClient(Provider):
         preset_options = {}
         if "temperature" in budget:
             preset_options["temperature"] = budget["temperature"]
-        # Sampling, same three layers as the Ollama dialect — but with only two
+        # Sampling, same three layers as the Ollama dialect, but with only two
         # of them available. There is no `/api/show` here: the OpenAI shape has
         # no endpoint that reports a model's own recommended parameters, so
         # this dialect can offer the user's overrides and the task preset and
@@ -374,7 +374,7 @@ class OpenAICompatClient(Provider):
         resolved = sampling.resolve(None, preset_options, self.sampling_overrides())
         # Only what this dialect actually accepts. `top_k`, `min_p`,
         # `repeat_penalty` and `repeat_last_n` are llama.cpp/Ollama names with
-        # no place in the OpenAI schema — a strict server rejects the whole
+        # no place in the OpenAI schema, a strict server rejects the whole
         # request for an unknown field, so sending them would break every turn
         # against exactly the backends this dialect exists to support.
         for key, value in resolved.items():
@@ -451,11 +451,11 @@ class OpenAICompatClient(Provider):
                     }
                 )
             elif message.get("images"):
-                # `images` carries data URIs (the app's neutral shape — see
+                # `images` carries data URIs (the app's neutral shape: see
                 # `ollama_client._to_ollama_messages`'s own docstring for why
                 # a data URI rather than bare base64). The OpenAI dialect's
                 # `image_url.url` accepts one directly, so unlike the Ollama
-                # side this needs no stripping — only reshaping `content`
+                # side this needs no stripping, only reshaping `content`
                 # from a plain string into the multipart array vision
                 # requires.
                 parts = []
@@ -477,7 +477,7 @@ class OpenAICompatClient(Provider):
     def _sse_payloads(response) -> Iterator[dict]:
         """Yield one parsed JSON object per SSE `data:` line.
 
-        Everything above this — the think-tag splitter, the tool-text gate —
+        Everything above this, the think-tag splitter, the tool-text gate , 
         works on "one chunk at a time" and does not care that the chunks were
         framed differently on the wire. Keeping the split exactly here is why
         neither of them needed touching for a second provider.
@@ -502,7 +502,7 @@ class OpenAICompatClient(Provider):
         """(content, thinking) out of one streamed delta.
 
         `reasoning_content` is what DeepSeek-R1 and several servers use to send
-        thinking as its own field rather than inline `<think>` tags — the same
+        thinking as its own field rather than inline `<think>` tags: the same
         distinction Ollama's native `thinking` field draws.
         """
         if not isinstance(delta, dict):
@@ -536,7 +536,7 @@ class OpenAICompatClient(Provider):
     def _buckets_to_raw_calls(buckets: dict[int, dict]) -> list[dict]:
         """Assembled buckets, in the app's internal (Ollama-ish) shape.
 
-        Returned in index order, not arrival order — the model asked for them
+        Returned in index order, not arrival order, the model asked for them
         in a sequence and a model that says "search, then create" means it.
         """
         raw = []
@@ -578,7 +578,7 @@ class OpenAICompatClient(Provider):
         - **Not every server reports usage.** LM Studio and vLLM do; some
           llama.cpp builds and several gateways ignore `stream_options`
           entirely. Rather than showing a blank where a number belongs, the
-          count is estimated from characters — and marked as an estimate, so
+          count is estimated from characters, and marked as an estimate, so
           the UI can say so. A number the user believes is measured, when it
           was guessed, is worse than no number.
         - **`context_tokens` is the window budgeted against**, so the UI can
@@ -641,11 +641,11 @@ class OpenAICompatClient(Provider):
     def chat(self, model: str, messages: list[dict], mode: str | None = None) -> dict:
         """One non-streamed chat turn.
 
-        Returns {"content": str, "thinking": str | None} — the same shape the
+        Returns {"content": str, "thinking": str | None}: the same shape the
         Ollama path returns, so nothing above this has to know which backend
         answered.
 
-        Retries once on a transient 5xx — same reasoning and shape as
+        Retries once on a transient 5xx, same reasoning and shape as
         `OllamaClient.chat`'s own retry (see `is_transient_server_error`).
         """
         started = time.monotonic()
@@ -745,7 +745,7 @@ class OpenAICompatClient(Provider):
         tools: list[dict],
         mode: str | None = None,
     ) -> Iterator[dict]:
-        """Streamed tool-calling turn — the agent loop's normal path.
+        """Streamed tool-calling turn: the agent loop's normal path.
 
         Yields, in order:
           {"thinking_delta": str}   zero or more
@@ -773,7 +773,7 @@ class OpenAICompatClient(Provider):
                 stream=True,
             ) as response:
                 # A model without tool support is a gap to fall back from, not
-                # an outage — the same distinction the Ollama path draws.
+                # an outage: the same distinction the Ollama path draws.
                 if _looks_like_tools_rejection(response.status_code, response.text):
                     raise ToolsUnsupportedError(f"'{model}' can't use tools")
                 response.raise_for_status()
@@ -815,7 +815,7 @@ class OpenAICompatClient(Provider):
         calls = normalise_tool_calls(raw_calls)
         clean = content
         if not calls:
-            # Nothing structured — the text may itself be the call. Anything
+            # Nothing structured: the text may itself be the call. Anything
             # still gated was never shown, so removing it costs the user
             # nothing.
             recovered, clean = extract_text_tool_calls(content, offered_tool_names(tools))
@@ -924,7 +924,7 @@ class OpenAICompatClient(Provider):
             # them nothing about which setting is wrong.
             if status in (400, 404, 501) or "does not support" in body.lower():
                 raise ProviderError(
-                    f"'{model}' can't create embeddings — it looks like a chat "
+                    f"'{model}' can't create embeddings: it looks like a chat "
                     "model, not an embedding model. Load a dedicated embedding "
                     "model on this server and select it as the search engine."
                 ) from exc

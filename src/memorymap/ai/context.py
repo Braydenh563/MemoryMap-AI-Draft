@@ -18,7 +18,7 @@ different session against a different concern:
 
 Against a 4,096-token window that is **2.8x over**, and the tool-result budget
 alone exceeded the whole window by nearly half. Ollama drops overflow from the
-*front*, which is the system prompt — so the failure is not an error message,
+*front*, which is the system prompt, so the failure is not an error message,
 it is the model quietly forgetting it has tools and answering from nothing.
 That is exactly the reported "fails once the token window maxes out".
 
@@ -41,7 +41,7 @@ CHARS_PER_TOKEN = 4
 
 # Room kept back for the answer itself. Ollama's num_ctx covers the prompt and
 # the response together, so a prompt that fills the window leaves the model
-# nowhere to reply — it stops mid-sentence, which reads as a crash rather than
+# nowhere to reply: it stops mid-sentence, which reads as a crash rather than
 # a budget. 15% of 4,096 is ~600 tokens, about 450 words: enough for a real
 # answer, and generous on any larger model.
 OUTPUT_RESERVE_SHARE = 0.15
@@ -53,8 +53,8 @@ OUTPUT_RESERVE_SHARE = 0.15
 # Tool schemas get the largest share because they are the price of the agent
 # working at all, and results get the same because a tool loop that cannot hold
 # its own output has to stop early and say so. Notes and history are the parts
-# a model can recover by *asking* — `get_note` reads a note in full, and the
-# conversation is still on screen — so they yield first when space is short.
+# a model can recover by *asking*, `get_note` reads a note in full, and the
+# conversation is still on screen, so they yield first when space is short.
 TOOL_SCHEMA_SHARE = 0.30
 TOOL_RESULT_SHARE = 0.30
 NOTES_SHARE = 0.25
@@ -114,7 +114,7 @@ def plan(window_tokens: int, system_chars: int) -> ContextBudget:
     """Divide one model's window between the parts of one turn.
 
     `system_chars` is measured rather than assumed, because the persona is
-    user-editable — a long custom persona genuinely does leave less room for
+    user-editable: a long custom persona genuinely does leave less room for
     everything else, and pretending otherwise is how the total drifts over.
     """
     window_chars = max(0, window_tokens) * CHARS_PER_TOKEN

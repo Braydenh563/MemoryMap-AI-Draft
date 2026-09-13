@@ -1,5 +1,5 @@
-"""Telling apart the three ways a web search ends up with nothing, and —
-below that — naming which engine actually answered.
+"""Telling apart the three ways a web search ends up with nothing, and, 
+below that: naming which engine actually answered.
 
 "Web search returns nothing" was filed against the parser and investigated
 there more than once. It was the wrong place to look: an empty result list
@@ -131,7 +131,7 @@ def test_the_query_itself_is_never_logged(monkeypatch, caplog):
 
 def test_the_reader_collects_the_articles_links_but_not_the_chrome():
     """Links come back [{text, url}] so an agent can cite and follow up
-    without a second search — from the article only, cleaned the same way
+    without a second search, from the article only, cleaned the same way
     every reader URL is: absolute, tracking-stripped, http(s) or nothing."""
     page = (
         "<html><body><nav><a href='/home'>Home</a></nav><article>"
@@ -148,7 +148,7 @@ def test_the_reader_collects_the_articles_links_but_not_the_chrome():
 def test_a_bot_wall_is_named_rather_than_dumped_as_a_status(monkeypatch):
     """Reported: 'Couldn't open that page: 403 Client Error: Forbidden for
     url: https://162.159.142.170:443/…'. The IP-literal is our pinning, not
-    something the user typed, and the 403 is the site's bot protection — the
+    something the user typed, and the 403 is the site's bot protection: the
     message should say that instead of leaving both to be puzzled over."""
     import requests
 
@@ -218,7 +218,7 @@ def test_a_flood_of_engine_names_cannot_push_the_result_off_the_row():
 
 
 def test_a_missing_engines_key_is_not_an_error():
-    """Presentational only — an upstream schema change must not break search."""
+    """Presentational only: an upstream schema change must not break search."""
     assert websearch._upstream_engines({"url": "https://example.com"}) == []
     assert websearch._upstream_engines({"engines": "not a list"}) == []
 
@@ -228,7 +228,7 @@ def test_a_missing_engines_key_is_not_an_error():
 
 def test_the_default_still_falls_back_so_search_works_out_of_the_box():
     """The roadmap said "flip the default to SearXNG". Read literally that is
-    the `searxng` mode — which exists precisely so it will NOT fall back, and
+    the `searxng` mode: which exists precisely so it will NOT fall back, and
     would therefore make every search fail on a fresh notebook that has no
     SearXNG yet. `auto` already prefers SearXNG whenever it is running, which
     is the behaviour actually wanted; what was missing was saying so."""

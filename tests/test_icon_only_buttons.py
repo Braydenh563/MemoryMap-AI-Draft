@@ -4,9 +4,9 @@ that means it must carry `icon-only` (or `icon-button`).
 **This is a lint, not a behaviour test, and it exists because of a measurement.**
 Reported directly: "the popup close buttons are rectangular not square". Driven
 in Chromium with every popup forced visible, nine of them measured **43.6 x 28**
-— `agent-monitor-close`, `web-panel-close`, `timeline-popup-close`,
+- `agent-monitor-close`, `web-panel-close`, `timeline-popup-close`,
 `graph-popup-close`, `graph-new-close`, `doc-find-close`, `doc-ai-close`,
-`wb-library-close` and `extract-close` — along with the find bar's prev/next,
+`wb-library-close` and `extract-close`, along with the find bar's prev/next,
 the four Library/Contents refresh buttons and the capture speak button.
 
 Every one of them was `class="ghost small"` wrapped around a lone `<i class="ph
@@ -18,7 +18,7 @@ text label*, because `:only-child` counts element siblings and ignores text, and
 trying it squared every icon+label button in the app to the width of its own
 words (`chat-compress` came out 91x91, measured).
 
-So CSS cannot see text and the class has to be remembered per button — which is
+So CSS cannot see text and the class has to be remembered per button, which is
 exactly the kind of thing nobody remembers. Python can see the text, so this
 test remembers it instead.
 """

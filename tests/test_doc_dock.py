@@ -8,12 +8,12 @@ lines with "⬇ PDF" and a bin left alone on the last of them.
 Two causes, both invisible in the source and both found by measuring in a
 browser:
 
-1. The dock carried `.doc-toolbar` — the *formatting* toolbar's class — so
+1. The dock carried `.doc-toolbar`, the *formatting* toolbar's class, so
    `.doc-toolbar button` restyled its `.ghost.small` buttons as 2rem glyph
    buttons while leaving the `<select>` and the segmented control alone.
 2. The first fix used `height: var(--control-h)`, and `--control-h` is scoped
    to `.library-toolbar`/`.library-controls`. Undefined here, so the rule was
-   invalid and did nothing — silently. Measured: 45 / 43 / 37 / 27 / 22 / 18px
+   invalid and did nothing, silently. Measured: 45 / 43 / 37 / 27 / 22 / 18px
    across six controls that are meant to be one height.
 
 These are lints: nothing here can see a rendered page. They pin the two causes
@@ -42,7 +42,7 @@ def test_the_dock_is_not_a_formatting_toolbar():
 
 def test_the_dock_declares_the_control_height_it_uses():
     """`--control-h` is not a global token. Used without being declared it is
-    invalid where it is *used*, and an invalid height is silently no height —
+    invalid where it is *used*, and an invalid height is silently no height, 
     the same shape as the appearance-defaults bug in CLAUDE.md."""
     block = CSS.split(".doc-dock {")[1].split("}")[0]
     assert "--control-h:" in block, (
@@ -70,7 +70,7 @@ def test_the_least_used_controls_are_behind_one_kebab():
 
 def test_the_ids_did_not_move():
     """documents.js binds by id. A redesign that renames one is a redesign
-    that silently unwires it — the "features that never ran" shape."""
+    that silently unwires it, the "features that never ran" shape."""
     js = Path("frontend/documents.js").read_text(encoding="utf-8")
     for element_id in re.findall(r'\$\("(doc-[a-z-]+)"\)', js):
         assert f'id="{element_id}"' in HTML, element_id
@@ -94,11 +94,16 @@ def test_the_kebab_closes_on_a_pick_and_on_a_click_away():
 
 def test_the_name_and_the_type_share_a_row():
     """They are the same statement about the document. Moving the select off
-    the action row is also what let that row fit on one line — measured at
+    the action row is also what let that row fit on one line, measured at
     1018px, it was 20px too wide with the select still in it."""
     identity = HTML.split('class="doc-dock-identity"')[1].split("</span>")[0]
     assert 'id="doc-title"' in identity
-    assert 'id="doc-file-type"' in identity
+    # DOCUMENTS Phase 1 moved the file type off the identity row into the
+    # dock's ⋯ menu (its "File type" section): the row is the title alone and
+    # the action row stays at five controls.
+    menu = HTML.split('id="doc-dock-menu"')[1].split("</details>")[0]
+    assert 'id="doc-file-type"' in menu
+    assert 'id="doc-file-type"' not in identity
 
 
 def test_printing_still_hides_the_dock():
@@ -113,7 +118,7 @@ def test_every_kebab_uses_the_same_icon():
     picked `ph:dots-three` long before this session (`kebabMenu()` in app.js,
     the graph's mobile "more" toggle); the dock and the gallery menus were
     added later and each guessed the vertical variant. Nothing renders wrong
-    — it just reads as two different controls doing one job."""
+    - it just reads as two different controls doing one job."""
     sources = {
         p.name: p.read_text(encoding="utf-8")
         for p in (
@@ -128,11 +133,11 @@ def test_every_kebab_uses_the_same_icon():
     assert 'class="ph ph-dots-three"' in sources["index.html"]
     assert '"ph:dots-three"' in sources["app.js"]
     #: library.js used to draw its own kebab and is asserted *not* to now: the
-    #: Images/Files gallery menu was a second implementation of one control —
-    #: its own `<details>`, its own list class, its own placement code — which
+    #: Images/Files gallery menu was a second implementation of one control, 
+    #: its own `<details>`, its own list class, its own placement code, which
     #: is how it drifted from every other menu in the app three times over. It
     #: calls `kebabMenu()` (app.js) like everything else, so the glyph is
     #: chosen in exactly one place and this file cannot disagree with it.
     assert "ph:dots-three" not in sources["library.js"], (
-        "library.js is drawing its own kebab again — use kebabMenu() from app.js"
+        "library.js is drawing its own kebab again, use kebabMenu() from app.js"
     )

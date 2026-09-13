@@ -3,8 +3,8 @@
 Asked directly: *"is the graph an actual knowledge graph? I want it to be one
 for the AI to have easily usable and accessible context."*
 
-It was half of one. The edges were real and persisted — explicit links, reply
-threads, shared tags — and the graph *view* had been drawing them as typed
+It was half of one. The edges were real and persisted, explicit links, reply
+threads, shared tags: and the graph *view* had been drawing them as typed
 edges since it was built. What the agent could see was `get_note`'s `links`
 field: a bare list of note ids, with no indication of what any of them meant,
 one note per tool call. So it could add connections and never follow them.
@@ -58,7 +58,7 @@ def test_an_explicit_link_is_reported_as_a_link(session):
 
 def test_a_links_reason_is_included_when_someone_gave_one(session):
     """"a note about uni and gym might still be related if they're both about
-    scheduling" (user-reported) — the reason is what makes that connection
+    scheduling" (user-reported): the reason is what makes that connection
     legible instead of arbitrary."""
     a = _note(session, "assignment due next week")
     b = _note(session, "gym session tuesday")
@@ -215,7 +215,7 @@ def test_a_huge_neighbourhood_is_capped_and_says_so(session):
 
 
 def test_nearest_notes_survive_the_cap(session):
-    """Breadth-first, so what gets cut is the furthest away — which is the
+    """Breadth-first, so what gets cut is the furthest away, which is the
     right thing to lose."""
     a = _note(session, "a")
     direct = _note(session, "direct")
@@ -369,7 +369,7 @@ def test_a_link_can_be_removed_from_either_end(session):
 
 
 def test_unlinking_offers_the_call_that_puts_it_back(session):
-    """It is not destructive — no writing is lost, both notes survive — so the
+    """It is not destructive, no writing is lost, both notes survive, so the
     undo is what makes it safe to run in bulk without a confirm card on every
     correction."""
     a = _note(session, "a")
@@ -398,7 +398,7 @@ def test_unlinking_notes_that_are_not_linked_says_so(session):
 
 def test_unlinking_counts_as_a_change_but_never_needs_confirming(session):
     """A write, so the "nothing actually happened" safety net knows about it;
-    not destructive, so a tidy-up run isn't a wall of confirm cards — which is
+    not destructive, so a tidy-up run isn't a wall of confirm cards, which is
     how people learn to click through them."""
     assert "unlink_notes" in tools.WRITE_TOOLS
     assert not tools.TOOLS["unlink_notes"].destructive
@@ -407,11 +407,11 @@ def test_unlinking_counts_as_a_change_but_never_needs_confirming(session):
 # --- token cost, which is the difference between usable and not --------------
 #
 # Asked directly: *"the knowledge graph needs to be very solid and token
-# efficient — everything should be lightweight and easy for the AI to handle."*
+# efficient: everything should be lightweight and easy for the AI to handle."*
 #
 # The first version returned `_note_summary` for each neighbour: full 200-char
 # previews, ISO timestamps, `pinned`, `truncated`, and a null `via` on every
-# one-hop row. Twelve neighbours came to ~1,230 tokens — a third of a 4k
+# one-hop row. Twelve neighbours came to ~1,230 tokens, a third of a 4k
 # window spent on a single tool result, before the question or the notes.
 
 
@@ -446,7 +446,7 @@ def test_a_row_carries_only_what_choosing_a_note_needs(session):
 
 def test_an_empty_field_is_absent_rather_than_empty(session):
     """An empty tag list per row, and a null `via` on every one-hop result, are
-    pure structure — they cost tokens to say nothing."""
+    pure structure: they cost tokens to say nothing."""
     a = _note(session, "a")
     b = _note(session, "b")
     session.add(EntryLink(source_entry_id=a.id, target_entry_id=b.id))

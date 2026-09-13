@@ -1,8 +1,8 @@
 """Split free text into one or more AI-filed notes (BACKLOG.md §62).
 
-Asked for directly, alongside "Draft with AI": select a block of writing —
+Asked for directly, alongside "Draft with AI": select a block of writing, 
 the Writing Room's draft, a Document's body, or the combined content of
-several notes selected on the whiteboard — and turn it into one refined note
+several notes selected on the whiteboard, and turn it into one refined note
 or several, each auto-linked to where it came from and to what it relates,
 with a real reason on every link.
 
@@ -10,25 +10,25 @@ Deliberately not a new subsystem. Every judgment call here reuses machinery
 that already exists elsewhere for the same decision, rather than inventing a
 second version of it:
 
-- **One note or several?** The model proposes a split (it has to — nothing
+- **One note or several?** The model proposes a split (it has to: nothing
   else in this codebase reads free text and finds topic boundaries), but the
   proposal is then run past the exact bar `janitor.categorise` already
   trusts to decide "the same thing" without asking further:
   `CONFIDENT_MATCH` on the content's own embeddings. A split the model made
   between two near-identical passages is folded back together rather than
-  shown as two separate notes — see `merge_near_duplicates`.
-- **What category does each note get?** `janitor.categorise` — the same
+  shown as two separate notes, see `merge_near_duplicates`.
+- **What category does each note get?** `janitor.categorise`, the same
   centroid/kNN/LLM cascade a normal save goes through (`_create_note` in
   `ai.tools`), not a second filing decision for extracted notes specifically.
 - **Why is a link there?** `librarian.generate_link_reason`, the same call
-  the background link-reason audit (`ai.links`) makes — never
+  the background link-reason audit (`ai.links`) makes: never
   `manager.AUTO_REASON_TEXT`'s guessed "similar in meaning". A candidate the
   model can't give a specific reason for (offline, or a reply that comes
   back empty or still vague) is left out of the proposal entirely, using
-  `ai.links`' own vagueness/cleanup checks — the same "no reason is more
+  `ai.links`' own vagueness/cleanup checks: the same "no reason is more
   honest than a bad one" rule the audit already lives by.
 
-Everything here only *proposes* — see `routes_entries.py`'s
+Everything here only *proposes*, see `routes_entries.py`'s
 `/entries/extract/preview` and `/entries/extract/commit`. Nothing in this
 module writes to the database; `build_extraction` is read-only against the
 session it's given, the same way `janitor.categorise` and
@@ -59,7 +59,7 @@ logger = logging.getLogger("memorymap.ai.extractor")
 EXTRACT_MAX_CHARS = 20_000
 
 # "Several distinct topics" in one sitting of writing is realistically a
-# handful, not dozens — and every extra note here costs more LLM calls
+# handful, not dozens: and every extra note here costs more LLM calls
 # (categorising it, finding what it relates to, linking it to its siblings),
 # so this both matches how the feature is actually used and keeps a single
 # preview request from taking minutes on a small local model.
@@ -67,7 +67,7 @@ MAX_EXTRACT_NOTES = 4
 
 # How many existing notes the caller already selected as "source" (a Graph/
 # whiteboard selection's notes-in-context) this will try to link every new
-# note back to. Bounded for the same reason as MAX_EXTRACT_NOTES — a
+# note back to. Bounded for the same reason as MAX_EXTRACT_NOTES, a
 # generous selection is still a selection, not "link to the whole notebook".
 MAX_SOURCE_IDS = 3
 
@@ -78,7 +78,7 @@ MAX_SOURCE_IDS = 3
 RELATED_PER_NOTE = 2
 
 # The same bar `link-suggestions` ranks by and `_deduce_reason` requires
-# before a link earns even the generic guess — reused rather than inventing
+# before a link earns even the generic guess, reused rather than inventing
 # a second "related enough to surface here" threshold.
 RELATED_THRESHOLD = manager.AUTO_REASON_THRESHOLD
 
@@ -86,10 +86,10 @@ SPLIT_SYSTEM_PROMPT = (
     "You are splitting a piece of free writing into one or more focused "
     "notes for a personal notebook. If the text is really about ONE topic, "
     "return exactly one note that lightly cleans it up. If it clearly "
-    "covers SEVERAL distinct topics, split it into one note per topic — "
+    "covers SEVERAL distinct topics, split it into one note per topic, "
     "never split something that is really one idea just to produce more "
     "notes.\n\n"
-    "Use only the writer's own facts — never invent details, examples, or "
+    "Use only the writer's own facts: never invent details, examples, or "
     "numbers that are not in the text. Keep their voice.\n\n"
     f"Return at most {MAX_EXTRACT_NOTES} notes.\n\n"
     'Reply with ONLY JSON: {"notes": [{"title": "2-8 words", "content": '
@@ -97,12 +97,12 @@ SPLIT_SYSTEM_PROMPT = (
 )
 
 OFFLINE_MESSAGE = (
-    "The AI isn't running, so this couldn't be split or linked — it's shown "
+    "The AI isn't running, so this couldn't be split or linked, it's shown "
     "as one plain note below. Start Ollama and try again for a real split."
 )
 
 SPLIT_FAILED_MESSAGE = (
-    "The AI couldn't split this cleanly, so it's shown as one note — edit "
+    "The AI couldn't split this cleanly, so it's shown as one note, edit "
     "it below, or save it as is."
 )
 
@@ -114,7 +114,7 @@ class ExtractedNote:
 
 
 def _extract_json_object(text: str) -> dict:
-    """Small models often wrap JSON in chatter — grab the {...} part.
+    """Small models often wrap JSON in chatter, grab the {...} part.
     Same approach as `janitor._extract_json`, duplicated rather than
     imported since that helper is private to a module about a different
     decision (categorising, not splitting)."""
@@ -133,7 +133,7 @@ def propose_split(
     """Ask the model to split `text` into one or more notes.
 
     Raises `OllamaError` if the model is down, `ValueError` if its reply
-    can't be turned into usable notes — both are the caller's cue
+    can't be turned into usable notes, both are the caller's cue
     (`build_extraction`) to fall back to one plain note rather than lose
     the writing.
     """
@@ -166,7 +166,7 @@ def merge_near_duplicates(
     notes: list[ExtractedNote], embeddings: EmbeddingService
 ) -> list[ExtractedNote]:
     """Fold together any two proposed notes whose content embeddings are as
-    close as janitor's own `CONFIDENT_MATCH` bar — the "trust the
+    close as janitor's own `CONFIDENT_MATCH` bar: the "trust the
     embedding, no need to ask further" threshold `janitor.categorise` uses
     to decide a category with no LLM call, reused here for the one-vs-
     several decision instead of inventing a second threshold. A split the
@@ -207,7 +207,7 @@ def _reason_for(
     content: str, other_content: str, model_manager: ModelManager, ollama: OllamaClient
 ) -> str | None:
     """A real, specific reason for linking `content` to `other_content`, or
-    None when the model is down or can only offer a vague one — see the
+    None when the model is down or can only offer a vague one, see the
     module docstring: never `manager.AUTO_REASON_TEXT`, and never a link
     with nothing honest to say about it."""
     try:
@@ -267,16 +267,16 @@ def build_extraction(
 ) -> dict:
     """The whole preview: proposed note(s), filed by the janitor, linked to
     their sources and to each other and to whatever else in the notebook
-    they relate to — every link carrying a real reason or not existing at
+    they relate to: every link carrying a real reason or not existing at
     all. Nothing is written to `session`; see the module docstring.
 
-    Raises `ValueError` for bad input (empty text, too much text) — the
+    Raises `ValueError` for bad input (empty text, too much text), the
     caller's cue for a 400, not a 500.
 
     LLM call count is bounded on purpose: at most
     `MAX_SOURCE_IDS * MAX_EXTRACT_NOTES` source-link calls,
     `RELATED_PER_NOTE * MAX_EXTRACT_NOTES` related-link calls, and
-    `MAX_EXTRACT_NOTES - 1` sibling-link calls, plus one split call — a
+    `MAX_EXTRACT_NOTES - 1` sibling-link calls, plus one split call, a
     genuinely large extraction still costs low double digits of calls, not
     an unbounded one.
     """
@@ -286,7 +286,7 @@ def build_extraction(
     if len(text) > EXTRACT_MAX_CHARS:
         raise ValueError(
             f"That's too much text to extract from at once ({len(text)} "
-            f"characters — {EXTRACT_MAX_CHARS} is the most)."
+            f"characters: {EXTRACT_MAX_CHARS} is the most)."
         )
 
     source_ids = list(dict.fromkeys(source_entry_ids or []))[:MAX_SOURCE_IDS]

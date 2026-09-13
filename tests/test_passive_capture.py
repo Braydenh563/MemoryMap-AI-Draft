@@ -1,4 +1,4 @@
-"""Turning an offhand mention in chat into a draft — ANALYSIS.md §60 item 2.
+"""Turning an offhand mention in chat into a draft, ANALYSIS.md §60 item 2.
 
 The odysseus read's own one-line answer to "any features overlooked?" was
 this one: *"nothing in this app turns an offhand mention in ordinary chat

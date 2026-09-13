@@ -1,6 +1,6 @@
 """The background librarian (§39): the scheduled agent pass over the notebook.
 
-This module shipped without tests and without a caller — `app.py` imported it
+This module shipped without tests and without a caller, `app.py` imported it
 and started nothing, so the interval, the on/off switch and the three task
 toggles in Settings were all wired to a loop that never ran. These tests exist
 so that cannot happen quietly again: the first one fails if the scheduler stops
@@ -31,7 +31,7 @@ def test_creating_the_app_starts_the_scheduler(app_state, monkeypatch):
     """The bug this whole module had: nothing called `start()`.
 
     Asserted against `create_app` rather than against `start()` directly,
-    because `start()` always worked — it was the call site that did not exist.
+    because `start()` always worked: it was the call site that did not exist.
     """
     started: list[bool] = []
     monkeypatch.setattr(autonomous, "start", lambda: started.append(True))
@@ -60,7 +60,7 @@ def test_wake_interrupts_the_sleep_instead_of_waiting_out_the_interval(
     app_state, monkeypatch
 ):
     """Reported as "background tasks skip things thinking battery mode is on"
-    and "finishing a task disables automatic tasks, forcing a re-toggle" —
+    and "finishing a task disables automatic tasks, forcing a re-toggle", 
     neither preference was actually wrong; the loop just would not look again
     until whatever multi-hour sleep it was already in ran out. `wake()` is
     the fix: it cuts that sleep short so a preference change is picked up on
@@ -75,7 +75,7 @@ def test_wake_interrupts_the_sleep_instead_of_waiting_out_the_interval(
     autonomous.start()
     try:
         # With tasks disabled, the loop should be asleep for the full
-        # (long) interval, not spinning — this is the "before wake()" state.
+        # (long) interval, not spinning, this is the "before wake()" state.
         assert not ran.wait(timeout=0.5)
 
         app_state.set_preference("autonomous_tasks_enabled", True)
@@ -89,7 +89,7 @@ def test_wake_interrupts_the_sleep_instead_of_waiting_out_the_interval(
 def test_a_second_run_is_refused_while_one_is_going(app_state, monkeypatch):
     """`trigger_now` span up a thread unconditionally, so holding down "Run
     now" in Settings started as many concurrent agent loops as you had
-    patience for — every one of them writing to the same notebook."""
+    patience for: every one of them writing to the same notebook."""
     running = threading.Event()
     release = threading.Event()
 
@@ -122,7 +122,7 @@ def test_the_endpoint_refuses_to_run_while_the_master_toggle_is_off(
 ):
     """Reported: a "completed" notification for a pass the user "didn't have
     enabled". `trigger_now` itself never checked `autonomous_tasks_enabled`
-    — only the scheduled loop did, before ever calling it — so this endpoint
+    - only the scheduled loop did, before ever calling it, so this endpoint
     ran a real pass regardless of the toggle; the "Run now" button being
     hidden while it's off is a UI convenience, not an authorization check.
     """
@@ -149,7 +149,7 @@ def test_vacuum_survives_a_session_that_has_already_written(app_state, session):
     """The maintenance pass must not depend on statement ordering.
 
     SQLite refuses to VACUUM inside a transaction. Running it through a
-    Session — how this was written — works *by luck*: pysqlite defers its
+    Session, how this was written, works *by luck*: pysqlite defers its
     BEGIN until the first DML, so a VACUUM that happens to be the first
     statement slips through. The failure below is what the same line does once
     anything has touched the database first, which is the state the background
@@ -159,7 +159,7 @@ def test_vacuum_survives_a_session_that_has_already_written(app_state, session):
 
     session.add(Entry(content="something to make a transaction"))
     session.flush()
-    with pytest.raises(Exception) as raised:  # noqa: PT011 — driver-specific
+    with pytest.raises(Exception) as raised:  # noqa: PT011  # driver-specific
         session.execute(text("VACUUM"))
     assert "vacuum" in str(raised.value).lower()
     session.rollback()
@@ -231,7 +231,7 @@ def test_a_pass_that_needs_confirmation_is_abandoned_not_hung(
 
 def test_the_pass_records_which_model_did_the_work(app_state, monkeypatch):
     """Settings -> Background tasks couldn't say which model answered a
-    background job (BACKLOG.md §95 item A.3) — the utility model here, same
+    background job (BACKLOG.md §95 item A.3), the utility model here, same
     one `test_the_pass_uses_the_utility_model...` below confirms is used."""
     monkeypatch.setattr(autonomous.agent, "run_agent", lambda **kwargs: iter([]))
     autonomous._working.set()
@@ -265,7 +265,7 @@ def test_the_pass_uses_the_utility_model_and_bars_the_dangerous_tools(
 def test_a_pass_records_what_it_changed_so_it_can_be_undone(app_state, monkeypatch):
     """The honest answer to "let an agent edit my notebook unattended".
 
-    A true dry-run is not available — the model picks each call from the result
+    A true dry-run is not available, the model picks each call from the result
     of the last one, so a pass with the writes stubbed out stops resembling the
     pass that would really run. What is available is the change list, which
     every write already produces with the call that reverses it.
@@ -288,7 +288,7 @@ def test_a_pass_records_what_it_changed_so_it_can_be_undone(app_state, monkeypat
     assert recorded["outcome"] == "completed"
     assert recorded["finished_at"]
     assert recorded["changes"] == [change]
-    # Every recorded change carries the call that puts the note back — that is
+    # Every recorded change carries the call that puts the note back, that is
     # the whole point of keeping them.
     assert recorded["changes"][0]["undo"]["tool"] == "edit_note"
 
@@ -356,7 +356,7 @@ def test_a_failed_pass_still_lists_what_it_managed_to_change(app_state, monkeypa
 
 def test_editing_a_note_never_stops_an_unattended_pass(app_state):
     """`edit_note` was briefly `destructive=True`, which parks the turn for a
-    confirmation — and this pass abandons itself on any `confirm`, because
+    confirmation: and this pass abandons itself on any `confirm`, because
     there is nobody to ask. So the first note it tried to edit killed the run.
     """
     from memorymap.ai import tools
@@ -394,7 +394,7 @@ def test_the_background_pass_runs_the_link_reason_audit(app_state, monkeypatch):
 
 def test_the_link_reason_audit_has_its_own_off_switch(app_state, monkeypatch):
     """Separate from `auto_link_enabled`, which is "may the agent create and
-    remove links at all" — a different question from "may existing vague
+    remove links at all", a different question from "may existing vague
     reasons keep being rewritten"."""
     calls: list[int] = []
     monkeypatch.setattr(
@@ -440,7 +440,7 @@ def test_the_background_pass_tags_a_stale_orphaned_note(app_state, session):
 
 
 def test_the_stale_review_has_its_own_off_switch(app_state, session):
-    """Off by default, unlike tag/link/dedupe — a judgement call about which
+    """Off by default, unlike tag/link/dedupe, a judgement call about which
     notes count as forgotten, not a reaction to something the user asked
     for on that one note."""
     from datetime import timedelta
@@ -474,7 +474,7 @@ def test_the_stale_review_does_not_retag_a_note_twice(app_state, session, monkey
     session.add(entry)
     session.commit()
     manager.update_entry(session, entry, tags=["stale"])
-    # `update_entry` bumps `updated_at` to now (the write itself is recent) —
+    # `update_entry` bumps `updated_at` to now (the write itself is recent), 
     # re-age it so the note is still a candidate by every other criterion,
     # the actual scenario this test means to cover.
     entry.updated_at = utcnow() - timedelta(days=120)
@@ -500,7 +500,7 @@ def test_the_stale_review_does_not_retag_a_note_twice(app_state, session, monkey
 
 def test_a_card_whose_note_was_purged_is_swept_up(ai_client, session):
     """No cascade on `whiteboard_nodes.entry_id`, so purging a note from the
-    recycle bin left a card on the board pointing at nothing — visible, not
+    recycle bin left a card on the board pointing at nothing, visible, not
     removable through the UI, and it makes the board look broken."""
     from memorymap.core.database import Entry, WhiteboardNode
 

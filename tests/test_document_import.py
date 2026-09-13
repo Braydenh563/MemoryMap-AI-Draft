@@ -76,7 +76,7 @@ def test_an_oversized_file_is_refused_before_it_is_stored(client):
 
 
 def test_import_is_matched_before_the_document_id_route():
-    """`/documents/import` would otherwise be read as a document id — the same
+    """`/documents/import` would otherwise be read as a document id, the same
     trap `/documents/file-types` sits above. FastAPI matches in declaration
     order, so this is a property of the source, not of the request."""
     from memorymap.api import routes_documents

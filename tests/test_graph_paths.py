@@ -3,10 +3,10 @@
 `related_notes` (see `test_related_notes.py`) answers "what is near this note".
 These two answer the questions that needed a *traversal* rather than a walk:
 
-- **"How are these two related?"** — the chain between them, which is the one
+- **"How are these two related?"**, the chain between them, which is the one
   question a graph answers better than a list, and the one the view could not
   answer at all.
-- **"What does my notebook look like?"** — clusters, hubs and notes joined to
+- **"What does my notebook look like?"**, clusters, hubs and notes joined to
   nothing. The model could always count notes and list categories, both of
   which describe the *filing*; nothing described the **structure**, so "tidy
   up my notebook" was answered by reading category names.
@@ -16,7 +16,7 @@ rather than merely present:
 
 1. **A weak connection must not beat a strong one.** An unweighted search
    returns the fewest hops, so one shared `#misc` beats a three-step chain of
-   deliberate links — technically a path, actually noise.
+   deliberate links: technically a path, actually noise.
 2. **A tag on half the notebook is filing, not connection.** Otherwise
    everything is two hops from everything and the feature answers "related" to
    every pair it is given.
@@ -59,7 +59,7 @@ def _chain(session, source, target):
 
 
 def test_link_strength_is_one_for_a_bare_link():
-    """The baseline — no type, no deduced-reason confidence — is exactly
+    """The baseline, no type, no deduced-reason confidence, is exactly
     what every link created before either column existed still is, so this
     has to be neutral or every old link would silently get weaker."""
     assert link_strength(None, None) == 1.0
@@ -70,7 +70,7 @@ def test_link_strength_favours_a_named_type():
 
 
 def test_every_named_type_gets_the_same_boost():
-    """The distinction is "somebody decided this" vs. "nobody said" — not a
+    """The distinction is "somebody decided this" vs. "nobody said", not a
     ranking between e.g. "supports" and "contradicts", which are equally
     deliberate choices."""
     boosted = {link_strength(kind, None) for kind in ("related", "continues", "context", "supports", "contradicts", "example_of")}
@@ -86,7 +86,7 @@ def test_link_strength_has_a_floor_so_a_low_confidence_guess_is_still_a_real_sig
 
 
 def test_link_strength_combines_type_and_confidence():
-    """A typed link with a confidently deduced reason (unusual — `create_link`
+    """A typed link with a confidently deduced reason (unusual: `create_link`
     only deduces when no reason was given at all) still stacks both signals
     rather than one silently overriding the other."""
     assert link_strength("supports", 0.9) < link_strength("supports", None)
@@ -107,7 +107,7 @@ def test_a_direct_link_is_one_step(session):
 
 
 def test_a_links_reason_shows_up_in_how_it_connects(session):
-    """Trace's readout reads `step.how` directly — this is the reason a
+    """Trace's readout reads `step.how` directly: this is the reason a
     user-given explanation ("both about scheduling") reaches the person
     asking how two notes relate, not just the model."""
     a = _note(session, "assignment due next week")
@@ -178,7 +178,7 @@ def test_deliberate_links_beat_a_tag_shortcut(session):
     """Property 1, and the reason the search is weighted at all.
 
     Both routes exist: three links, or one shared tag. An unweighted search
-    returns the tag — one hop — and the answer is "these are related because
+    returns the tag, one hop, and the answer is "these are related because
     they are both tagged #idea", which is true and worthless. The chain of
     links is what somebody actually decided.
     """
@@ -245,7 +245,7 @@ def test_a_low_confidence_deduced_link_loses_to_a_plain_one_at_equal_hop_count(s
 
 
 def test_a_tag_route_is_still_found_when_it_is_the_only_one(session):
-    """The counterpart. Weighting a tag down must not mean discarding it —
+    """The counterpart. Weighting a tag down must not mean discarding it, 
     a tag hop is a real connection and often the only one there is."""
     a = _note(session, "the pond is silting up", tags=["garden"])
     b = _note(session, "order more gravel", tags=["garden"])
@@ -259,7 +259,7 @@ def test_a_tag_on_most_of_the_notebook_connects_nothing(session):
 
     Without this, one heavily-used tag makes every note two hops from every
     other, and the feature reports a relationship between any two notes it is
-    handed — which is the same as reporting nothing at all.
+    handed: which is the same as reporting nothing at all.
     """
     everything = [
         _note(session, f"note number {n}", tags=["notes"])
@@ -455,7 +455,7 @@ def test_the_path_route_explains_a_missing_route(client, session):
 
 def test_the_structure_route_maps_every_note_to_its_cluster(client, session):
     """`cluster_of` is what makes colouring the graph a lookup rather than a
-    second traversal in JavaScript — and its keys are strings, because that is
+    second traversal in JavaScript, and its keys are strings, because that is
     what JSON object keys are whatever they started as."""
     group = [_note(session, f"in the cluster {n}") for n in range(3)]
     for a, b in zip(group, group[1:]):
@@ -471,7 +471,7 @@ def test_the_structure_route_maps_every_note_to_its_cluster(client, session):
 
 def test_the_graph_never_labels_a_note_with_its_ciphertext(client, session, monkeypatch):
     """A private note's `content` is encrypted at rest, and the graph route
-    read the column directly — so a private note appeared on the map labelled
+    read the column directly, so a private note appeared on the map labelled
     with a base64 blob. `readable_content` names the graph in its own docstring
     as a place that must not break on one."""
     from memorymap.core import crypto

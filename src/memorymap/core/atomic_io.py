@@ -1,13 +1,13 @@
 """Crash-safe writes for the small pieces of state that live outside SQLite.
 
 Why this exists: the database gets crash-safety for free from SQLite's own
-transactions. Anything written straight to a file — `preferences.json` is the
-one case in this app today — does not, unless the write itself is atomic.
+transactions. Anything written straight to a file, `preferences.json` is the
+one case in this app today, does not, unless the write itself is atomic.
 `Path.write_text()` truncates the file before writing the new content, so a
 crash or power loss mid-write leaves a half-written (often zero-byte) file
 behind, not the old one. The fix is the standard shape: write the new content
 to a temp file in the same directory, `fsync` it so it is actually on disk,
-then `os.replace()` it over the real path — a rename within one filesystem is
+then `os.replace()` it over the real path, a rename within one filesystem is
 atomic, so a reader (or the next process to start) always sees either the
 whole old file or the whole new one, never a partial write.
 """

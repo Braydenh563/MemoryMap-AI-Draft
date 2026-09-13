@@ -7,8 +7,8 @@ support" specifically would have bought one backend instead of all of them.
 
 So the split is by *dialect*, not by product. There are two:
 
-  - Ollama's native `/api/chat` — `ai/ollama_client.py`
-  - OpenAI's `/v1/chat/completions` — `ai/openai_client.py`
+  - Ollama's native `/api/chat`, `ai/ollama_client.py`
+  - OpenAI's `/v1/chat/completions`, `ai/openai_client.py`
 
 and every OpenAI-compatible server is the second one with a different base URL.
 
@@ -17,14 +17,14 @@ live here:
 
 1. The stream helpers (`_ThinkTagSplitter`, `_ToolTextGate`,
    `extract_text_tool_calls`, `split_thinking`). These were written for Ollama
-   but nothing in them is Ollama-specific — they operate on text a model wrote,
+   but nothing in them is Ollama-specific, they operate on text a model wrote,
    and a model writes `<think>` tags and prose-shaped tool calls whoever is
    serving it. They moved here rather than being copied, and `ollama_client`
    re-exports them so existing imports keep working.
 2. `Provider`, the base class: the four questions a backend must answer, and
    the shared implementation of the ones whose answer doesn't depend on the
    dialect (the context ceiling, the preference that overrides it).
-3. What the app knows *about models rather than about backends* — the
+3. What the app knows *about models rather than about backends*, the
    known-context table, and how to read a window out of a `/models` catalog.
 
 **Errors deliberately did not get a new name.** `ProviderError` is the same
@@ -43,7 +43,7 @@ from collections.abc import Callable
 from urllib.parse import urlparse
 
 
-#: Returns the user's stored sampling overrides — installed by the app's own
+#: Returns the user's stored sampling overrides, installed by the app's own
 #: wiring so this module never has to import it.
 #:
 #: `ai/provider.py` is the bottom of the AI stack and `core.deps` is the wiring
@@ -66,14 +66,14 @@ class ProviderError(RuntimeError):
 
 
 class ToolsUnsupportedError(ProviderError):
-    """The active model can't do tool calls — the caller should fall
+    """The active model can't do tool calls, the caller should fall
     back to plain Q&A, never fail the whole chat."""
 
 
 def is_transient_server_error(exc: Exception) -> bool:
     """A 5xx from the backend itself, not a 4xx: the request was well-formed
     but the server briefly couldn't handle it (a model still swapping in,
-    momentary memory pressure) — reported live, a chat call failing with a
+    momentary memory pressure): reported live, a chat call failing with a
     plain 500 and then succeeding on the exact same resend. Worth one silent
     retry, unlike a 4xx (bad request, model not found) where trying again
     changes nothing.
@@ -106,7 +106,7 @@ MAX_REQUESTED_CONTEXT = 8192
 
 # Room for the reply. Unset, a backend will happily generate until it decides
 # to stop, and a local model that rambles is the single most common reason an
-# answer "takes ages" — output tokens are generated one at a time, so they cost
+# answer "takes ages", output tokens are generated one at a time, so they cost
 # far more wall-clock each than prompt tokens do.
 DEFAULT_MAX_OUTPUT_TOKENS = 1024
 
@@ -114,13 +114,13 @@ DEFAULT_MAX_OUTPUT_TOKENS = 1024
 # Context windows for models whose server won't say. Ollama answers `/api/show`
 # and LM Studio answers `/api/v0/models`, but plain llama.cpp and several cloud
 # gateways report nothing at all, and the alternative to a table is budgeting
-# every one of them against 4,096 — which on a 128k model means withholding
+# every one of them against 4,096, which on a 128k model means withholding
 # tools for no reason.
 #
 # Substring-matched against the model id, so `llama3.1:8b-instruct-q4_0` finds
 # `llama3.1`. Keep keys as the shortest *unambiguous* prefix.
 KNOWN_CONTEXT_WINDOWS: dict[str, int] = {
-    # Local-first families — the ones this app is actually run with.
+    # Local-first families: the ones this app is actually run with.
     "llama3.1": 131072,
     "llama3.2": 131072,
     "llama3.3": 131072,
@@ -168,7 +168,7 @@ def _squash_separators(text: str) -> str:
 
     Community/fine-tuned imports (a manually `ollama create`d GGUF, an
     uncensored fine-tune pulled from Hugging Face) routinely punctuate a
-    family name differently from Ollama's own library naming — `granite4`
+    family name differently from Ollama's own library naming, `granite4`
     in the library becomes `granite-4.1-3b-uncensored` or `Granite 4.1
     Uncensored` in the wild, and a plain substring match against either of
     those never finds `granite4` at all, even though it's clearly the same
@@ -184,14 +184,14 @@ def known_context(model: str) -> int | None:
     Matches the *longest* key rather than the first, which is the whole reason
     this is a loop and not a dict lookup: `llama3` and `llama3.1` both match
     `llama3.1:8b`, they differ by 16x, and first-match order would decide which
-    one wins by dictionary insertion — a 131k model budgeted at 8k, or worse,
+    one wins by dictionary insertion, a 131k model budgeted at 8k, or worse,
     the other way round.
 
     The tag (`:8b-q4_0`) and any registry prefix (`hf.co/user/`) are stripped
     first: they say how the model was quantised and where it came from, not how
     much it can hold. Matched with separators squashed out (see
     `_squash_separators`) so a differently-punctuated import of the same
-    family — the common shape for a community fine-tune — still finds its
+    family, the common shape for a community fine-tune, still finds its
     table entry instead of silently falling through to the flat default.
     """
     name = _squash_separators((model or "").lower())
@@ -207,9 +207,9 @@ def known_context(model: str) -> int | None:
 
 
 # Fields a `/models` catalog might report a window under. Every OpenAI-compatible
-# server spells it differently — LM Studio says `max_context_length`, vLLM says
+# server spells it differently, LM Studio says `max_context_length`, vLLM says
 # `max_model_len`, llama.cpp nests `n_ctx` under `meta`, OpenRouter says
-# `context_length` — so all of them are read rather than one being guessed at.
+# `context_length`, so all of them are read rather than one being guessed at.
 _CONTEXT_FIELDS = (
     "context_length",
     "context_window",
@@ -270,7 +270,7 @@ def detect_provider(base_url: str) -> str:
 
     Two rules, in this order, because the second is a catch-all:
 
-      - a `/v1` path means the OpenAI shape, whoever is serving it — this is
+      - a `/v1` path means the OpenAI shape, whoever is serving it, this is
         how Ollama's own compatibility surface gets used deliberately;
       - port 11434 with no `/v1` is Ollama's native API.
 
@@ -293,7 +293,7 @@ def detect_provider(base_url: str) -> str:
 class Provider:
     """The interface `agent.run_agent` and friends are written against.
 
-    Subclasses implement the dialect-specific half — `context_length`,
+    Subclasses implement the dialect-specific half, `context_length`,
     `is_running`, `list_models`, and the four generation paths (`chat`,
     `chat_stream`, `chat_tools`, `chat_tools_stream`) plus `embed`. What is
     shared lives here, and it is the part that took the measurements in §11a to
@@ -328,7 +328,7 @@ class Provider:
             # further along at `ai/embeddings.py:24`: the cycle it named is
             # `ai.embeddings -> ai.ollama_client -> ai.provider -> core.deps
             # -> ai.embeddings`, and this line is its only wrong-direction
-            # edge — a provider is a leaf that the container builds, so it
+            # edge: a provider is a leaf that the container builds, so it
             # has no business importing the container back. Deferring the
             # statement into the function body does not clear the alert
             # (`entry/manager.py` records the same finding); only dropping
@@ -341,25 +341,25 @@ class Provider:
                     "max_context_tokens", self.MAX_REQUESTED_CONTEXT
                 )
             )
-        except Exception:  # noqa: BLE001 — a bad preference must not stop a chat
+        except Exception:  # noqa: BLE001  # a bad preference must not stop a chat
             return self.MAX_REQUESTED_CONTEXT
         # Floor at the default: below it nothing works, and a typo like 40
         # should not silently make the app unusable.
         return max(self.DEFAULT_CONTEXT_TOKENS, wanted)
 
     def usable_context(self, model: str) -> int:
-        """The window to budget against — and, on Ollama, to ask for.
+        """The window to budget against, and, on Ollama, to ask for.
 
         Deliberately the same number in both places. Ollama runs a model at
         `num_ctx`, which is its own default (commonly 4,096) *regardless of
-        what the model was trained for* — so reading a 32k context length and
+        what the model was trained for*, so reading a 32k context length and
         budgeting against it, without also asking for 32k, would produce
         exactly the overflow the budget exists to prevent.
 
         On the OpenAI shape there is no `num_ctx` to send: the window is fixed
         when the server loads the model. That makes this number advisory there
         rather than instructive, which is *safe in the direction that matters*
-        — the app rations itself to at most what the server reported.
+        - the app rations itself to at most what the server reported.
         """
         declared = self.context_length(model) or self.DEFAULT_CONTEXT_TOKENS
         return max(
@@ -375,11 +375,11 @@ class Provider:
         """The neutral settings every backend needs, before dialect.
 
         §6 called this: either each provider translates a neutral
-        `{context_tokens, max_output_tokens}`, or it owns the whole payload —
+        `{context_tokens, max_output_tokens}`, or it owns the whole payload, 
         and the agent should not learn four dialects. This is that neutral set;
         `runtime_options` on each subclass is the translation.
 
-        `mode` is a response preset (§11) — quick, normal or detailed. An
+        `mode` is a response preset (§11): quick, normal or detailed. An
         explicit `max_output_tokens` still wins over the preset's, because a
         caller that names a number has a reason the preset can't know about.
         """
@@ -396,7 +396,7 @@ class Provider:
     #: Tokens a reasoning model may spend deliberating before its answer
     #: starts. **Added to the reply cap rather than taken out of it**, which is
     #: the whole point: the reply cap becomes `num_predict`, and `num_predict`
-    #: bounds *everything the model generates* — thinking included. A flat cap
+    #: bounds *everything the model generates*, thinking included. A flat cap
     #: therefore means a model that thinks for 256 tokens has nothing left to
     #: answer with, which is precisely the reported failure (§35A.3): Quick
     #: mode on a thinking model, twice, thought for a while and then emitted no
@@ -405,15 +405,15 @@ class Provider:
 
     #: **Detailed asks for more thinking, so it needs more room for it.**
     #: Reported: with "Detailed" selected, some turns came back with no
-    #: answer at all (or a much shorter one than the setting promised) — the
+    #: answer at all (or a much shorter one than the setting promised), the
     #: original fix above gave every preset the *same* flat 1,024-token
     #: allowance, but Detailed's own `length_hint` explicitly asks the model
     #: to "work through the relevant notes, draw connections between them,
-    #: and explain your reasoning" — inviting a longer thinking trace than
+    #: and explain your reasoning", inviting a longer thinking trace than
     #: Quick or Normal ever asked for, on a preset whose grounding context is
     #: usually the largest of the three. A verbose reasoning model given more
     #: to think about and the same 1,024-token leash starves its own answer
-    #: exactly like §35A.3's Quick-mode case did, just less often — this file
+    #: exactly like §35A.3's Quick-mode case did, just less often, this file
     #: already predicted it: "1,024 shared between deliberation and answer is
     #: the same trap in a larger size" (test_thinking_budget.py). Unused
     #: headroom still costs nothing (see below), so there is no downside to
@@ -428,7 +428,7 @@ class Provider:
         says otherwise, and the capability list is the only thing
         `request_extras` can consult before deciding to send `think: False`.
         Trusting it twice would mean a model that lies about thinking gets a
-        flat cap *and* thinks anyway — the failure above.
+        flat cap *and* thinks anyway, the failure above.
 
         The two ways to be wrong are not symmetric, which settles it:
 
@@ -455,7 +455,7 @@ class Provider:
         raise NotImplementedError
 
     def sampling_overrides(self) -> dict:
-        """The user's own sampling settings, or {} — see `ai/sampling.py`.
+        """The user's own sampling settings, or {}, see `ai/sampling.py`.
 
         Read here rather than passed in, because every generation path in the
         app goes through `runtime_options` and threading a settings dict
@@ -471,7 +471,7 @@ class Provider:
         #
         # CodeQL flagged the direct import as a cycle and it is right about the
         # layering as well as the graph: `ai/provider.py` is the lowest layer
-        # of the AI stack — every client builds on it — while `core.deps` is
+        # of the AI stack, every client builds on it, while `core.deps` is
         # the app's wiring, which reaches back down into this module to build
         # the very object being configured. Deferring the import inside the
         # function hid the cycle from the interpreter without removing it.
@@ -483,7 +483,7 @@ class Provider:
             return {}
         try:
             stored = _sampling_overrides_getter()
-        except Exception:  # noqa: BLE001 — settings must never break a request
+        except Exception:  # noqa: BLE001  # settings must never break a request
             return {}
         return stored if isinstance(stored, dict) else {}
 
@@ -503,7 +503,7 @@ class Provider:
         raise NotImplementedError
 
     def supports(self, model: str, capability: str) -> bool | None:
-        """Can this model do `capability` — True, False, or None for unknown.
+        """Can this model do `capability`, True, False, or None for unknown.
 
         Three answers rather than two, and the third is the important one.
         "This model has no thinking to turn off" and "I cannot tell you whether
@@ -522,7 +522,7 @@ class Provider:
 
         The app knew a context length and nothing else, so the screen could not
         say how big a model was, how it was quantised, or whether it could use
-        tools — which is the first thing to check when "agent mode does
+        tools: which is the first thing to check when "agent mode does
         nothing". Every field is optional: a backend that cannot answer returns
         None and the UI omits the row rather than printing "unknown" six times.
         """
@@ -553,7 +553,7 @@ class Provider:
 
 class _ThinkTagSplitter:
     """Routes streamed content into thinking vs answer pieces when a
-    model reasons inline with <think>…</think> — the tags themselves can
+    model reasons inline with <think>…</think>, the tags themselves can
     arrive split across chunks, so a little state is unavoidable."""
 
     OPEN, CLOSE = "<think>", "</think>"
@@ -572,7 +572,7 @@ class _ThinkTagSplitter:
                 self._mode = "thinking"
                 self._buffer = candidate[len(self.OPEN) :]
             elif self.OPEN.startswith(candidate):
-                return pieces  # could still become "<think>" — wait
+                return pieces  # could still become "<think>", wait
             else:
                 self._mode = "answer"
 
@@ -597,7 +597,7 @@ class _ThinkTagSplitter:
         return pieces
 
     def flush(self) -> list[dict]:
-        """The stream ended — emit whatever is left."""
+        """The stream ended: emit whatever is left."""
         leftover, self._buffer = self._buffer, ""
         if not leftover:
             return []
@@ -608,8 +608,8 @@ class _ThinkTagSplitter:
 class _ToolTextGate:
     """Holds back streamed text that might turn out to be a tool call in prose.
 
-    Some small models write ``<tool_call>{...}</tool_call>`` — or a bare JSON
-    object — instead of using the structured tool_calls field.
+    Some small models write ``<tool_call>{...}</tool_call>``, or a bare JSON
+    object: instead of using the structured tool_calls field.
     ``extract_text_tool_calls`` recovers those and strips them so they're
     executed rather than shown, but a streaming UI would already have printed
     the text by then. So content is gated until it's clearly *not* one of those
@@ -638,7 +638,7 @@ class _ToolTextGate:
         looks_like_call = (
             candidate.startswith("{")
             or candidate.startswith(self.OPENER)
-            # A partially-arrived "<tool_call>" — wait for the rest.
+            # A partially-arrived "<tool_call>", wait for the rest.
             or self.OPENER.startswith(candidate)
         )
         if looks_like_call and len(self._buffer) < self.MAX_GATE:
@@ -648,7 +648,7 @@ class _ToolTextGate:
         return held
 
     def flush(self) -> str:
-        """The stream ended while still gated — hand back what was held."""
+        """The stream ended while still gated, hand back what was held."""
         held, self._buffer = self._buffer, ""
         self._open = True
         return held
@@ -663,9 +663,9 @@ def _balanced_json_objects(text: str) -> list[tuple[int, int, str]]:
     substring) triples in the order they open.
 
     A model's tool-call arguments are routinely themselves an object or
-    contain a list of objects — ``{"name": "create_note", "arguments":
+    contain a list of objects, ``{"name": "create_note", "arguments":
     {"title": "x", "tags": ["a", "b"]}}`` is a completely ordinary call, not
-    an edge case — so a scanner for this has to track real nesting depth
+    an edge case: so a scanner for this has to track real nesting depth
     rather than assume one flat level. Quoted braces (inside a JSON string
     value) are not counted, so a title like ``"Notes on {curly braces}"``
     can't desync the depth count.
@@ -700,7 +700,7 @@ def _balanced_json_objects(text: str) -> list[tuple[int, int, str]]:
                     break
             j += 1
         # Resume scanning right after this object (found) or right after the
-        # unmatched '{' (ran off the end unbalanced) — either way, before j+1
+        # unmatched '{' (ran off the end unbalanced), either way, before j+1
         # so an object nested immediately inside isn't scanned as if it were
         # top-level too.
         i = j + 1
@@ -710,7 +710,7 @@ def _balanced_json_objects(text: str) -> list[tuple[int, int, str]]:
 # Verbs a model reaches for when it has forgotten the tool's real name, mapped
 # to the verb this app actually uses. Reported with a screenshot of the popup
 # agent: the model emitted, as plain text, `{"name": "make_note",
-# "parameters": {...}}` — and **no note was made**. The text-call salvage
+# "parameters": {...}}`, and **no note was made**. The text-call salvage
 # below was already working; it dropped this one on the only check it could
 # not pass, `name in tool_names`, because there is no `make_note`. There is
 # `create_note`.
@@ -719,7 +719,7 @@ def _balanced_json_objects(text: str) -> list[tuple[int, int, str]]:
 # inventing a whole capability, and the two deserve different answers: the
 # first is a name to fix, the second is a refusal. So this only ever rewrites
 # the *verb* of an otherwise real tool name, and only when exactly one real
-# tool comes back — never a guess between `create_note` and `edit_note`.
+# tool comes back: never a guess between `create_note` and `edit_note`.
 _VERB_SYNONYMS = {
     "make": "create",
     "add": "create",
@@ -753,7 +753,7 @@ _VERB_SYNONYMS = {
 def resolve_tool_name(name: object, tool_names: set[str]) -> object:
     """A real tool name for what the model wrote, or what it wrote unchanged.
 
-    Only the verb is ever rewritten, and only to a single unambiguous match —
+    Only the verb is ever rewritten, and only to a single unambiguous match, 
     see `_VERB_SYNONYMS`. Anything this cannot resolve is returned untouched
     so the caller's own `name in tool_names` check still refuses it.
     """
@@ -786,10 +786,10 @@ def extract_text_tool_calls(
     calls in prose, so notes the AI 'creates' never actually get made).
 
     Handles both an explicit ``<tool_call>{...}</tool_call>`` wrapper and a
-    bare JSON object that names a known tool — nested objects and arrays in
+    bare JSON object that names a known tool, nested objects and arrays in
     ``arguments`` included, via `_balanced_json_objects` rather than a regex
     that only matched a single flat level (a call with, say, a `tags` list
-    or a nested `arguments` object silently failed to recover — arguably the
+    or a nested `arguments` object silently failed to recover, arguably the
     single most common shape a real tool call takes, and reported live as
     "the ai didn't actually call any tools"). Returns (calls, cleaned_text)
     where cleaned_text has the recovered JSON removed so it isn't shown to
@@ -827,7 +827,7 @@ def extract_text_tool_calls(
 
     # 1) explicit <tool_call>…</tool_call> blocks (Qwen/Hermes style). The
     # object inside is found by scanning from the opening tag rather than a
-    # `.*?` regex, which stops at the first `}` — the *first nested one* the
+    # `.*?` regex, which stops at the first `}`, the *first nested one* the
     # moment `arguments` is itself an object, well short of the call's own
     # close.
     for tag_match in re.finditer(r"<tool_call>\s*(.*?)\s*</tool_call>", content, re.S):
@@ -865,7 +865,7 @@ def split_thinking(text: str) -> tuple[str, str | None]:
 
     Models like DeepSeek-R1 or Qwen3 reason out loud inside think-tags;
     shown raw it looks like garbage, hidden entirely it wastes useful
-    insight — so we return both parts and let the UI decide."""
+    insight: so we return both parts and let the UI decide."""
     start = text.find("<think>")
     end = text.find("</think>")
     if start == -1 or end == -1 or end < start:
@@ -879,7 +879,7 @@ def normalise_tool_calls(raw_calls: list[dict]) -> list[dict]:
     """`[{"function": {...}}]` in either dialect -> `[{"name", "arguments"}]`.
 
     The OpenAI shape sends `arguments` as a JSON *string* where Ollama sends an
-    object — but Ollama models are inconsistent among themselves and some send
+    object: but Ollama models are inconsistent among themselves and some send
     the string too, which is why this already handled both before there was a
     second provider. One dialect fewer to add.
     """

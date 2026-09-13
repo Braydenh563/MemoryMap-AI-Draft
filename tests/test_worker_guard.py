@@ -4,7 +4,7 @@ Every singleton silently becomes per-worker: the log console would show a
 fraction of what happened, unlocking would work only sometimes, and two
 workers would each think they own the SearXNG they started. None of that
 fails loudly, which is why a second worker is refused rather than warned
-about — see `deps.refuse_multiple_workers`.
+about: see `deps.refuse_multiple_workers`.
 """
 
 from __future__ import annotations
@@ -65,7 +65,7 @@ def test_a_nonsense_worker_count_does_not_stop_the_app(monkeypatch):
 
 def test_the_check_actually_runs_when_the_app_is_built(app_state, monkeypatch):
     """The tests above call the check directly, which proves it works and not
-    that anything calls it — removing the one line from create_app left every
+    that anything calls it, removing the one line from create_app left every
     one of them green. This is the test that notices.
 
     It must also run BEFORE any singleton is built, since those are the things

@@ -5,7 +5,7 @@ is one line; what decides whether a reader sees something useful or three lines
 of debris is how forgiving the parser is about shape and how strict it is about
 the result. Small local models answer this prompt with numbered lists,
 preambles, markdown bullets and trailing commentary, and every one of those
-shapes is represented below because every one was expected, not observed —
+shapes is represented below because every one was expected, not observed, 
 which is exactly the standing caveat about fake transports.
 """
 
@@ -84,7 +84,7 @@ def test_the_question_just_asked_is_never_offered_back():
 def test_duplicates_are_collapsed():
     picks = followups.parse_followups(
         "Which of those are untagged?\n"
-        "which of those are untagged\n"  # no '?' — dropped for that reason
+        "which of those are untagged\n"  # no '?', dropped for that reason
         "Which of those are untagged?\n"
     )
     assert picks == ["Which of those are untagged?"]
@@ -174,7 +174,7 @@ def test_a_whole_list_on_one_line_is_split():
     """Told "one per line", a small model often ignores it.
 
     This used to produce a single chip reading
-    "What did I note about the budget? 2) When is the deadline?" — the list
+    "What did I note about the budget? 2) When is the deadline?", the list
     marker left sitting in the middle of the text.
     """
     picks = followups.parse_followups(

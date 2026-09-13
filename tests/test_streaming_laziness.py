@@ -4,17 +4,17 @@ Reported: "when using agent steps in the chat, the steps don't stream visually
 as they are written and are instead dumped once each section of the response is
 finished."
 
-The transport was never the problem — `chat_tools_stream` yields deltas, and
+The transport was never the problem, `chat_tools_stream` yields deltas, and
 the client's timeline renders them live. The problem was one line in the skill
 runner. Having taken the first event off the iterator to check whether the model
-supports tools at all, it put it back with `[first, *events]` — and `*` runs a
+supports tools at all, it put it back with `[first, *events]`, and `*` runs a
 generator to exhaustion *before the list exists*. So every event for a step was
 produced, buffered, and only then handed on: the step arrived complete, which is
 exactly what was described.
 
 It is worth a test rather than a comment because the broken version is the
 obvious way to write the line, produces identical output, and fails only in
-timing — which nothing else here would notice.
+timing: which nothing else here would notice.
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ from memorymap.ai import skill_runner
 class _Recorder:
     """Notes the order in which a generator is produced and consumed.
 
-    Laziness is not visible in the output — both versions emit the same events
+    Laziness is not visible in the output, both versions emit the same events
     in the same order. It is only visible in the interleaving, which is why the
     fake has to record both sides.
     """
@@ -43,9 +43,9 @@ def test_collect_does_not_run_ahead_of_its_consumer():
     """The property the fix restores: nothing is produced until it is wanted."""
     recorder = _Recorder()
     events = [{"type": "answer", "delta": "a"}, {"type": "answer", "delta": "b"}]
-    stream = skill_runner._collect(recorder.source(events), [])
+    stream = skill_runner._collect(recorder.source(events), [], {})
 
-    assert recorder.log == []  # nothing made yet — the generator is untouched
+    assert recorder.log == []  # nothing made yet: the generator is untouched
     next(stream)
     assert recorder.log == ["made:answer"]  # exactly one, not both
     next(stream)
@@ -63,7 +63,7 @@ def test_putting_the_first_event_back_stays_lazy():
     first = next(source)
     recorder.log.clear()
 
-    stream = skill_runner._collect(chain([first], source), [])
+    stream = skill_runner._collect(chain([first], source), [], {})
     assert next(stream) is first
     assert recorder.log == []  # the first came from the peek, nothing new made
     next(stream)
@@ -82,7 +82,7 @@ def test_the_broken_form_is_what_it_looks_like():
 
 
 def test_a_skill_run_streams_its_events(ai_client, fake_ollama, app_state):
-    """End to end: the run still produces the same events in the same order —
+    """End to end: the run still produces the same events in the same order, 
     laziness must not change what the user sees, only when they see it."""
     from memorymap.ai import skills
     from memorymap.core import deps
@@ -125,7 +125,7 @@ def test_the_chat_stream_is_a_plain_post_not_a_websocket(ai_client):
     Worth a guard rather than a note: the rewrite needed the request's
     SQLAlchemy Session on a second thread, had to be mounted outside the
     `locked` dependency and hand-roll its auth, and a WS handshake is not
-    subject to the same-origin policy that protects this POST — so any page
+    subject to the same-origin policy that protects this POST, so any page
     the user had open could have driven the agent. It also took ~70 tests with
     it, all reporting 405.
     """

@@ -5,7 +5,7 @@ acting on. Measured against a real 116-note notebook through a browser: **all
 twelve suggestions were pairs of notes with identical text**, scoring 1.00,
 six of them one stub note paired with six copies of itself. That is the
 measured reason a notebook can sit at 16 linked notes out of 116 with the
-auto-linker switched on the whole time — the twelve slots were full before a
+auto-linker switched on the whole time, the twelve slots were full before a
 single real connection could reach them.
 
 Two rules came out of it, and these tests hold them:
@@ -18,7 +18,7 @@ Two rules came out of it, and these tests hold them:
      the list stops being a survey of the notebook.
 
 The fake embedding service gives same-topic text the same direction, so two
-notes sharing a topic word score 1.0 — which is precisely the shape that
+notes sharing a topic word score 1.0, which is precisely the shape that
 exposed the bug.
 """
 
@@ -49,8 +49,8 @@ def test_two_notes_with_the_same_text_are_not_offered_as_a_link(client, fake_emb
 def test_notes_on_one_topic_in_different_words_are_still_offered(client, fake_embeddings):
     """The filter must not swallow the feature it is protecting.
 
-    Both notes are about shopping — the same direction to the embedding
-    service — but share almost no words, so `duplicates.similarity` scores
+    Both notes are about shopping, the same direction to the embedding
+    service: but share almost no words, so `duplicates.similarity` scores
     them far below its threshold and they remain a real suggestion.
     """
     a = client.post("/entries", json={"content": "Remember to buy oat milk"}).json()

@@ -5,8 +5,8 @@ categories and leave it at that, ignoring the rest."*
 
 That is §21's finding again, from outside a skill: a model given one broad
 instruction does the first part and reports success. The skill runner already
-solves it — each step is its own bounded turn, so "the model did step 2" is
-something the app *knows* rather than hopes for — but only for jobs somebody
+solves it: each step is its own bounded turn, so "the model did step 2" is
+something the app *knows* rather than hopes for, but only for jobs somebody
 had saved as a skill. An open-ended request got one turn and a model's good
 intentions.
 
@@ -60,7 +60,7 @@ def test_one_step_is_not_a_plan():
 
 
 def test_too_many_steps_is_refused_rather_than_truncated():
-    """Silently keeping the first six would drop the end of the job — which is
+    """Silently keeping the first six would drop the end of the job, which is
     precisely the failure this tool exists to prevent, arriving from the other
     direction."""
     with pytest.raises(tools.ToolError, match="at most"):
@@ -71,7 +71,7 @@ def test_too_many_steps_is_refused_rather_than_truncated():
 
 def test_the_models_own_numbering_is_stripped():
     """It has just been asked for an ordered list, so "1." on the front is a
-    natural thing for it to write — and the card numbers the steps itself."""
+    natural thing for it to write, and the card numbers the steps itself."""
     event = tools.validate_make_plan(
         {"goal": "Tidy up", "steps": ["1. Find untagged notes", "2) Tag them", "- Report"]}
     )
@@ -120,7 +120,7 @@ def test_the_tool_ends_the_turn():
 
 def test_running_it_directly_fails_loudly(session, app_state):
     """Returning a plausible result here would hand the model a JSON list of
-    steps, which it would summarise in the past tense — a job reported as done
+    steps, which it would summarise in the past tense, a job reported as done
     that nothing ever started (§35B by another route)."""
     with pytest.raises(tools.ToolError, match="cannot"):
         tools.TOOLS["make_plan"].handler(session, {"goal": "x", "steps": ["a", "b"]})
@@ -236,7 +236,7 @@ def test_a_step_is_told_which_step_it_is(ai_client, fake_ollama, app_state):
 
 def test_a_plan_run_cannot_start_another_run(ai_client, fake_ollama, app_state):
     """Each run brings its own fresh rounds, so nesting them means the bound on
-    a turn stops meaning anything — and the plan on screen stops describing
+    a turn stops meaning anything, and the plan on screen stops describing
     what is happening."""
     fake_ollama.tool_script = [
         [
@@ -258,7 +258,7 @@ def test_a_plan_run_cannot_start_another_run(ai_client, fake_ollama, app_state):
 
 
 def test_a_skill_may_not_declare_the_planning_tool(app_state):
-    """The same rule at save time that `RUN_STARTERS` enforces at execution —
+    """The same rule at save time that `RUN_STARTERS` enforces at execution: 
     an allowlist holding it would let a run start a run."""
     with pytest.raises(skills.SkillError, match="never have to stop"):
         skills.normalise(
@@ -272,7 +272,7 @@ def test_a_skill_may_not_declare_the_planning_tool(app_state):
 
 def test_a_hand_made_plan_is_validated_too(ai_client, app_state):
     """The client echoes back what the server produced, but nothing makes that
-    true of a request somebody wrote by hand — and the run it starts writes."""
+    true of a request somebody wrote by hand, and the run it starts writes."""
     response = ai_client.post(
         "/chat/stream",
         json={"question": "go", "plan": {"goal": "x", "steps": ["only one"]}},

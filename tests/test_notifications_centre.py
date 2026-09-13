@@ -1,13 +1,13 @@
 """Where events go once their moment has passed (§36E).
 
-MemoryMap already *produces* all of these — a reminder comes due, a background
-job finishes, a run stops early — and shows each in its own way: a system
+MemoryMap already *produces* all of these, a reminder comes due, a background
+job finishes, a run stops early, and shows each in its own way: a system
 notification, a toast, a step timeline. Every one of those is a moment, and
 missing the moment used to mean the event was gone. A long install finishing
 minutes after you stopped watching left its only record on a screen inside
 Settings that you had to know to open.
 
-This is a lint, not a behaviour test — the store is `localStorage` and the
+This is a lint, not a behaviour test, the store is `localStorage` and the
 panel is DOM, neither of which this suite can see. What it pins is the shape:
 the wiring exists, the honest caveat is on screen, and the two places that
 would silently break it (an unguarded save before the unlock, and a panel that
@@ -45,7 +45,7 @@ def test_the_centre_exists_and_is_reachable_from_every_tab():
     [
         # A reminder coming due.
         'kind: "reminder"',
-        # A background job finishing — the one whose record was hardest to find.
+        # A background job finishing, the one whose record was hardest to find.
         'kind: item.outcome === "failed" ? "error" : "task"',
         # A run that stopped early.
         'kind: "run"',
@@ -78,7 +78,7 @@ def test_the_save_waits_for_the_unlock():
     """§35E-bis found exactly this in the reminder poll: a request fired before
     the unlock is a guaranteed 401 on every cold load, and it reads in the
     server's log as an auth failure worth investigating. Reintroduced by the
-    settings mirror — the tab restore writes `activeTab` at module level — and
+    settings mirror, the tab restore writes `activeTab` at module level, and
     caught by watching the network in a browser."""
     saver = APP_JS.split("function saveUiState()", 1)[1][:900]
     assert "if (!authToken()) return;" in saver

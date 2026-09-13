@@ -14,11 +14,11 @@ from pathlib import Path
 
 INSTALL_HINT = (
     "Importing documents needs the optional markitdown package. In your "
-    "MemoryMap folder run:  pip install markitdown  — then restart the app, "
+    "MemoryMap folder run:  pip install markitdown: then restart the app, "
     "or use Settings → Optional extras."
 )
 
-#: Splits on a top-level markdown heading — the shape a converted PDF/slide
+#: Splits on a top-level markdown heading, the shape a converted PDF/slide
 #: deck comes back in when it has real structure (chapters, one heading per
 #: slide). `re.MULTILINE` so `^` matches the start of each line, not just the
 #: start of the whole document.
@@ -41,7 +41,7 @@ def convert_to_markdown(path: Path) -> str:
 
 
 def split_into_sections(text: str) -> list[str]:
-    """One note per top-level heading, when there is more than one — a slide
+    """One note per top-level heading, when there is more than one, a slide
     deck or a document with real chapters is more useful as several notes
     than one long one. A single heading, or none, stays as one note: a
     converter that emits "# Page 1", "# Page 2" for a plain letter would

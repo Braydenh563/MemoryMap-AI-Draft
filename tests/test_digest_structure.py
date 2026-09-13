@@ -1,6 +1,6 @@
 """The weekly digest knows how the week's notes sit in the notebook.
 
-The digest could see the week's notes and their categories and nothing else —
+The digest could see the week's notes and their categories and nothing else, 
 so it could tell you *what* you wrote and never notice that five of those notes
 are joined to nothing, or that everything landed in one corner. Noticing that
 is what a weekly recap is for, and it is exactly what the graph knows.
@@ -34,7 +34,7 @@ def _note(session, content, days_ago=0, private=False):
 
 
 def test_an_empty_week_says_nothing(session):
-    """No notes, no sentence — the digest already has its own "nothing was
+    """No notes, no sentence, the digest already has its own "nothing was
     saved" answer and does not need a second one bolted on."""
     _note(session, "written a month ago", days_ago=30)
     assert digest_structure_note(session) == ""
@@ -81,7 +81,7 @@ def test_last_month_s_notes_are_not_counted(session):
 
 def test_private_notes_are_not_counted(session):
     """The digest is written by a model, and a private note is not available to
-    one — counting it would put a number in the answer that the notes behind it
+    one: counting it would put a number in the answer that the notes behind it
     cannot explain."""
     _note(session, "something I would rather keep to myself", private=True)
     _note(session, "an ordinary note")
@@ -121,7 +121,7 @@ def test_digest_uses_recent_notes(ai_client, fake_ollama):
 
 def test_digest_never_sends_a_private_note_to_the_model(ai_client, fake_ollama):
     """`digest_structure_note` already excludes private notes from its own
-    sentence (see `test_private_notes_are_not_counted` above) — but the notes
+    sentence (see `test_private_notes_are_not_counted` above): but the notes
     handed to the model for the digest text itself came from a separate query
     that did not filter `is_private`, and a private note's `content` column is
     ciphertext at rest. That put encrypted bytes straight into the model's
@@ -153,7 +153,7 @@ def test_digest_real_answer_is_cacheable(ai_client):
 
 
 def test_digest_offline_is_not_cacheable(client):
-    # `client` has Ollama unavailable — the digest is the offline notice,
+    # `client` has Ollama unavailable: the digest is the offline notice,
     # which must NOT be frozen for the day.
     _save(client, "a note from this week")
     assert client.post("/insights/digest").json()["cacheable"] is False

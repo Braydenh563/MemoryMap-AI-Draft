@@ -3,7 +3,7 @@
 One password (or PIN), bcrypt-hashed in the `users` table. Unlocking
 issues a random token the frontend sends back as X-Auth-Token; tokens
 live in memory only, so restarting the app locks it again, and they
-expire on their own after a spell unused — see _SESSION_IDLE_TTL.
+expire on their own after a spell unused, see _SESSION_IDLE_TTL.
 
 Before a password has been set there is nothing to protect (the app is
 brand new and empty), so the API stays open and the frontend forces the
@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session
 
 from memorymap.core import crypto, vault
 from memorymap.core.config import ConfigManager
-from memorymap.core.deps import get_config, get_session
+from memorymap.core.deps import get_config, get_session, register_cache_reset
 from memorymap.core.database import Entry, User, Vault
 from memorymap.entry.manager import log_action
 
@@ -33,20 +33,20 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 #
 # Each token remembers when it was issued and when it was last used, because a
 # token that never expires is a second key to the notebook that nobody can take
-# back. Restarting the app clears them, which sounds like it covers this — but
+# back. Restarting the app clears them, which sounds like it covers this, but
 # the app this is built for is a desktop notebook that stays open for weeks, so
 # "until the next restart" can be a very long time. Two clocks, doing different
 # jobs:
 #
-#   idle    — you walked away. The notebook locks itself like a phone does.
-#   max age — you did not walk away, but a token issued a fortnight ago should
+#   idle: you walked away. The notebook locks itself like a phone does.
+#   max age: you did not walk away, but a token issued a fortnight ago should
 #             not still be valid; this is the ceiling that a token leaked from
 #             a proxy log or a synced browser profile eventually hits.
 #
 # There is no cookie here to mark SameSite=Strict: the token travels as an
 # X-Auth-Token header the frontend sets explicitly, so a browser never attaches
 # it to a cross-site request on its own. That is a stronger position than a
-# SameSite cookie rather than a gap in one — the risk a SameSite flag addresses
+# SameSite cookie rather than a gap in one, the risk a SameSite flag addresses
 # is the browser sending credentials unprompted, and nothing here does.
 _SESSION_IDLE_TTL = 12 * 60 * 60  # fallback default; overridden by the
 # session_idle_ttl_minutes preference (Settings → Account) once one is set
@@ -54,6 +54,13 @@ _SESSION_MAX_AGE = 7 * 24 * 60 * 60  # this old → expired, however busy
 
 # token -> [issued_at, last_used_at]
 _active_tokens: dict[str, list[float]] = {}
+# Module state, not app state, so `deps.reset_app_state()` (the thing every
+# test's `app_state` fixture calls) threw the database away and kept the
+# tokens. Any test that ran `/auth/setup` before `test_account.py` in the same
+# process left it counting four active sessions instead of one; the suite only
+# stayed green because of alphabetical order. Registered as a cache reset so
+# the store is dropped with everything else.
+register_cache_reset(_active_tokens.clear)
 
 
 def _sweep_expired(idle_ttl: int) -> None:
@@ -84,7 +91,7 @@ def _token_valid(token: str | None, idle_ttl: int) -> bool:
     return True
 
 # Brute-force throttle for unlock attempts. The app binds 127.0.0.1, but a
-# server log showed a public client address arriving through a proxy header —
+# server log showed a public client address arriving through a proxy header, 
 # people do put this behind tunnels to reach it from a phone. bcrypt makes
 # each guess slow; nothing made *many* guesses slow, and the password floor
 # is four characters, which is PIN territory. One global bucket, not per-IP:
@@ -110,7 +117,7 @@ def _refuse_if_throttled() -> None:
     if remaining > 0:
         raise HTTPException(
             status_code=429,
-            detail=f"Too many wrong passwords — try again in {int(remaining) + 1}s",
+            detail=f"Too many wrong passwords, try again in {int(remaining) + 1}s",
         )
 
 
@@ -137,10 +144,10 @@ def require_unlock(
 ) -> None:
     """Dependency that gates every data route once a password exists."""
     if _get_user(session) is None:
-        return  # setup not done yet — nothing to protect
+        return  # setup not done yet, nothing to protect
     idle_ttl = config.get_preference("session_idle_ttl_minutes", _SESSION_IDLE_TTL // 60) * 60
     if not _token_valid(x_auth_token, idle_ttl):
-        raise HTTPException(status_code=401, detail="Locked — unlock first")
+        raise HTTPException(status_code=401, detail="Locked: unlock first")
 
 
 def require_unlock_media(
@@ -152,7 +159,7 @@ def require_unlock_media(
     """Same gate as `require_unlock`, plus a query-param fallback.
 
     For the handful of routes a plain `<img src>` points at directly
-    (`/media/{filename}`, `/files/{attachment_id}`) — a declarative resource
+    (`/media/{filename}`, `/files/{attachment_id}`), a declarative resource
     load never attaches a custom header, only `fetch`/`XHR` can, so every
     such image was a silent 401 (an empty/broken `<img>`, nothing thrown,
     nothing logged) on any notebook with a password set, which is the normal
@@ -164,7 +171,7 @@ def require_unlock_media(
         return
     idle_ttl = config.get_preference("session_idle_ttl_minutes", _SESSION_IDLE_TTL // 60) * 60
     if not _token_valid(x_auth_token or token, idle_ttl):
-        raise HTTPException(status_code=401, detail="Locked — unlock first")
+        raise HTTPException(status_code=401, detail="Locked: unlock first")
 
 
 def _issue_token() -> str:
@@ -199,7 +206,7 @@ def unlock(body: PasswordBody, session: Session = Depends(get_session)) -> dict:
     _refuse_if_throttled()
     user = _get_user(session)
     if user is None:
-        raise HTTPException(status_code=400, detail="No password set yet — use setup")
+        raise HTTPException(status_code=400, detail="No password set yet, use setup")
     if not bcrypt.checkpw(body.password.encode(), user.password_hash.encode()):
         _unlock_failed()
         raise HTTPException(status_code=401, detail="Wrong password")
@@ -268,7 +275,7 @@ def change_password(
     """
     user = _get_user(session)
     if user is None:
-        raise HTTPException(status_code=400, detail="No password set yet — use setup")
+        raise HTTPException(status_code=400, detail="No password set yet, use setup")
     if not bcrypt.checkpw(body.current_password.encode(), user.password_hash.encode()):
         raise HTTPException(status_code=401, detail="That isn't your current password")
     if body.current_password == body.new_password:
@@ -312,14 +319,14 @@ def rotate_vault_key(
 ) -> dict:
     """Re-key the vault: a fresh DEK, with every private note moved onto it.
 
-    `/change-password` deliberately does NOT do this — see crypto.py's own
+    `/change-password` deliberately does NOT do this, see crypto.py's own
     design note. It only re-wraps the DEK (32 bytes); the DEK ITSELF never
     changes, on purpose, so an ordinary password change can't touch a single
     note. That is the right trade for that endpoint, but it leaves exactly
     one long-lived secret in this app that nothing ever rotates: the key
     that actually encrypts every private note. If an old wrapped-DEK ever
-    got out — a stolen backup made before a password change, a copied
-    database file — it still opens *today's* notes, because they are still
+    got out: a stolen backup made before a password change, a copied
+    database file: it still opens *today's* notes, because they are still
     under the very same DEK the backup was wrapped around. This endpoint is
     the fix for that: generate a new DEK and move every note onto it, so an
     old exposure stops mattering.
@@ -329,14 +336,14 @@ def rotate_vault_key(
     with the OLD key and re-encrypted with the NEW one entirely in memory
     first; nothing is written to the database, and the in-memory key is not
     swapped, until every note round-trips cleanly under the new key AND the
-    vault row's re-wrap succeeds — all inside the one commit below. A
+    vault row's re-wrap succeeds: all inside the one commit below. A
     DecryptionError, a crash, or any other exception before that commit
     leaves the OLD key and OLD ciphertext exactly as they were; there is no
     step where a note is only half-migrated.
     """
     user = _get_user(session)
     if user is None:
-        raise HTTPException(status_code=400, detail="No password set yet — use setup")
+        raise HTTPException(status_code=400, detail="No password set yet, use setup")
     if not bcrypt.checkpw(body.current_password.encode(), user.password_hash.encode()):
         raise HTTPException(status_code=401, detail="That isn't your current password")
 
@@ -349,7 +356,7 @@ def rotate_vault_key(
             detail="Unlock the app before rotating the encryption key.",
         )
 
-    # "all": every note in every workspace, deleted or not — a note this
+    # "all": every note in every workspace, deleted or not, a note this
     # misses would be left encrypted under the OLD key forever, because the
     # vault row (and therefore the only wrapped copy of that key) is about to
     # point at the NEW one instead.
@@ -363,7 +370,7 @@ def rotate_vault_key(
     new_key = crypto.new_dek()
 
     # Decrypt with the OLD key and re-encrypt with the NEW one, entirely in
-    # memory, before a single ORM object is touched — so a DecryptionError
+    # memory, before a single ORM object is touched, so a DecryptionError
     # partway through leaves nothing staged that would need undoing.
     try:
         rewritten = [
@@ -375,7 +382,7 @@ def rotate_vault_key(
         raise HTTPException(
             status_code=500,
             detail="Couldn't read one of your private notes with the current "
-            "key — nothing was changed.",
+            "key: nothing was changed.",
         )
 
     # Verify the round trip against the REAL ciphertext just produced, not a
@@ -384,7 +391,7 @@ def rotate_vault_key(
         if crypto.decrypt(new_key, new_ciphertext) != plaintext:
             raise HTTPException(
                 status_code=500,
-                detail="Re-encryption didn't verify — nothing was changed.",
+                detail="Re-encryption didn't verify: nothing was changed.",
             )
 
     for entry, _plaintext, new_ciphertext in rewritten:

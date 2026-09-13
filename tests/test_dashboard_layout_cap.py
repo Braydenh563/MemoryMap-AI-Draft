@@ -6,7 +6,7 @@ carries *every* widget, visible and hidden, and its cap was `max_length=20`
 while the dashboard had grown to twenty-five. Every save of a full layout came
 back `422`, `saveDashLayout` swallowed the failure by design (a dead preference
 must not break the page), and the visible symptom was that reordering a widget
-simply did nothing — reported as the widget manager needing a redesign rather
+simply did nothing: reported as the widget manager needing a redesign rather
 than as a broken request.
 
 The catalogue lives in JavaScript and the cap lives in Python, so nothing else
@@ -26,8 +26,8 @@ DASHBOARD_JS = Path(__file__).resolve().parents[1] / "frontend" / "dashboard.js"
 def widget_names() -> list[str]:
     """The keys of `DASH_WIDGETS`, read out of the source.
 
-    Parsed rather than imported for the obvious reason — there is no
-    JavaScript runtime in this suite — and the pattern is deliberately narrow:
+    Parsed rather than imported for the obvious reason, there is no
+    JavaScript runtime in this suite, and the pattern is deliberately narrow:
     a key at one level of indentation whose value opens with `{ title:`. A
     looser match would count object literals nested inside a renderer and
     report a catalogue larger than the one that exists.

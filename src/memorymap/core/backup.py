@@ -2,7 +2,7 @@
 
 Copies are made with SQLite's own backup API, so a backup taken while
 the app is writing is still consistent. Backups live in
-data/backups/ — next to the database, never in the cloud — and old
+data/backups/, next to the database, never in the cloud, and old
 ones are pruned so the folder can't grow forever.
 """
 
@@ -14,7 +14,7 @@ from pathlib import Path
 
 KEEP_BACKUPS = 10
 # "Scheduled": a fresh backup is taken at startup when the newest one is
-# older than this — boring, reliable, and works for an app that isn't
+# older than this: boring, reliable, and works for an app that isn't
 # running 24/7.
 BACKUP_EVERY_HOURS = 24
 
@@ -46,9 +46,9 @@ def backup_now(db_path: Path, data_dir: Path, keep: int = KEEP_BACKUPS) -> Path:
     """Take one consistent snapshot and prune old ones.
 
     `keep` was a hard-coded 10 until asked about directly ("backup retention
-    should be a setting — backups accumulate with no cap the user can see or
-    change"). The prune itself was never the gap — this function has called
-    `_prune` on every backup since it was written — only that the number was
+    should be a setting, backups accumulate with no cap the user can see or
+    change"). The prune itself was never the gap, this function has called
+    `_prune` on every backup since it was written, only that the number was
     fixed in code instead of being a preference. `keep` defaults to the old
     constant so a caller that never heard of the preference keeps behaving
     exactly as before.

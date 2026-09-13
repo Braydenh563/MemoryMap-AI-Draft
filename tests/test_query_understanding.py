@@ -3,12 +3,12 @@
 Three changes, all asked for directly, all in the same path:
 
 1. *"Take into account the time of notes as well. So if I ask 'what notes have
-   I saved in the last week', it will return the right ones."* — a time phrase
+   I saved in the last week', it will return the right ones."*, a time phrase
    is a **filter**, not search terms. Before this it was neither: it diluted
    the embedding, dragged the keyword search off course, and the range it meant
    was never applied.
 2. *"Use the embedding model to improve the semantic search… streamline the
-   user's query into something that returns better results."* — the question's
+   user's query into something that returns better results."*, the question's
    scaffolding comes off before anything is embedded. For a three-word subject
    "what did I write about" is most of the sentence, so the vector describes
    the phrasing rather than the subject.
@@ -39,7 +39,7 @@ def _today_is_fixed(monkeypatch):
     "in the last week", but `search_manager.retrieve` reads the *real* clock
     through `_user_today`. So these passed only while the wall clock happened
     to sit within a week of `TODAY`, and started failing on their own six days
-    after they were written — with a diff that pointed at the search code and
+    after they were written, with a diff that pointed at the search code and
     an empty result set that looked exactly like a retrieval bug. A dated test
     has to own its own date.
     """
@@ -188,7 +188,7 @@ def test_a_reply_is_pulled_in_with_the_note_it_answers(session, fake_embeddings)
 
 
 def test_expansion_can_be_switched_off(session, fake_embeddings):
-    """Callers that want the matches alone — a duplicate check, where a linked
+    """Callers that want the matches alone, a duplicate check, where a linked
     note is not a candidate for anything."""
     match = _note(session, "the beans need netting")
     linked = _note(session, "netting is in the shed")
@@ -222,7 +222,7 @@ def test_a_dated_question_that_finds_nothing_answers_nothing(session, fake_embed
     The original half still holds and is still tested: asking about the allotment
     *last week*, with nothing about the allotment that week, must not fall back
     to notes from any time at all labelled `recent`. What was wrong was the
-    remedy — it fell back to *everything in the window*, which drops the subject
+    remedy: it fell back to *everything in the window*, which drops the subject
     instead of the date and is the same mistake facing the other way.
 
     Reported, in the shape that makes it obvious:
@@ -235,7 +235,7 @@ def test_a_dated_question_that_finds_nothing_answers_nothing(session, fake_embed
     from the notebook claiming that gym routine is a joke it has on file.
 
     Two constraints, and the answer to satisfying neither is not to satisfy the
-    less specific one — it is to say so. `dated` with nothing in it is a true
+    less specific one: it is to say so. `dated` with nothing in it is a true
     answer the caller renders as "nothing matching 'last week'", naming the
     phrase so the next thing to try is obvious.
     """
@@ -246,9 +246,9 @@ def test_a_dated_question_that_finds_nothing_answers_nothing(session, fake_embed
         session, "what did I write about the allotment last week", fake_embeddings
     )
     assert mode == "dated"
-    # Not the out-of-window match — the date was a real constraint.
+    # Not the out-of-window match, the date was a real constraint.
     assert all(e.id != 90 for e in found)
-    # And not the in-window non-match either — so was the subject.
+    # And not the in-window non-match either, so was the subject.
     assert this_week.id not in {e.id for e in found}
     assert found == []
 
@@ -257,7 +257,7 @@ def test_a_question_only_about_time_still_lists_its_window(session, fake_embeddi
     """The fallback above is narrowed, not removed.
 
     With no subject there is only one constraint, so listing the window is not
-    dropping anything — it is the whole question, answered.
+    dropping anything: it is the whole question, answered.
     """
     _note(session, "the allotment, everything about it", days_ago=90)
     this_week = _note(session, "written this week", days_ago=2)
@@ -276,7 +276,7 @@ def test_recently_is_a_lean_not_a_boundary(session, fake_embeddings):
     fortnight that "recently" resolves to, and a recent note about something
     else. Filtering on the vague word answered a question about jokes with the
     gym routine. Nobody who says "recently" has a boundary in mind, and any
-    number this codebase picks for it is wrong for somebody by a day — so it
+    number this codebase picks for it is wrong for somebody by a day, so it
     orders the matches and does not remove them.
 
     "Last week" is a different kind of word and keeps its teeth: see
@@ -307,7 +307,7 @@ def test_the_subject_survives_a_time_phrase_in_the_middle(session, fake_embeddin
 
     "jokes I have saved recently" left `jokes I have saved` once the time phrase
     was lifted out, and "jokes from the last month" left a dangling `jokes from`
-    — both then reached the keyword search as several required terms and the
+    - both then reached the keyword search as several required terms and the
     embedder as a sentence about saving rather than about jokes.
     """
     from memorymap.search import query as query_understanding

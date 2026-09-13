@@ -1,5 +1,5 @@
 """Voice capture endpoints: the browser records, the server
-transcribes with local Whisper — nothing is sent anywhere.
+transcribes with local Whisper, nothing is sent anywhere.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ from memorymap.entry.manager import log_action
 router = APIRouter(prefix="/voice", tags=["voice"])
 
 MAX_AUDIO_BYTES = 25 * 1024 * 1024  # a spoken note, not a podcast
-# A meeting or a lecture runs far longer than a spoken note — 300MB covers
+# A meeting or a lecture runs far longer than a spoken note, 300MB covers
 # several hours of compressed voice audio (WebM/Opus at typical browser
 # bitrates), well past what CPU-based Whisper could transcribe in a sitting
 # anyway, so this is a sanity ceiling, not the expected common case.
@@ -50,7 +50,7 @@ def _transcribe_upload(
 
     suffix = Path(file.filename or "clip.webm").suffix[:8] or ".webm"
     # delete=True keeps the file open under this handle for the `with` block's
-    # whole lifetime — harmless on POSIX, where a second handle can still open
+    # whole lifetime: harmless on POSIX, where a second handle can still open
     # the same path, but Windows locks a file exclusively while any handle on
     # it is open. faster-whisper's own reader opening that path for decoding
     # then failed with "Permission denied" on every Windows machine, which
@@ -89,7 +89,7 @@ def transcribe(file: UploadFile, session: Session = Depends(get_session)) -> dic
 
 @router.post("/transcribe-meeting")
 def transcribe_meeting(file: UploadFile, session: Session = Depends(get_session)) -> dict:
-    """The longer-recording sibling of `/transcribe` (§17 — meeting notes):
+    """The longer-recording sibling of `/transcribe` (§17: meeting notes):
     same engine, same response shape, just a ceiling sized for a meeting or a
     lecture rather than a spoken note."""
     return _transcribe_upload(

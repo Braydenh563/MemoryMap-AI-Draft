@@ -1,11 +1,11 @@
 """Find and merge near-duplicate notes.
 
-Finding them needs no AI — it's word overlap on normalised text, so it works
+Finding them needs no AI, it's word overlap on normalised text, so it works
 with nothing running and the score is explainable rather than a black box.
 
 Merging is where judgement helps, so it comes two ways. With the AI running it
 can write one note that keeps everything the originals said. Without it, the
-notes are joined with a separator, which is worse prose but loses nothing —
+notes are joined with a separator, which is worse prose but loses nothing, 
 and losing nothing is the only property that actually matters here.
 """
 
@@ -77,7 +77,7 @@ def list_duplicates(
 
 @router.post("/preview")
 def preview_merge(body: PreviewBody, session: Session = Depends(get_session)) -> dict:
-    """What the merged note would say — shown before anything is changed."""
+    """What the merged note would say, shown before anything is changed."""
     entries = _load(session, body.ids)
     fallback = _joined(entries)
     ollama = deps.get_ollama()
@@ -100,7 +100,7 @@ def merge_notes(body: MergeBody, session: Session = Depends(get_session)) -> dic
 
     The originals go to the recycle bin rather than being destroyed. A merge is
     the one operation here that can silently lose writing, so it has to be
-    undoable — the bin is that undo.
+    undoable: the bin is that undo.
     """
     entries = _load(session, body.ids)
     preview = preview_merge(PreviewBody(ids=body.ids, use_ai=body.use_ai), session)

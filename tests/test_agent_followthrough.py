@@ -6,7 +6,7 @@ under-delivers on what it is asked.
 **"Implement those suggestions" got the suggestions again.** Reported directly:
 *"I asked it for suggestions in modifying my categories but when I asked it to
 implement the suggestions, it just gave me suggestions again and no tool
-calls."* The cause was exact and is pinned below — `focus_for` read the current
+calls."* The cause was exact and is pinned below, `focus_for` read the current
 message and nothing else, and "implement those suggestions" contains no
 category word, so the turn was offered the reading core and **no category tools
 at all**. The model was not being lazy; it had nothing to call.
@@ -54,7 +54,7 @@ def test_a_follow_through_is_offered_the_tools_the_last_turn_was_about(message):
     assert offered is None or "rename_category" in offered, (
         f"{message!r} after a conversation about categories was offered "
         "no way to change one, so the only reply it can give is the same "
-        "suggestions again — which is exactly what was reported."
+        "suggestions again: which is exactly what was reported."
     )
 
 

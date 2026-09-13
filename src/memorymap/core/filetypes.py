@@ -6,15 +6,15 @@ detection and ctrl + / commenting or equivalent as well as indenting and
 dedenting", the type should be changeable, and a new document should be
 creatable "of any filetype though it should default to md".
 
-So a document now carries a `file_type` — a bare extension without the dot
-("md", "py", "sql") — and this module is the one place that says what each one
+So a document now carries a `file_type`, a bare extension without the dot
+("md", "py", "sql"), and this module is the one place that says what each one
 means. It is deliberately small data rather than a class hierarchy: everything
 that varies by type is a label, a comment token, an indent width and whether
 the preview button does anything.
 
 **The frontend needs this same table**, because indenting and comment-toggling
 happen on keystrokes and cannot wait for a round trip. It is served by
-`GET /documents/file-types` rather than duplicated into `app.js` — a second
+`GET /documents/file-types` rather than duplicated into `app.js`, a second
 copy is a second thing to update, and the failure mode of them disagreeing is
 Ctrl+/ inserting the wrong comment marker into someone's file.
 """
@@ -24,7 +24,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 #: What a document is when nobody has said otherwise. Markdown, by direct
-#: instruction — this app is a notebook first, and every document that existed
+#: instruction: this app is a notebook first, and every document that existed
 #: before file types did is one of these.
 DEFAULT_FILE_TYPE = "md"
 
@@ -34,8 +34,8 @@ class FileType:
     """One selectable document type.
 
     `line_comment` is what Ctrl+/ inserts. `block_comment` is the fallback for
-    the handful of types that have no line-comment form at all — HTML, XML,
-    CSS — where toggling a line means wrapping it rather than prefixing it,
+    the handful of types that have no line-comment form at all, HTML, XML,
+    CSS: where toggling a line means wrapping it rather than prefixing it,
     and a prefix would produce a file that no longer parses.
 
     `indent` is a string, not a width: a tab-indented language wants a real
@@ -55,7 +55,7 @@ class FileType:
 
 #: Ordered as it is offered in the picker: the notebook's own formats first,
 #: then prose, then the code types alphabetically by label. Not sorted
-#: programmatically — "the ones you will actually pick" is not alphabetical,
+#: programmatically: "the ones you will actually pick" is not alphabetical,
 #: and a picker whose first entry is ".c" for a note-taking app is wrong.
 FILE_TYPES: tuple[FileType, ...] = (
     FileType("md", "Markdown", line_comment="", block_comment=("<!-- ", " -->"), previewable=True),
@@ -116,7 +116,7 @@ ALIASES = {
 def normalise(value: str | None) -> str:
     """Any spelling of a type into a known one, or the default.
 
-    Accepts a bare extension, one with a leading dot, or a whole filename —
+    Accepts a bare extension, one with a leading dot, or a whole filename, 
     all three turn up: the picker sends "py", an import sends ".py", and a
     filename is what a drag-and-drop has. Unknown types fall back to the
     default rather than raising, because the alternative is a document that
@@ -137,7 +137,7 @@ def get(value: str | None) -> FileType:
 
 
 def as_dicts() -> list[dict]:
-    """The whole table, for the frontend. Order preserved — the picker's
+    """The whole table, for the frontend. Order preserved: the picker's
     order is a decision (see FILE_TYPES) and sorting it client-side would
     quietly undo it."""
     return [

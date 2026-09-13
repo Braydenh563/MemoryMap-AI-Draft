@@ -1,16 +1,16 @@
 """Claiming work that never happened (roadmap §35B).
 
 This is the failure that costs the most trust, because the user cannot see it.
-A reported turn wrote a confident numbered list — "**Linked Notes:** We
+A reported turn wrote a confident numbered list, "**Linked Notes:** We
 connected your main Social Skills Guide (ID 12) to your pickup lines (ID 13)…
-We unlinked the Gym Routine Overview (ID 28)" — having called `related_notes`
+We unlinked the Gym Routine Overview (ID 28)", having called `related_notes`
 once and no write tool at all.
 
 The net that exists for exactly this did not fire, and it missed twice over:
 
 1. it knew only the first person singular ("I linked"), and the model wrote
    "we" throughout;
-2. it asked one question of the whole turn — "did *any* write run?" — so a
+2. it asked one question of the whole turn, "did *any* write run?", so a
    turn that legitimately linked one pair and then claimed four more would
    have passed on the strength of the one that was real.
 
@@ -53,7 +53,7 @@ def _events(client, question, **body):
 
 
 def test_the_reported_answer_is_caught():
-    """The turn that motivated all of this. `related_notes` ran — a read — so
+    """The turn that motivated all of this. `related_notes` ran, a read, so
     no write tool is in `ran`."""
     claims = agent.unsupported_claims(REPORTED_ANSWER, set())
     assert "linked notes" in claims
@@ -103,7 +103,7 @@ def test_one_real_write_does_not_cover_a_different_claim():
 
 def test_linking_does_not_excuse_unlinking():
     """Two tools, two claims. `link_notes` running says nothing about whether
-    `unlink_notes` did — and `\\b` alone would let "linked" match inside
+    `unlink_notes` did: and `\\b` alone would let "linked" match inside
     "unlinked", which is why the matchers are ordered."""
     claims = agent.unsupported_claims(
         "I linked 12 to 13, and I unlinked 28.", {"link_notes"}
@@ -115,7 +115,7 @@ def test_linking_does_not_excuse_unlinking():
 
 
 def test_a_verb_carried_on_from_an_earlier_subject_still_counts():
-    """"I linked 12 to 13 and tagged them both" — models write this constantly,
+    """"I linked 12 to 13 and tagged them both", models write this constantly,
     and requiring an explicit "I"/"we" in front of every verb missed the whole
     second half of the sentence."""
     claims = agent.unsupported_claims("I linked 12 to 13, and tagged them both.", set())
@@ -136,7 +136,7 @@ def test_a_suggestion_is_not_a_claim():
     than the warning is worth."""
     for answer in (
         "We could link these two notes if you like.",
-        "I can tag them for you — shall I?",
+        "I can tag them for you, shall I?",
         "We should probably delete the duplicate.",
         "I will link them once you confirm.",
     ):

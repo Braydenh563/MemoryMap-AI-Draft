@@ -12,13 +12,13 @@
 
 .msg {
   /* **A measure, not a percentage of whatever the window is.**
-     82% of a 1440px pane is a 1000px line of body text — roughly 140
+     82% of a 1440px pane is a 1000px line of body text, roughly 140
      characters, where readable prose is 60–80. Every chat interface the user
      named (Gemini, Perplexity, Odysseus) caps the column instead, and it is
      the single biggest reason a wide window makes this app's transcript look
      unlike theirs. The percentage stays as the *narrow*-window rule: `min`
      takes whichever is smaller, so nothing changes below ~1000px. */
-  max-width: min(82%, 54rem);
+  max-width: min(82%, var(--measure));
   /* The per-message action row floats over this bubble's corner (see
      `.msg-actions`), so the bubble has to be its containing block. */
   position: relative;
@@ -31,7 +31,7 @@
 }
 
 /* Nothing inside a bubble may be wider than the bubble. Blocks that genuinely
-   need the room (code, tables) scroll inside themselves — set alongside their
+   need the room (code, tables) scroll inside themselves, set alongside their
    own `overflow-x: auto`, which cannot take effect without this cap. */
 .msg>*,
 .bubble-answer>* {
@@ -40,8 +40,8 @@
 
 .msg.user {
   align-self: flex-end;
-  background: var(--accent);
-  color: #fff;
+  background: var(--accent-surface);
+  color: var(--on-accent);
   border-bottom-right-radius: 4px;
 }
 
@@ -74,7 +74,7 @@
    flickers rather than one that builds, and it makes a sequence that *is*
    ordered in time read as a list that was there all along.
 
-   A short rise-and-fade on the element's own entry animation costs nothing —
+   A short rise-and-fade on the element's own entry animation costs nothing, 
    it runs once per row, never repeats, and needs no JavaScript at all, so a
    row added by a callback nobody has thought about yet gets it too. 4px of
    travel rather than a slide: enough for the eye to register the direction
@@ -100,7 +100,7 @@
 /* The one exception the rule above must make for itself: the pending
    indicator is *moved* to the end of the column on every delta
    (`clearPending`), and Blink restarts an entry animation in a re-inserted
-   subtree — so it would fade in again on every token, which is the flicker
+   subtree: so it would fade in again on every token, which is the flicker
    this is here to remove. */
 .agent-steps > .progress-line {
   animation: none;
@@ -156,7 +156,7 @@
   margin-top: 0.4rem;
 }
 
-/* Role label above each bubble — makes the thread readable at a glance. */
+/* Role label above each bubble, makes the thread readable at a glance. */
 .msg-role {
   font-size: 0.7rem;
   font-weight: 700;
@@ -169,7 +169,7 @@
 .msg.user .msg-role {
   color: rgba(255, 255, 255, 0.85);
   /* The right-hand alignment is `flex-direction: row-reverse` in
-     03-dashboard-widgets.css, not `text-align` — this is a flex container,
+     03-dashboard-widgets.css, not `text-align`, this is a flex container,
      and `text-align: right` sat here doing nothing while the label rendered
      on the left. Kept as a pointer rather than deleted silently: the wrong
      property looks so obviously correct that it is worth naming once. */
@@ -184,7 +184,7 @@
    These float over the bubble's top corner rather than sitting in its flow,
    and the reason is a reported one: *"the suggested responses appear after
    the popup buttons which leaves a gap visually when not hovering over the
-   chat bubble."* Exactly right — the row was `opacity: 0`, which hides a
+   chat bubble."* Exactly right: the row was `opacity: 0`, which hides a
    thing while it keeps every pixel of its layout, so a finished answer had a
    2rem band of nothing between its metadata line and its "Next:" chips that
    only made sense while the cursor was inside the bubble.
@@ -200,7 +200,7 @@
    in the user bubbles"*, with a screenshot of two buttons printed across the
    word "YOU" and a third clipped off the edge. Over-the-corner only works
    while the bubble is wider than the row and the corner is empty, and a
-   two-character message ("hi") is neither — the row was wider than the whole
+   two-character message ("hi") is neither: the row was wider than the whole
    bubble.
 
    Below and outside is the arrangement every chat client settled on for the
@@ -212,7 +212,7 @@
   position: absolute;
   top: calc(100% + 2px);
   /* **Exempt from the bubble's own width cap.** `.msg > *` sets
-     `max-width: 100%` so nothing inside a bubble can be wider than it — right
+     `max-width: 100%` so nothing inside a bubble can be wider than it, right
      for content, wrong for a row that is deliberately out of flow. On a
      two-character message that cap squeezed three buttons into the width of
      the word "hi" and clipped the third, which is the other half of what the
@@ -227,7 +227,7 @@
   background: var(--panel);
   box-shadow: var(--shadow-sm);
   opacity: 0;
-  /* Not clickable while invisible — an unhovered bubble must not swallow a
+  /* Not clickable while invisible, an unhovered bubble must not swallow a
      click aimed at the text under this. */
   pointer-events: none;
   transition: opacity var(--motion-fast) ease;
@@ -252,7 +252,7 @@
 /* **The 2px the pointer could not cross.**
    Reported: *"the popup buttons below chat bubbles disappear when I try to use
    them and take my mouse off the bubble."* The row is a DOM child of the
-   bubble, so hovering it keeps `.msg:hover` true — but it is positioned at
+   bubble, so hovering it keeps `.msg:hover` true: but it is positioned at
    `calc(100% + 2px)`, and that 2px band belongs to neither box. Crossing it
    the pointer is over nothing, the rule above stops matching, and the row goes
    to `opacity: 0; pointer-events: none` before the pointer arrives.
@@ -304,7 +304,7 @@
 
 
 
-/* Touch devices can't hover — keep the actions visible there. */
+/* Touch devices can't hover: keep the actions visible there. */
 @media (hover: none) {
   .msg-actions {
     opacity: 1;
@@ -314,7 +314,7 @@
 
 /* Welcome shown in an empty chat so the page isn't a blank rectangle. */
 /* The welcome. 34ch was a 326px column of centred text in a 1062px pane
-   (measured), which reads as a leftover rather than as an invitation — and the
+   (measured), which reads as a leftover rather than as an invitation, and the
    starter chips it belongs with were 550px below it, jammed against the
    composer. Wider, and the chips live inside it now (see `chatEmptyState`). */
 .chat-empty {
@@ -342,7 +342,7 @@
   gap: var(--space-2);
 }
 
-/* "Try asking:" is a heading for the chips, not the first item in the row —
+/* "Try asking:" is a heading for the chips, not the first item in the row, 
    in the row it took half a line and pushed one chip onto its own. */
 .chat-empty #chat-suggest > .muted {
   flex: 1 0 100%;
@@ -372,8 +372,10 @@
   font-size: 0.92rem;
 }
 
-#conversation-list li:hover {
-  background: var(--accent-soft);
+@media (hover: hover) {
+  #conversation-list li:hover {
+    background: var(--accent-soft);
+  }
 }
 
 #conversation-list li.active-conv {
@@ -446,8 +448,8 @@
 }
 
 #reminder-presets {
-  gap: 0.4rem;
-  /* Was 0.1rem top — visually zero, so the quick-set row read as touching
+  gap: var(--space-3);
+  /* Was 0.1rem top: visually zero, so the quick-set row read as touching
      the form above it. Reported live. */
   margin: var(--space-5) 0 var(--space-4);
   flex-wrap: wrap;
@@ -489,7 +491,7 @@
   padding-right: var(--space-8);
 }
 
-/* A number of backups to keep, not a name or a path — this app's other
+/* A number of backups to keep, not a name or a path, this app's other
    `.small-select` uses are all <select>/text and can take the full 16rem;
    a bare number reads as a stray box that wide. */
 .backup-retention-input {
@@ -507,7 +509,7 @@
 
 /* `!important` on a utility class, deliberately. `.hidden` is one class, so
    any other single class that sets `display` and happens to be written later
-   in this file beats it — which is how the hidden "🤖 Agent mode" checkbox
+   in this file beats it, which is how the hidden "🤖 Agent mode" checkbox
    came back on screen next to the Chat/Agent buttons that replaced it
    (`.tools-toggle` is three lines below and sets `display: inline-flex`).
    The one-off `#id.hidden` / `.class.hidden` rules further down this file are
@@ -520,11 +522,11 @@
 
 /* **And the HTML attribute needs exactly the same protection.** Reported with
    a screenshot: "there's an empty bubble in the header next to the model
-   name??" — that was `#chat-context`, a `<button hidden>` measuring 24.8x20px
+   name??", that was `#chat-context`, a `<button hidden>` measuring 24.8x20px
    with `display: flex`. The attribute's `display: none` comes from the *user
    agent* stylesheet, and any author rule beats it: this app sets `display:
    flex` on every `button`, so **every `<button hidden>` in the app was
-   visible** — an empty pill, an empty ghost button, nothing to click and
+   visible**: an empty pill, an empty ghost button, nothing to click and
    nothing to explain it. A `<span hidden>` beside it in the same row was
    correctly invisible, which is why this survived: it only ever showed on the
    handful of elements that are buttons.
@@ -569,7 +571,7 @@
 }
 
 /* A <details> tool chip (arguments/result available to inspect) instead of
-   a plain <div> — reset the native <summary> marker/cursor so it still
+   a plain <div>, reset the native <summary> marker/cursor so it still
    reads as the same chip, and keep the disclosed body from ever forcing
    the chat column wider than it is. */
 details.tool-chip {
@@ -587,7 +589,7 @@ details.tool-chip > summary {
   min-width: 0;
 }
 
-/* Its own affordance, since the native marker is removed above — without one
+/* Its own affordance, since the native marker is removed above, without one
    there is nothing to say the chip can be opened at all. */
 details.tool-chip > summary::after {
   content: "▸";
@@ -614,13 +616,13 @@ details.tool-chip > summary::-webkit-details-marker {
 
 /* **Scoped to `[open]`, and that is the whole bug.**
    Reported: a tool chip rendered as its label immediately followed by the
-   entire raw result — `Listed your tags{'tags': [{'name': ...}], ...}` — with
+   entire raw result, `Listed your tags{'tags': [{'name': ...}], ...}`, with
    no way to collapse it.
 
    The disclosure was built correctly and the server was sending the right
    fields; this rule was overriding the collapse. A closed <details> hides its
    non-summary children through the *user-agent* stylesheet, and an author
-   rule beats a UA rule at any specificity — so a bare `display: flex` here
+   rule beats a UA rule at any specificity, so a bare `display: flex` here
    forced the body visible whether the chip was open or not. The chip was
    never actually closed; it only looked like a label with a payload stuck to
    it, because that is what a permanently-open disclosure reads as.
@@ -668,8 +670,8 @@ details.tool-chip[open] > .tool-chip-body {
 }
 
 /* --- the agent's run, as a timeline -------------------------------------------
-   A turn used to render into three fixed slots — all the thinking, then all the
-   tool chips, then the answer — which threw away the order the work actually
+   A turn used to render into three fixed slots, all the thinking, then all the
+   tool chips, then the answer, which threw away the order the work actually
    happened in. Steps are now appended as they arrive, and a rail down the left
    ties them into one visible sequence: thought → searched → thought again →
    answered. */
@@ -735,7 +737,7 @@ details.tool-chip[open] > .tool-chip-body {
 }
 
 /* The disclosure triangle is drawn by the browser *outside* the summary's
-   content box, which is precisely where the rail's gutter — and its circles —
+   content box, which is precisely where the rail's gutter, and its circles , 
    are. `list-style-position: outside` put the marker straight on top of the
    node every time (user-reported: "the arrow clashes with the chain
    circles"). Padding the gutter wider can't fix it, because the marker moves
@@ -786,7 +788,7 @@ details.tool-chip[open] > .tool-chip-body {
 
 /* A skill's plan, drawn before anything runs. It borrows the thinking step's
    folding and marker so the timeline reads as one thing, but keeps the
-   accent — this is what the run is *for*, not an aside. */
+   accent: this is what the run is *for*, not an aside. */
 .agent-step.step-plan {
   font-size: 0.85rem;
   margin: 0;
@@ -875,7 +877,7 @@ details.tool-chip[open] > .tool-chip-body {
   content: " ⏸";
 }
 
-/* Completed by the run this one is resuming — ticked, but quietly, because it
+/* Completed by the run this one is resuming, ticked, but quietly, because it
    is not this run's work. */
 .plan-step-earlier {
   opacity: 0.65;
@@ -937,7 +939,7 @@ details.tool-chip[open] > .tool-chip-body {
 }
 
 /* Manual (step-through) mode's pause card. The text input needs its own
-   width rule — the global input[type="text"] rule is `width: 100%`, which
+   width rule: the global input[type="text"] rule is `width: 100%`, which
    inside this flex row would otherwise fight the button and label for space
    the way an unconstrained flex item with `min-width: auto` always does
    (DESIGN.md's own control-strip trap). */
@@ -960,6 +962,25 @@ details.tool-chip[open] > .tool-chip-body {
   font-weight: 600;
   font-size: 0.85rem;
   margin-bottom: 0.4rem;
+}
+
+/* **What the app checked after the run** (Brief 13). One line, the same size
+   as a change row, sitting under them: it is a fact about the run, not a
+   badge, so it reads as a sentence and carries its number. `--ok` and
+   `--error` are the two the rest of the app already uses for "this held" and
+   "this did not". */
+.skill-verify {
+  font-size: 0.85rem;
+  padding: var(--space-2) 0;
+  color: var(--muted);
+}
+
+.skill-verify-ok {
+  color: var(--ok);
+}
+
+.skill-verify-not-ok {
+  color: var(--error);
 }
 
 .skill-change {
@@ -1000,7 +1021,7 @@ details.tool-chip[open] > .tool-chip-body {
   min-height: 1.2rem;
 }
 
-/* A pending placeholder has no meaning of its own — no node on the rail. */
+/* A pending placeholder has no meaning of its own, no node on the rail. */
 .agent-steps>.step-pending::before {
   display: none;
 }
@@ -1024,7 +1045,7 @@ details.tool-chip[open] > .tool-chip-body {
   display: block;
   cursor: grab;
   /* d3-zoom/d3-drag (v7) already listen for pointer events, so pan, pinch
-     and node-drag work on touch out of the box — but only once the browser
+     and node-drag work on touch out of the box, but only once the browser
      stops treating the same gesture as page-scroll/pinch-zoom first. */
   touch-action: none;
 }
@@ -1033,33 +1054,128 @@ details.tool-chip[open] > .tool-chip-body {
   cursor: grabbing;
 }
 
-/* Fullscreen mode for the graph map */
+/* The Canvas 2D renderer's surface (GRAPH_PLAN.md §5 Phase 1). Same box, same
+   gestures, same cursors as the SVG surface above it in this file, one of the
+   two is `.hidden` at any moment, so they can share the rules that describe
+   "the map fills the card and swallows the scroll gesture".
+
+   The pixel buffer is sized in JS (device pixel ratio times the CSS box) and
+   the CSS box is set here, which is the split a canvas needs: give a canvas
+   only one of the two and it either renders blurry or stretches. */
+.graph-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: grab;
+  /* d3-zoom and d3-drag listen for pointer events, so pan, pinch and node-drag
+     work on touch: but only once the browser stops treating the same gesture
+     as page-scroll or pinch-zoom first. */
+  touch-action: none;
+}
+
+.graph-canvas:active {
+  cursor: grabbing;
+}
+
+/* Fullscreen mode for the graph map.
+
+   **Reported directly: square corners.** This used to be `top/left: 0`,
+   `100vw x 100vh` and `border-radius: 0 !important`, a true edge-to-edge
+   overlay, which is the one shape in this app that has no corner radius at
+   all, so entering full screen visibly changed the *kind* of surface the map
+   was sitting on. Inset by one spacing step and given the card radius
+   instead: it is still the whole screen for every practical purpose, and it
+   still reads as this app's own panel rather than a browser window that
+   happens to be showing a graph. `#graph-card`'s own `overflow` (set with it
+   and kept by the `overflow-y` rule below) is what clips the map to the
+   rounded corner, so nothing inside has to know about the radius. */
 .graph-fullscreen {
   position: fixed !important;
-  top: 0;
-  left: 0;
-  width: 100vw !important;
-  height: 100vh !important;
+  inset: var(--space-3);
+  width: auto !important;
+  height: auto !important;
   z-index: 1000;
   margin: 0 !important;
-  border-radius: 0 !important;
+  /* **No radius of its own.** This used to force `--radius-lg`, which is the
+     0.8 step *below* the card's own `--radius`, so entering full screen
+     changed the corner as well as the size: the card was 14px and its full
+     screen 11.2px. `.card` already sets the user's corner setting and that is
+     the one to keep (00-tokens-shell.css says why the two sizes exist), so
+     this rule now sets no radius at all. */
   background: var(--bg) !important;
   display: flex;
   flex-direction: column;
+  /* **Measured, and the reason full screen was not full screen.** `.card`
+     resolves `align-self: center` from the page's own column, and for an
+     absolutely positioned box the self-alignment properties apply inside the
+     inset-modified containing block: with `height: auto` that means shrink to
+     content and centre, not stretch. Measured on this card at 1440x900: top
+     and bottom both computed 8px and the box still came out 1424x371 at
+     y=264, content height, vertically centred, with the map 192px of it.
+     Stretching it explicitly is what makes `inset` mean what it reads as. */
+  align-self: stretch;
+  justify-self: stretch;
+}
+
+/* **The app chrome goes with it** (INBOX 29: "the top bar stays"). The card
+   above covers the screen, inset by one spacing step and fixed, but the top
+   bar (which holds the tab bar and the space switcher) and the status bar
+   were still laid out behind it and still visible through that inset, so
+   full screen read as a card resting on the app rather than as the map
+   taking the screen. `display: none` rather than `visibility: hidden`: the
+   body is a flex column and leaving two rows reserved would keep exactly the
+   gap this is here to close.
+
+   The sidebars are on the list for completeness rather than for the Graph:
+   the tab has none, but they are the app's other piece of chrome and a
+   split view is the direction the plans point in. Everything comes back on
+   the same class, which is removed by the button, by Escape, and by leaving
+   the tab (app.js). */
+/* **Full screen keeps the glass, when there is something to see through it.**
+   INBOX 88: "fullscreen graph has no glass opacity", with a screenshot of a
+   flat panel. The rule above forces `--bg`, an opaque page colour, so the
+   card's translucency had nothing behind it: entering full screen turned the
+   app's own surface into a plain rectangle.
+
+   Only with the animated background on, and only when glass is not switched
+   off, which is the same pair of conditions `.card` itself carries
+   (00-tokens-shell.css) after the owner's note that seeing the background
+   animations through the glass "is partly why I wanted the glass aesthetic
+   in the first place". With the art off there is nothing behind the card but
+   the page colour, and blurring a flat colour costs a compositor pass to
+   produce the same pixels. `.graph-fullscreen` is on the glass-off list in
+   03-dashboard-widgets.css for Performance mode, so this cannot bring the
+   blur back on a machine that asked for none. */
+:root[data-bg-art="on"]:not([data-glass="off"]) .graph-fullscreen {
+  background: var(--card) !important;
+  backdrop-filter: var(--glass-filter);
+  -webkit-backdrop-filter: var(--glass-filter);
+}
+
+body.graph-fullscreen-on > #top-bar,
+body.graph-fullscreen-on > #status-bar,
+body.graph-fullscreen-on .sidebar-panel {
+  display: none;
 }
 
 /* Reported: the Options panel's suggested-links list "runs off the bottom
    without scrolling" in full screen. `#graph-card`'s own `overflow: hidden`
-   (above, for a different bug — see its own comment) still applies here,
+   (above, for a different bug, see its own comment) still applies here,
    since an ID beats a class on specificity regardless of source order; a
    plain `.graph-fullscreen { overflow-y: auto }` would have lost that fight
    silently. `#graph-card.graph-fullscreen` (an id *and* a class) wins
    outright. Measured live before fixing: toolbar + open Options + 15
    suggestions was 1061px of content in a 498px fullscreen window, and
-   `overflow: hidden` meant everything past that line wasn't scrolled away —
+   `overflow: hidden` meant everything past that line wasn't scrolled away: 
    it was gone. */
 #graph-card.graph-fullscreen {
-  overflow-y: auto;
+  /* Clipped, not scrolled. The bug this rule was written for (the suggested
+     links "running off the bottom without scrolling" in full screen) belonged
+     to a card that stacked its panels above the map; the panels float over the
+     map now and each one caps itself and scrolls inside (`.graph-overlay`, at
+     the end of this file), so a scrolling card would only ever be the map's
+     own corner sliding out from under the card's radius. */
+  overflow: hidden;
 }
 
 .graph-fullscreen #graph-box {
@@ -1092,26 +1208,21 @@ details.tool-chip[open] > .tool-chip-body {
   place-content: center;
   font-size: 1rem;
   line-height: 1;
-  border: 1px solid var(--glass-border);
+  /* Plain inside the `.graph-zoom` strip, which carries the fill, edge and
+     shadow for all of them (03-dashboard-widgets.css). Each button used to
+     draw its own glass edge, shadow and 12px blur, three blurred layers
+     stacked inside a fourth. */
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
-  background: var(--glass-bg);
+  background: transparent;
   color: var(--ink);
   cursor: pointer;
-  box-shadow: var(--shadow-sm);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  box-shadow: none;
   transition: background var(--motion-fast) ease, transform var(--motion-fast) ease;
 }
 
-:root[data-glass="off"] .graph-zoom-btn {
-  background: var(--card);
-  border: 1px solid var(--border);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
-
 .graph-zoom-btn:hover {
-  background: var(--accent-soft);
+  background: var(--ghost-btn-bg-hover);
 }
 
 .graph-zoom-btn:active {
@@ -1127,7 +1238,7 @@ details.tool-chip[open] > .tool-chip-body {
   padding: 1rem;
 }
 
-/* The id rule above outranks the generic .hidden helper — restate it. */
+/* The id rule above outranks the generic .hidden helper, restate it. */
 #graph-empty.hidden {
   display: none;
 }
@@ -1149,8 +1260,22 @@ details.tool-chip[open] > .tool-chip-body {
   stroke: var(--accent);
 }
 
+/* Membership of a mind map (MINDMAP_PLAN.md §5 item 13). Dotted and quiet on
+   purpose: "this note is a node on that map" is a weaker statement than a link
+   the user drew between two notes, and a map with twenty notes on it
+   contributes twenty edges from one point, at full weight that is a starburst
+   that swamps everything the graph is actually about. Dotted rather than
+   dashed so it does not read as a thread edge, and long-dashed so it does not
+   read as a similarity line. */
+.graph-edge-map {
+  stroke-dasharray: 1 4;
+  stroke-width: 1.3;
+  stroke: var(--accent);
+  stroke-opacity: 0.7;
+}
+
 /* A manual link is clickable (opens the management panel); a documented
-   reason gets its own visible weight, not just a hover tooltip — asked for
+   reason gets its own visible weight, not just a hover tooltip, asked for
    directly ("a visual way to see the reasons for each connection"). */
 .graph-edge-manageable {
   cursor: pointer;
@@ -1162,7 +1287,7 @@ details.tool-chip[open] > .tool-chip-body {
   stroke-width: 2.2;
 }
 
-/* A `contradicts` link — the one type that means "these are at odds" rather
+/* A `contradicts` link: the one type that means "these are at odds" rather
    than "these belong together", produced by the Tensions review. Dashed as
    well as coloured on purpose: colour alone would not separate it for anyone
    who cannot tell it from the accent, and on a dense graph the dash is the
@@ -1175,7 +1300,7 @@ details.tool-chip[open] > .tool-chip-body {
   stroke-dasharray: 6 4;
 }
 
-/* The invisible, much wider click target laid over each thin visible edge —
+/* The invisible, much wider click target laid over each thin visible edge, 
    reported directly: "the links are hard to click on". `stroke: transparent`
    still hit-tests (unlike `fill: none` with no stroke at all), and only a
    link edge (`.graph-edge-manageable`) actually wants a pointer/click; every
@@ -1195,15 +1320,15 @@ details.tool-chip[open] > .tool-chip-body {
 
 /* `.confirm-card`'s width (min(30rem, 92vw), ~480px) is sized for its usual
    two buttons (Cancel/Confirm). This panel carries four (Save, Generate,
-   Remove link, Close) whose combined content width alone is ~482px — wider
-   than the card, before its own padding — so `.confirm-actions`'
+   Remove link, Close) whose combined content width alone is ~482px, wider
+   than the card, before its own padding, so `.confirm-actions`'
    `justify-content: flex-end` had nothing to push against and the row
    rendered edge-to-edge with no breathing room, reported as "still visually
    broken." Matches `.dash-widgets-dialog`'s own wider override for the same
    reason: more content than the generic dialog width was sized for.
    `.confirm-card.graph-link-panel`, not `.graph-link-panel` alone: same
    specificity as `.confirm-card` itself means source order would decide the
-   winner, and `.confirm-card` is defined later in this file — a plain single
+   winner, and `.confirm-card` is defined later in this file, a plain single
    class here would have lost silently (confirmed live: it did, until this
    compound selector replaced it). */
 .confirm-card.graph-link-panel {
@@ -1212,7 +1337,7 @@ details.tool-chip[open] > .tool-chip-body {
 
 /* Asked for directly: centre this panel's four buttons (Save, Generate,
    Remove link, Close) rather than the generic `.confirm-actions` row's
-   `justify-content: flex-end` — right-alignment reads as "OK/Cancel in the
+   `justify-content: flex-end`, right-alignment reads as "OK/Cancel in the
    corner" with two buttons, but with four it just pins the row to one edge
    with the same amount of visual weight either way. */
 .graph-link-panel .confirm-actions {
@@ -1224,7 +1349,7 @@ details.tool-chip[open] > .tool-chip-body {
   resize: vertical;
 }
 
-/* Two note titles stacked, not run together as one sentence — see the
+/* Two note titles stacked, not run together as one sentence, see the
    comment where this is built in app.js for the report that caused it. */
 .graph-link-panel-title {
   display: flex;
@@ -1244,7 +1369,7 @@ button.ghost.danger {
 /* --- a traced path (§9) -----------------------------------------------------
    Drawn as its own layer rather than by highlighting the edges underneath.
    Two reasons, and the second is the one that decided it: a step may be a
-   *shared tag*, which the map draws no line for at all — so highlighting
+   *shared tag*, which the map draws no line for at all, so highlighting
    existing edges would show a chain with gaps in it, in exactly the places the
    explanation is most needed. And a path is a different kind of thing from a
    connection: it is an answer to a question, so it sits on top. */
@@ -1260,7 +1385,7 @@ button.ghost.danger {
 /* --- more than one route between the same two notes ------------------------
    Asked for directly: "allow for multiple paths to be displayed if they
    exist." All of them are drawn at once, because "is that the only way these
-   connect?" is a question about the picture — switching one at a time would
+   connect?" is a question about the picture, switching one at a time would
    never show you that there are three.
 
    Three colours, from tokens that already exist and already mean "a different
@@ -1281,7 +1406,7 @@ button.ghost.danger {
 }
 
 /* The routes you are not reading. Thin and faint enough to read as context
-   rather than as the answer, and still visible enough to be worth drawing —
+   rather than as the answer, and still visible enough to be worth drawing, 
    a route at 0.2 opacity is a route nobody notices, which is the same as not
    drawing it. Dashed as well as faint, because colour alone is not a signal
    everyone can use. */
@@ -1292,8 +1417,8 @@ button.ghost.danger {
 }
 
 /* The switcher above the path. `role="tablist"` in the markup, so these are
-   tabs and read as a choice between views of one thing — which is what they
-   are — rather than as six unrelated buttons. */
+   tabs and read as a choice between views of one thing, which is what they
+   are: rather than as six unrelated buttons. */
 .graph-trace-routes {
   display: flex;
   flex-wrap: wrap;
@@ -1316,9 +1441,11 @@ button.ghost.danger {
   cursor: pointer;
 }
 
-.graph-trace-route-chip:hover {
-  border-color: var(--accent);
-  color: var(--ink);
+@media (hover: hover) {
+  .graph-trace-route-chip:hover {
+    border-color: var(--accent);
+    color: var(--ink);
+  }
 }
 
 /* The selected route. A border and the full ink colour rather than a fill:
@@ -1332,7 +1459,7 @@ button.ghost.danger {
 
 /* The dot that ties a chip to its line on the map. `currentColor` would make
    every swatch the chip's own text colour, so each one names its route's
-   stroke explicitly — the same three tokens, in the same order. */
+   stroke explicitly: the same three tokens, in the same order. */
 .graph-trace-route-swatch {
   width: 0.6rem;
   height: 0.6rem;
@@ -1378,11 +1505,18 @@ button.ghost.danger {
 
 .graph-node {
   cursor: pointer;
+  /* Declared here so the token has a live value of its own, and overridden per
+     node from graph.js with `(r + 6) / r`, this node's own factor from its core
+     out to its halo. 1.4 is the middle of the range that produces (1.30 on the
+     largest node, 1.67 on the smallest), so a node drawn before the script has
+     set its property still grows by about the right amount rather than by a
+     number chosen to look harmless. */
+  --graph-hover-scale: 1.4;
 }
 
 /* During an active pan, native `:hover` matching still fires per node the
    cursor sweeps under even though the JS-level highlight is muted
-   (`graphIsPanning` in graph.js) — that hit-testing and the CSS transitions
+   (`graphIsPanning` in graph.js): that hit-testing and the CSS transitions
    it triggers were a measured, real cost. Node drags never set this class
    (their own mousedown stops propagation before the pan gesture starts). */
 .graph-panning .graph-node {
@@ -1394,17 +1528,68 @@ button.ghost.danger {
   opacity: 0.18;
   filter: blur(2px);
   pointer-events: none;
-  transition: opacity var(--motion-fast) ease;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: opacity var(--motion-fast) ease, transform var(--motion-base) cubic-bezier(0.2, 0.8, 0.3, 1);
 }
 
+/* --- hovering a node --------------------------------------------------------
+   Asked for: "can you make graph nodes temporarily expand to fill their glow
+   bubble when I hover over them or smth?? I feel like the graph nodes could
+   look slightly nicer, cooler, more professional and more modern. visually".
+
+   The dot grows out to the halo it already had, and the halo steps back a
+   little further and brightens, so the glow is still a glow around it rather
+   than something the dot has eaten. `--graph-hover-scale` is set per node in
+   graph.js: it is `(r + 6) / r`, the exact factor from this node's core to its
+   own halo, and it has to be per node because the two radii differ by a fixed
+   6px while `r` itself ranges from 9 to 20 (graph.js says this at length).
+   The fallback covers a node drawn before that property was set.
+
+   `transform-box: fill-box` is what makes `transform-origin: center` mean the
+   circle's own centre. Without it the origin is the SVG viewport's, and every
+   node would fly across the canvas instead of growing in place. */
 .graph-node:hover .graph-halo {
-  opacity: 0.4;
+  opacity: 0.45;
+  transform: scale(1.22);
+}
+
+.graph-node:hover .graph-core,
+.graph-node:hover .graph-orb-shine {
+  transform: scale(var(--graph-hover-scale));
+}
+
+.graph-node .graph-orb-shine {
+  pointer-events: none;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform var(--motion-base) cubic-bezier(0.2, 0.8, 0.3, 1);
 }
 
 .graph-node .graph-core {
   stroke: var(--card);
   stroke-width: 2px;
-  transition: r var(--motion-fast) ease, stroke-width var(--motion-fast) ease, filter var(--motion-fast) ease;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition:
+    r var(--motion-fast) ease,
+    stroke-width var(--motion-fast) ease,
+    filter var(--motion-fast) ease,
+    transform var(--motion-base) cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+/* The growth is the whole point of the effect, so it is not removed under this
+   preference, only the animating of it: the node is simply already large while
+   the pointer is on it. Taking the scale away as well would leave a reader who
+   has asked for less motion with no hover feedback on the graph at all beyond
+   a slightly brighter halo. */
+@media (prefers-reduced-motion: reduce) {
+
+  .graph-node .graph-halo,
+  .graph-node .graph-core,
+  .graph-node .graph-orb-shine {
+    transition: none;
+  }
 }
 
 .graph-node .graph-core.graph-pinned {
@@ -1417,7 +1602,7 @@ button.ghost.danger {
   stroke-width: 2.5px;
 }
 
-/* An entity (ROADMAP.md item 34) isn't a note — a dashed ring says so at a
+/* An entity (ROADMAP.md item 34) isn't a note: a dashed ring says so at a
    glance without needing a second SVG shape for one node kind. Not a
    pointer cursor either: clicking one is a no-op (app.js), there's no note
    underneath it to open. */
@@ -1460,7 +1645,7 @@ button.ghost.danger {
 /* Labels-off mode: hide labels until a node is hovered/spotlit.
    The label layer is a sibling of the node-circle layer (graph.js appends
    both directly under <canvas>, one node per <g> in each), never a
-   descendant of .graph-node — so this can't be scoped through .graph-node
+   descendant of .graph-node: so this can't be scoped through .graph-node
    the way the focus ring on the circle itself is. graphLabelSelection in
    graph.js mirrors the "graph-focus" class from the hovered node onto the
    matching label's own <g> instead. */
@@ -1473,9 +1658,11 @@ button.ghost.danger {
   opacity: 1;
 }
 
+/* The stats line is a chip in the dock's identity zone now (GRAPH_PLAN.md
+   Phase 2), not a paragraph between the controls and the map, so it carries
+   no margins of its own and takes the dock's own type scale. */
 .graph-stats {
-  margin: 0.25rem 0 0.4rem;
-  font-size: 0.8rem;
+  margin: 0;
 }
 
 .graph-node text,
@@ -1531,7 +1718,7 @@ button.ghost.danger {
   background: var(--modal-bg);
 }
 
-/* These id rules outrank the generic .hidden helper — restate it. */
+/* These id rules outrank the generic .hidden helper, restate it. */
 #palette-overlay.hidden,
 #sketch-overlay.hidden {
   display: none;
@@ -1593,12 +1780,12 @@ button.ghost.danger {
   justify-content: center;
   align-items: center;
   padding: 1rem;
-  /* Matching `.modal-overlay`'s own tier, not a fixed number chosen here —
+  /* Matching `.modal-overlay`'s own tier, not a fixed number chosen here, 
      see that rule's comment (01-forms-settings.css) for why it moved from
      55 to 1010 (clearing #agent-monitor's z-index: 1000), and why
      #sketch-overlay/#improve-overlay have to move with it: `closeSketch`
      asks a confirm dialog before discarding a drawing, and that dialog is a
-     `.modal-overlay` appended to `<body>` — if only `.modal-overlay` moved,
+     `.modal-overlay` appended to `<body>`, if only `.modal-overlay` moved,
      this overlay's now-lower 55 would sit *above* that confirm dialog again,
      the exact "close button just darkens the background" bug this comment
      used to describe fixing the first time. `#improve-overlay` shares the
@@ -1629,14 +1816,16 @@ button.ghost.danger {
   inset: 0;
   width: 100%;
   height: 100%;
-  border-radius: var(--radius-lg);
+  /* The same concentric corner the toolbar above and the foot below take, so
+     the three surfaces stacked inside this card agree (INBOX 123). */
+  border-radius: var(--radius-inner);
   touch-action: none;
   /* the pen, not the page, gets touch moves */
 }
 
 #sketch-bg-canvas {
   border: 1px solid var(--border);
-  /* Cosmetic only — `sketchDrawBackground()` always paints an opaque fill
+  /* Cosmetic only: `sketchDrawBackground()` always paints an opaque fill
      into the canvas's own pixels first, which fully covers this. The real
      background colour control lives there, not here. */
   background: #fff;
@@ -1646,36 +1835,136 @@ button.ghost.danger {
   cursor: crosshair;
 }
 
-/* --- Quick Sketch Floating Toolbar --- */
-.sketch-docked-toolbar {
+/* --- the sketch pad's tool palette -------------------------------------------
+   One bar, six labelled sections, one hairline between them: the grammar
+   `.wb-tool-section` states (06-timeline-dialogs.css) and DESIGN.md's recipe
+   index now names for any palette of many tools. This file holds only what is
+   particular to *this* palette, its surface, its control height and its two
+   controls that exist nowhere else (a colour dot, a size readout).
+
+   Why a surface at all, when the whiteboard's rail floats over a canvas
+   without one: this bar sits inside a dialog card, against the card's own
+   fill, so without a panel of its own the sections would be a run of icons
+   loose on the card. `--radius-inner` is the concentric corner for a shape
+   inside a `.card` (DESIGN.md, "Concentric corners"), and the canvas and the
+   foot below take the same one, which is the "the bottom section below the
+   canvas needs fixing ui wise" half of INBOX 123: three stacked surfaces that
+   disagreed about their corners now share one. */
+.sketch-toolbar {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
+  flex-wrap: wrap;
+  /* No column gap: the hairline on `.wb-tool-section + .wb-tool-section` owns
+     the space between groups, and a gap on top of it would double the inset
+     on one side of every rule. The row gap is what a wrap below 900px lands
+     on. Written as the two long-hands rather than as `gap: var(--space-3) 0`,
+     which `test_ui_signatures.py` reads as a fourth distinct row gap in a
+     family that is allowed three: the pair says the same thing and says it
+     about the axis it is actually about. */
+  row-gap: var(--space-3);
+  column-gap: 0;
   background: var(--card);
   border: 1px solid var(--border);
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-lg);
+  /* `--space-2` at the ends rather than `--space-4`: the first and last groups
+     already carry their own inset (a section centres its content inside a box
+     the leftover space has grown), so the bar's own side padding is only the
+     distance from the panel edge to a group's box, and at Spacious density
+     `--space-4` was 29px of the 796 this bar gets at its tightest. The pair is
+     one the row family already uses rather than a twelfth distinct padding,
+     which `test_ui_signatures.py` counts and refuses. */
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-inner);
   margin-bottom: var(--space-4);
-  box-shadow: var(--shadow-sm);
 }
 
-.sketch-docked-toolbar .seg {
-  margin: 0;
+/* **The groups share out whatever the bar has, so the bar is never wider than
+   its contents.** Reported on the second pass: "if the bar is wider than its
+   contents, either the contents should distribute across it or the bar should
+   shrink to fit them", against a screenshot with 140px empty at the right of
+   the first row and one group alone on a second. `flex-grow` on the sections
+   spends the leftover on the gaps between them rather than leaving it in a
+   heap at the end, and because each section centres its own content
+   (`.wb-tool-section` is a centred column), the hairline at a section's left
+   edge ends up the same distance from the group before it as from the group
+   after it. At a tight setting the sections shrink back to their contents and
+   the hairlines hug, which is exactly what they should do there. */
+.sketch-toolbar .wb-tool-section {
+  flex: 1 0 auto;
+}
+
+/* The hairline between two groups keeps its line and gives back its margin.
+   The shared recipe writes the separator as `padding-left: var(--space-2)` plus
+   `margin-left: var(--space-1)`, which is right for the whiteboard's rail,
+   where nothing grows and the margin is the only space there is. Here the
+   leftover width is already being shared out between the sections above, so
+   the fixed margin is 39px of four gaps that the grow is about to add back
+   anyway, and it was 39px this bar did not have at its tightest setting. */
+.sketch-toolbar .wb-tool-section + .wb-tool-section {
+  padding-left: var(--space-1);
+  margin-left: 0;
+}
+
+/* One height for every row of controls, whatever is in it: a section holding
+   colour dots and a section holding buttons would otherwise put their labels
+   at two different heights and give the bar the ragged top edge the report
+   calls clumped. */
+.sketch-toolbar .wb-tool-section-row {
+  min-height: var(--target-min);
+  /* The tightest step on the scale between two buttons of one group: measured
+     at `--space-2` the six sections came to 873px inside an 829px card and the
+     last of them wrapped, which is the same defect in a better shape. The
+     hairline between sections is what separates them; inside one, the buttons
+     belong together and read better close. */
+  gap: var(--space-1);
+}
+
+/* **`--target-min`, and the reason is that this card is capped in pixels while
+   everything in it is sized in rem.** The bar was reported wrapping a second
+   time, and it did not reproduce at 1440 or 1024: `sketchbar.js` sweeps the
+   appearance settings as well as the widths and found it at once. The card is
+   `min(900px, 96vw)`, so Large text (an 18px root, 1.125x every rem in here)
+   or Spacious density (a 1.35x spacing scale) buys the contents width the card
+   never gets: 21 controls measured 938px of content inside a 796px bar at both
+   settings together, against 821 inside 831 at the defaults, which is why one
+   machine saw a tidy bar and another saw Paper on a second row.
+
+   So the controls come down a step, to the app's own hit-target floor, which
+   is the same 1.75rem the `.seg` cells in every other strip are and which
+   steps up to 2.75rem under 820px where the pointer is a finger. Thirteen
+   controls at half a rem less is 117px at Large text, and that plus the
+   merged Canvas group is what buys the bar its slack at every setting. */
+.sketch-toolbar .ghost.icon-button {
+  width: var(--target-min);
+  height: var(--target-min);
+  padding: 0;
+  border-radius: var(--radius-md);
+}
+
+/* The selected tool is the filled recipe, as every other selected toggle in
+   the app (DESIGN.md, the button ramp: "a selected toggle is the filled
+   recipe: on is the accent"). The whiteboard's rail says exactly this for
+   `.wb-tool-group button.active`; this bar is not inside one, so it says it
+   again for itself rather than widening that selector to the whole app. */
+.sketch-toolbar .ghost.icon-button.active {
+  background: var(--accent-surface);
+  border-color: transparent;
+  color: var(--on-accent);
+  box-shadow: none;
 }
 
 .sketch-colors {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: 0 var(--space-2);
-  border-left: 1px solid var(--border);
-  border-right: 1px solid var(--border);
 }
 
+/* A swatch is not a hit target the size of a button: seven of them in a row is
+   the widest group in the bar, and at 1.25rem with `--space-2` between them it
+   was 205px of the 796 available at the tightest setting. A rem down and on
+   the tightest gap, it is the same seven colours in 138. */
 .sketch-color {
-  width: 1.25rem;
-  height: 1.25rem;
-  border-radius: 50%;
+  width: 1rem;
+  height: 1rem;
+  border-radius: var(--radius-pill);
   border: 2px solid transparent;
   cursor: pointer;
   padding: 0;
@@ -1686,22 +1975,113 @@ button.ghost.danger {
   transform: scale(1.2);
 }
 
+/* The selected dot keeps its ring and loses the scale: a transform moved the
+   dot off the row's own baseline by a pixel, which is what made the colour
+   section measure as two rows in `popupdialogs.js` while looking like one. */
 .sketch-color.active {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent-soft);
-  transform: scale(1.1);
 }
 
-.sketch-size-wrapper {
-  display: flex;
+/* The slider and its number as one control, wearing the tonal recipe so that
+   it is the same object as the buttons either side of it rather than a track
+   with a digit loose beside it (DESIGN.md, the button ramp: fill, hairline, no
+   shadow). */
+.sketch-size-field {
+  display: inline-flex;
   align-items: center;
-  padding: 0 var(--space-2);
+  gap: var(--space-1);
+  height: var(--target-min);
+  padding-inline: var(--space-2);
+  background: var(--ghost-btn-bg);
+  border: 1px solid var(--ghost-btn-border);
+  border-radius: var(--radius-md);
+}
+
+/* One height across the foot, the same the toolbar's controls take: the
+   caption box came out at 40px beside a 42px Save, which is the kind of 2px
+   disagreement that reads as carelessness without ever being noticed. */
+.sketch-foot #sketch-caption,
+.sketch-foot #sketch-save {
+  height: var(--control-h-lg);
+  padding-block: 0;
 }
 
 .sketch-slider {
   accent-color: var(--accent);
-  width: 80px;
+  width: 3rem;
   cursor: pointer;
+}
+
+/* The number the slider is on. `--text-sm` and tabular figures so the row does
+   not move by a pixel as the value goes from 9 to 10. */
+/* The number the slider is on, in `--ink` rather than `--muted`: it is the
+   value of the control, not a hint about it, and inside the field's own fill
+   the muted step measured 3.73:1 in dark against the 4.5 it needs. */
+.sketch-size-value {
+  min-width: 1rem;
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--ink);
+}
+
+/* A paper colour is usually #ffffff on a light panel, so the swatch needs a
+   ring that survives its own value: the same reason the whiteboard's board
+   background picker carries one (06-timeline-dialogs.css). */
+.sketch-bg-swatch {
+  width: var(--target-min);
+  height: var(--target-min);
+  padding: 0;
+  border: 1px solid var(--muted);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+/* The bar under the canvas: the toolbar's surface, its inset and its corner,
+   so the three stacked surfaces of this dialog read as one object. The
+   caption takes the width, the status sits where a result belongs, and the
+   dialog's one filled control ends the row. */
+.sketch-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  background: var(--card);
+  border: 1px solid var(--border);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-inner);
+  margin-top: var(--space-4);
+}
+
+.sketch-foot #sketch-caption {
+  flex: 1 1 12rem;
+  min-width: 0;
+  margin: 0;
+}
+
+.sketch-foot #sketch-status {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sketch-foot #sketch-save {
+  flex: 0 0 auto;
+}
+
+/* Below the width this palette fits in, the sections wrap as sections (they
+   are `flex-shrink: 0`), and the foot becomes two rows rather than squeezing
+   a caption box to nothing. */
+@media (max-width: 720px) {
+  .sketch-foot {
+    flex-wrap: wrap;
+  }
+
+  .sketch-foot #sketch-caption {
+    flex: 1 1 100%;
+  }
 }
 
 /* --- Wave F: mobile / PWA responsive pass --------------------------------------- */
@@ -1727,6 +2107,25 @@ button.ghost.danger {
 
   .dash-toolbar {
     padding: var(--space-2) 0;
+    /* **The two buttons take a row of their own rather than a strip of the
+       next screen.** Measured at 390x844: `#dash-edit` ran from x=296 to
+       x=397 in a 390px viewport, so "Edit layout" was cut off at the right
+       edge. It had been *reachable* only because the header was overflowing
+       too and the whole page scrolled sideways with it; fixing the header
+       (05-sidebars-themes.css, "the phone header fits inside the phone")
+       left this one clipped with nowhere to scroll, which is how it turned
+       up in an errors.js run as "off-screen: button#dash-edit".
+
+       Wrapping rather than shrinking: `.dash-toolbar-actions` is `0 0 auto`
+       around two labelled buttons, and a label that truncates to "Edit lay…"
+       is not a smaller version of the control, it is a worse one. */
+    flex-wrap: wrap;
+  }
+
+  /* With the row wrapped, the actions land on the second line; `auto` keeps
+     them against the right edge, under the label rather than beside it. */
+  .dash-toolbar-actions {
+    margin-left: auto;
   }
 
   .row {
@@ -1754,7 +2153,7 @@ button.ghost.danger {
 /* --- Wave H: voice + read-aloud -------------------------------------------------- */
 /* The ring is deliberately NOT --warn-soft (rgba(245,189,79,0.25) on light,
    an even fainter 0.16 on dark): that token is pre-mixed pale enough to
-   nearly vanish against a near-white modal card — confirmed by screenshot,
+   nearly vanish against a near-white modal card, confirmed by screenshot,
    not just computed style, after "no animation" was reported on the meeting
    recorder button sitting on exactly that background. --ring is mixed from
    the solid --warn at capture time so it stays visible on any card tone. */
@@ -1778,7 +2177,7 @@ button.recording {
 }
 
 /* Once startMicLevelMeter() has real signal, the bar meter below carries the
-   level instead — the ring settles to a fixed outline so it isn't fighting
+   level instead: the ring settles to a fixed outline so it isn't fighting
    the bars for the viewer's attention with a second, redundant animation. */
 button.recording.live-level {
   animation: none;
@@ -1786,7 +2185,7 @@ button.recording.live-level {
   transition: box-shadow var(--motion-fast) ease-out;
 }
 
-/* A small scrolling level meter, Voice-Memos-style — startMicLevelMeter()
+/* A small scrolling level meter, Voice-Memos-style, startMicLevelMeter()
    in app.js appends this into the button and redraws --bar-scale on each
    bar at ~15fps. Sits inline after the icon/label, so a labelled button
    (meeting notes' "Stop") gains a trailing meter and an icon-only one grows
@@ -1814,14 +2213,14 @@ button.recording.live-level {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  /* The scrolling bars are motion, same as the pulse they replaced — fall
+  /* The scrolling bars are motion, same as the pulse they replaced, fall
      back to a fixed ring instead, same as reduced-motion already did. */
   .mic-bars {
     display: none;
   }
 
-  /* Covers the gap before .live-level's own fixed-ring rule below applies —
-     between "recording" and real mic signal arriving — which pulse-rec's
+  /* Covers the gap before .live-level's own fixed-ring rule below applies, 
+     between "recording" and real mic signal arriving, which pulse-rec's
      keyframe animation never respected on its own. */
   button.recording:not(.live-level) {
     animation: none;
@@ -1841,11 +2240,44 @@ button.recording.live-level {
    picks up the user's voice", because at button size it does not read as one.
    A recording with no visible response to your voice is indistinguishable
    from a broken microphone. */
+/* **The recorder, as one surface.** The Record button, the clock and the wave
+   were three siblings of the dialog with nothing joining them: the clock read
+   as a stray number and the wave, appearing on the first frame of a recording,
+   pushed the transcript box 5rem down the card. One panel on the inner radius,
+   the same the sketch pad's toolbar and foot take, so the two dialogs the
+   owner reported together now hold their controls the same way. */
+.meeting-stage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-inner);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+/* One height for both rows of this dialog, and it is the app's control height
+   rather than either of the two the browser was handing out: a filled button
+   carries `border: none` and a `.ghost` a 1px edge, so "Save as a note" stood
+   40px beside three 42px neighbours in the same row. Pinned here rather than
+   in the base button recipe, which would move every filled button in the app
+   by 2px, see the report for the measurement. */
+#meeting-controls > button,
+#meeting-save-row > button {
+  height: var(--control-h-lg);
+  padding-block: 0;
+}
+
+/* Away from the primary, not fourth in a run of four. */
+.meeting-discard {
+  margin-left: auto;
+}
+
 .meeting-wave {
   display: block;
   width: 100%;
   height: 5rem;
-  margin: var(--space-4) 0;
   border-radius: var(--radius-md);
   background: var(--inner);
   border: 1px solid var(--border);
@@ -1862,10 +2294,15 @@ button.recording.live-level {
   margin-bottom: var(--space-4);
 }
 
+/* The clock is a readout, so it is drawn as one: `--ink` rather than the
+   `muted` it carried, which put the one number on this surface a step quieter
+   than the label above it. */
 .meeting-timer {
   font-variant-numeric: tabular-nums;
   /* mm:ss must not shift width every second */
   font-size: var(--text-h3);
+  color: var(--ink);
+  margin-left: var(--space-2);
 }
 
 #meeting-transcript {
@@ -1888,8 +2325,8 @@ button.recording.live-level {
    one of the least comfortable things a page can do for someone sensitive to
    motion, and it had shipped unnoticed.
 
-   The gradient stays — it is what says "there is a note here, still
-   loading", and per DESIGN.md the branch keeps the information — it just
+   The gradient stays: it is what says "there is a note here, still
+   loading", and per DESIGN.md the branch keeps the information, it just
    stops moving, resting at the position the sweep starts from. */
 @media (prefers-reduced-motion: reduce) {
   .entry-list li.skeleton {
@@ -2154,26 +2591,26 @@ kbd {
    art", then "make sure the animations run even with prefer reduced motion
    on, like the rotating generated logos."
 
-   The blanket above is what actually froze them — a `*` selector with
+   The blanket above is what actually froze them, a `*` selector with
    `!important` outranks anything written for one element, so no amount of
    care in `typingDots` (app.js) could have kept the dots moving. This is the
    counter-rule, and it needs both higher specificity (0,2,1 against the
    blanket's 0,1,1) and `!important` of its own to win.
 
    **The list is deliberate and it is the whole contract.** These are the
-   animations that report *progress* — a spinner, a pulse, a shimmer, a glow
+   animations that report *progress*, a spinner, a pulse, a shimmer, a glow
    that means "still working". Everything else in the app stays governed by
    the setting, because everything else is decoration. A new progress
    animation has to be added here, and that is the intended cost: the
    alternative is a rule that quietly exempts things nobody meant to exempt.
 
    Governed by `progress-motion` (Settings → Appearance), which defaults to
-   "always" — see APPEARANCE_DEFAULTS in settings.js for why a spinner is not
+   "always", see APPEARANCE_DEFAULTS in settings.js for why a spinner is not
    chrome. Choosing "Still" removes the attribute's value from this selector
    and the blanket takes over again, which is what that option means.
 
    **Each rule restates its animation shorthand, and that duplication is
-   deliberate.** There is no way to say "undo the !important above" — CSS has
+   deliberate.** There is no way to say "undo the !important above", CSS has
    no keyword that restores a longhand a `*` rule has already forced, so the
    only thing that wins is naming the animation again. Keeping the pairs next
    to each other in one block is the mitigation: a duration changed in one
@@ -2195,7 +2632,7 @@ kbd {
    `!important` here is answering the `!important` directly above, not reaching
    for force: that rule exists to keep progress moving even under reduced
    motion, and a running animation beats any normal declaration, so the fade
-   could not touch the dots without matching it. Measured before and after —
+   could not touch the dots without matching it. Measured before and after, 
    the dots sat at 0.61 opacity underneath the trace until this was added. */
 :root[data-progress-motion="always"] .typing-dots[data-phase="writing"] span {
   animation: none !important;
@@ -2205,7 +2642,7 @@ kbd {
 /* **The stagger has to be restated too.** Reported: "the writing dots
    animation has all the dots jumping up and down at the same time." The
    `animation` shorthand above resets every longhand it does not mention,
-   including `animation-delay` — and `!important` makes that reset outrank the
+   including `animation-delay`, and `!important` makes that reset outrank the
    plain `nth-child` delays in 01-forms-settings.css. So the counter-rule that
    kept the dots moving also flattened them into one dot in three places.
 
@@ -2224,7 +2661,7 @@ kbd {
   animation: generating-glow 2.4s ease-in-out infinite !important;
 }
 
-/* …except a chat bubble, which uses the rail instead — see
+/* …except a chat bubble, which uses the rail instead, see
    `.msg.is-generating` in 03-dashboard-widgets.css. Without this the
    counter-rule above would put the ring back on exactly the surface the ring
    was removed from. */
@@ -2323,13 +2760,13 @@ kbd {
 }
 
 /* Same-specificity rule above would otherwise win over the earlier
-   #graph-empty.hidden — the bug where "Nothing to map yet" floated over
+   #graph-empty.hidden: the bug where "Nothing to map yet" floated over
    a full graph (user report, Wave N). Last rule wins, so restate it. */
 #graph-empty.empty-state.hidden {
   display: none;
 }
 
-/* Bigger touch targets for the small action buttons on phones — a 44px
+/* Bigger touch targets for the small action buttons on phones, a 44px
    min is the accessibility guideline for finger taps. */
 @media (max-width: 720px) {
 
@@ -2346,7 +2783,7 @@ kbd {
   }
 }
 
-/* High-contrast mode: stronger ink, solid panels, no glass blur — layered
+/* High-contrast mode: stronger ink, solid panels, no glass blur, layered
    on top of whatever theme/accent is active. */
 :root[data-contrast="on"] {
   --card: var(--modal-bg);
@@ -2399,7 +2836,7 @@ kbd {
 
 /* --- Wave L: skip link, action menus, contrast + type polish -------------------- */
 /* Off-screen until focused. left:-9999px is more reliable than a
-   negative top (some layouts let a negative top peek through) — Wave O. */
+   negative top (some layouts let a negative top peek through), Wave O. */
 .skip-link {
   position: fixed;
   left: -9999px;
@@ -2417,7 +2854,7 @@ kbd {
   left: 0.5rem;
 }
 
-/* Slightly darker muted text — the old values sat under the 4.5:1
+/* Slightly darker muted text, the old values sat under the 4.5:1
    contrast guideline on the glass backgrounds. */
 :root {
   --muted: #4c5563;
@@ -2477,11 +2914,11 @@ kbd {
 }
 
 /* The status bar's navigation-history popup (right-click Back/Forward, or
-   its own button) — asked for directly. Not `.action-menu`: that class
+   its own button): asked for directly. Not `.action-menu`: that class
    assumes a `.menu-wrap` ancestor (`position: absolute; right: 0; top:
    calc(100% + 4px)`) this doesn't have, since it can open from either of
    two buttons or a right-click on either, and the status bar sits at the
-   very bottom of the screen so it has to open *upward* — `openNavHistoryMenu`
+   very bottom of the screen so it has to open *upward*, `openNavHistoryMenu`
    (app.js) positions it with an explicit inline top/left instead. */
 .nav-history-menu {
   position: fixed;
@@ -2494,10 +2931,10 @@ kbd {
      that depends on which of three triggers opened it. */
   bottom: calc(var(--status-bar-h) + var(--space-3));
   z-index: 90;
-  /* Reported as "completely broken" — real, and reproduced: with only
+  /* Reported as "completely broken", real, and reproduced: with only
      short single-word entries (a plain tab visit, no sub-section), the
      shrink-to-fit width this element had with no `min-width` collapsed to
-     a narrow, sub-pixel box (164.34px, measured) — and text inside a
+     a narrow, sub-pixel box (164.34px, measured): and text inside a
      `text-overflow: ellipsis` flex child that narrow renders as illegible
      dashes rather than real glyphs, a genuine rendering-engine failure
      mode at that width, not a colour or font-size problem (both measured
@@ -2513,7 +2950,7 @@ kbd {
   padding: var(--space-3);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  /* Fully opaque, not `--modal-bg`'s 96% — see that token's own comment in
+  /* Fully opaque, not `--modal-bg`'s 96%: see that token's own comment in
      00-tokens-shell.css. This popup opens over the note editor, whose form
      is the densest block of small text in the app, and 4% see-through was
      enough there for the labels underneath to read as ghosted text through
@@ -2545,7 +2982,7 @@ kbd {
      measured rather than guessed: `scrollHeight` 35px against a 32.36px
      box, so `overflow: hidden` above was slicing every glyph down to its
      top few pixels. These are `<button>`s, and the app's generic button
-     rule sets a fixed control height — which this menu escaped while it
+     rule sets a fixed control height, which this menu escaped while it
      lived inside `#status-bar` (whose own `.status-item` rules won) and
      stopped escaping when it moved out to the body. `height: auto` with a
      `min-height` floor of zero puts the row back to its content height;
@@ -2563,7 +3000,7 @@ kbd {
   background: var(--accent-soft);
 }
 
-/* Where you are right now — not clickable-to-nowhere, just marked so the
+/* Where you are right now, not clickable-to-nowhere, just marked so the
    list reads as a map with a "you are here" pin rather than a plain stack. */
 .nav-history-item.nav-history-current {
   color: var(--accent);
@@ -2575,7 +3012,7 @@ kbd {
    no breathing room, unlike the clear gap above the first row. The
    container's own `padding-bottom` is set (same as every other side), but
    isn't reliably honoured past the end of a scrolled flex container's
-   content in every engine — a trailing margin on the last item is the
+   content in every engine, a trailing margin on the last item is the
    robust fix, not a bigger padding value that only helps when nothing
    scrolls. */
 .nav-history-more {
@@ -2588,7 +3025,7 @@ kbd {
 }
 
 /* Set by `wireEscapedActionMenu` (app.js) while the menu is reparented to
-   <body> to escape a clipping scroll ancestor — see the note there. `left`/
+   <body> to escape a clipping scroll ancestor, see the note there. `left`/
    `top` come from that same function as inline style, computed from the
    opener's own rect; this only has to override the base rule's
    `position: absolute; right: 0; top: calc(100% + 4px)`.
@@ -2596,14 +3033,14 @@ kbd {
    `z-index: 1020`: this rule's only caller until now was the Library's
    Documents kebab, opened from a plain tab page with nothing above
    `.action-menu`'s own `z-index: 30` to beat. Wiring the same escape into
-   `enhanceSelect()` (app.js — every `<select>` in the app, including ones
+   `enhanceSelect()` (app.js: every `<select>` in the app, including ones
    opened from inside the Settings modal) put it in real competition for the
    first time: reparented to <body>, the menu became a *sibling* of
    `.modal-overlay` (`z-index: 1010`) rather than its descendant, and 30
-   loses that fight outright — the menu was live in the DOM, correctly
+   loses that fight outright, the menu was live in the DOM, correctly
    positioned, and completely invisible, painted underneath the modal.
    1020 matches this app's own tier system (above the modal's 1010, below
-   the toast box's 1050 — see `.modal-overlay`'s own comment in
+   the toast box's 1050: see `.modal-overlay`'s own comment in
    01-forms-settings.css for the full ladder). */
 .action-menu.action-menu-escaped {
   position: fixed;
@@ -2612,14 +3049,14 @@ kbd {
 }
 
 /* `.select-menu`'s `min-width: 100%` (07-whiteboard-misc.css) means "at
-   least as wide as `.select-shell`, my normal parent" — a sensible floor
+   least as wide as `.select-shell`, my normal parent", a sensible floor
    when the menu is a document-flow child of that shell. Once escaped, it is
    `position: fixed` with no positioned ancestor between it and the
    viewport, so `100%` silently stops meaning "my shell's width" and starts
    meaning "the viewport's width" instead: measured live at 1440px wide,
    full-bleed, on a select whose real content wanted well under 400px.
    `width: max-content` plus the existing `max-width: min(24rem, 80vw)` cap
-   already size this correctly on their own — the floor is not needed once
+   already size this correctly on their own, the floor is not needed once
    there is no longer a narrow shell to guarantee a minimum against. */
 .select-menu.action-menu-escaped {
   min-width: 0;
@@ -2627,7 +3064,7 @@ kbd {
 
 /* The whiteboard's right-click/long-press selection menu (ROADMAP §89.12).
    Appended straight to <body> and positioned at the pointer, same reasoning
-   as `wbOpenDockedMenu`'s reparent — a fixed pixel position rather than
+   as `wbOpenDockedMenu`'s reparent: a fixed pixel position rather than
    `.action-menu`'s default `absolute; right:0` anchored to a `.menu-wrap`
    ancestor it doesn't have here. */
 .wb-ctx-menu {
@@ -2648,7 +3085,7 @@ kbd {
    `button.ghost` and `.menu-item` is exactly how two menus drift apart again.
    `.doc-dock-menu-item` keeps only its layout job (full width, nowrap). */
 .menu-item {
-  /* One row, one line — see `.action-menu`'s width note above. */
+  /* One row, one line, see `.action-menu`'s width note above. */
   white-space: nowrap;
   background: none;
   border: none;
@@ -2675,7 +3112,7 @@ kbd {
 }
 
 /* A kebab item that names a real action but can't do it right now (e.g. the
-   gallery's "Read text (Tesseract OCR)" with the tesseract binary missing) —
+   gallery's "Read text (Tesseract OCR)" with the tesseract binary missing), 
    muted rather than natively `disabled`, so its own title tooltip and click
    (which explains why, rather than the underlying request silently no-oping)
    both still work. */
@@ -2724,7 +3161,7 @@ kbd {
 }
 
 /* Flipped when the default side would run off the right edge of the
-   viewport — the same "which side has room" check the graph/timeline
+   viewport: the same "which side has room" check the graph/timeline
    popups already do, applied here instead of guessing a fixed side. */
 .action-menu.submenu.submenu-left {
   left: auto;
@@ -2734,7 +3171,7 @@ kbd {
 }
 
 /* Below phone width there is nowhere for a side flyout to go without
-   running off-screen — asked for directly ("compatible for small screen
+   running off-screen: asked for directly ("compatible for small screen
    sizes like iPhones"). Drops the flyout positioning entirely and expands
    the group in place instead, indented to still read as nested. */
 @media (max-width: 720px) {
@@ -2754,7 +3191,7 @@ html {
   font-size: 16px;
 }
 
-/* `.card h2` itself now lives solely in 01-forms-settings.css (§35L) — this
+/* `.card h2` itself now lives solely in 01-forms-settings.css (§35L): this
    was a second, older copy of the same selector (same computed size, since
    --text-body is 1rem) that only survived as dead weight and a latent
    specificity tie for anything loaded between here and there. */
@@ -2768,8 +3205,15 @@ html {
     font-size: 16px;
   }
 
+  /* **The padding is gone from here, not moved.** This block and the one in
+     05-sidebars-themes.css are two copies of the same phone header rule, and
+     05 loads later, so its `padding: 0.4rem 0.8rem` shadowed this one on all
+     four sides: dead for as long as both have existed. It stopped being
+     dead the moment 05's copy became `--header-pad-y`/`--header-pad-x`
+     (Phase 9): the shorthand here then supplied `padding-bottom` alone and
+     the phone header rendered 6.4px above the logo and 8px below it.
+     Measured at 700px, which is the only place it showed. */
   header#top-bar {
-    padding: 0.5rem 0.8rem;
     gap: 0.6rem;
     flex-wrap: wrap;
   }
@@ -2780,7 +3224,7 @@ html {
     overflow-x: auto;
   }
 
-  /* Categories become a wrapping chip row instead of a tall list. */
+  /* Categories become a chip row instead of a tall list. */
   #sidebar ul#category-list {
     display: flex;
     flex-wrap: wrap;
@@ -2789,10 +3233,42 @@ html {
   }
 
   #sidebar ul#category-list li {
-    border: 1px solid var(--border);
+    /* The filter-chip recipe (DESIGN.md → Surfaces): a tint, no outline. */
+    background: var(--chip-bg);
+    border: 1px solid transparent;
     border-radius: var(--radius-pill);
     padding: 0.25rem 0.8rem;
     gap: 0.4rem;
+    flex: 0 0 auto;
+  }
+}
+
+/* On a phone the Categories card was 193px of the 844 above the first note
+   (MODERNISATION_AUDIT.md Brief 2, measured): a head row with a collapse
+   toggle that means nothing when the sidebar is stacked, then three wrapped
+   rows of chips. One scrolling row, no head. */
+@media (max-width: 600px) {
+  #sidebar .sidebar-head,
+  #sidebar .sidebar-collapse-toggle {
+    display: none;
+  }
+
+  #sidebar {
+    --card-pad-y: var(--space-3);
+  }
+
+  #sidebar ul#category-list {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin-top: 0;
+    scrollbar-width: none;
+    /* Reach the card's edges so the last chip can scroll fully into view. */
+    padding-inline: var(--card-pad-x);
+    margin-inline: calc(-1 * var(--card-pad-x));
+  }
+
+  #sidebar ul#category-list::-webkit-scrollbar {
+    display: none;
   }
 }
 
@@ -2855,7 +3331,7 @@ html {
   display: block;
 }
 
-/* A note's images inside the graph popup — how a sketch becomes visible from
+/* A note's images inside the graph popup, how a sketch becomes visible from
    the map. Capped tighter than the note-list thumbnail because the popup has
    to stay inside the graph box. */
 .graph-popup-media {
@@ -2873,7 +3349,7 @@ html {
   max-height: 120px;
   max-width: 100%;
   /* A sketch canvas is 820x480, so it scales down to about 205x120. The
-     minimum is for anything unusually small — an image a few pixels across
+     minimum is for anything unusually small, an image a few pixels across
      would otherwise be an unclickable speck rather than a preview. */
   min-height: 44px;
   object-fit: contain;
@@ -2913,7 +3389,7 @@ html {
 /* **Scrollable, and centred only when it fits.** Reported with a screenshot:
    the caption and OCR panel ran off the bottom of the screen with its own
    scrollbar inside it, and the whole dialog could not be scrolled to reach
-   what was cut off — "is the lightbox scrollable??".
+   what was cut off, "is the lightbox scrollable??".
 
    `place-content: center` on a fixed, non-scrolling box centres content and
    then clips whatever does not fit, at *both* ends: a column taller than the
@@ -2925,7 +3401,15 @@ html {
 .lightbox {
   position: fixed;
   inset: 0;
-  z-index: 80;
+  /* **Above the full-screen graph, which is `z-index: 1000`.** INBOX 66: "I
+     clicked to view a document while in the graph fullscreen" and the
+     lightbox appeared only after leaving it. The entry blamed the Fullscreen
+     API, but this app's full screen is CSS (`position: fixed` on
+     `.graph-card`), so nothing was in a top layer and nothing was hidden: at
+     80 the lightbox simply opened underneath the card. 1020 puts it above
+     that and above `.modal-overlay`'s 1010, and below the HUD's 1100, which
+     is a momentary readout and belongs over everything. */
+  z-index: 1020;
   background: rgba(8, 10, 18, 0.82);
   display: flex;
   flex-direction: column;
@@ -2936,7 +3420,7 @@ html {
   cursor: zoom-out;
   /* **Both edges, so the arrows are symmetric.** This overlay scrolls, and
      where the platform draws a classic scrollbar it eats width from the
-     right only — so `left: var(--space-6)` and `right: var(--space-6)` on
+     right only: so `left: var(--space-6)` and `right: var(--space-6)` on
      the two arrows measured 32px and 32px+scrollbar on screen, which is the
      "different distances from the edge" half of that report. Reserving the
      gutter on both sides makes the two edges agree whether a bar is drawn
@@ -2955,7 +3439,7 @@ html {
   margin: auto 0;
 }
 
-/* The picture and its two arrows, in one positioned box — this is what makes
+/* The picture and its two arrows, in one positioned box, this is what makes
    the arrows centre on the *image* rather than on the viewport. */
 .lightbox-stage {
   position: relative;
@@ -2965,7 +3449,7 @@ html {
   /* Zoom scales the image past the stage's box; without this it would
      spill over the meta line and the actions bar below it. `auto` rather
      than `hidden` so a zoomed-in picture can actually be panned to its
-     edges — the scrollbars are the pan control. */
+     edges: the scrollbars are the pan control. */
   overflow: auto;
 }
 
@@ -2995,8 +3479,8 @@ html {
    pdf, the pdf view disappears entirely. I want the pdf view to be on one
    side, and the live extracted document text and visuals on the right."
 
-   The text is a *reading* of the pages — by markitdown, Tesseract or a
-   vision model — and hiding the pages to show it removes the only way to
+   The text is a *reading* of the pages, by markitdown, Tesseract or a
+   vision model: and hiding the pages to show it removes the only way to
    check that reading against what is actually printed. Two columns, each
    scrolling on its own, so a page and the paragraph it produced can be held
    side by side. Only when there are pages to show: a .docx or a .txt has
@@ -3010,7 +3494,7 @@ html {
   align-items: start;
 }
 
-/* The note spans both columns — it is about the file, not about one pane. */
+/* The note spans both columns, it is about the file, not about one pane. */
 .lightbox-doc-split > .lightbox-doc-note {
   grid-column: 1 / -1;
 }
@@ -3050,7 +3534,7 @@ html {
   overflow: auto;
   padding: var(--space-6);
   border-radius: var(--radius-lg);
-  /* Not `var(--card)` — that token is deliberately translucent glass (a
+  /* Not `var(--card)`, that token is deliberately translucent glass (a
      card sitting on the page background), which is wrong for a reading
      surface sitting over the lightbox's own darkened backdrop and
      whatever image/UI is behind it. Reported directly as "somewhat
@@ -3077,7 +3561,7 @@ html {
   font-size: var(--text-sm);
 }
 
-/* A PDF's own rasterised pages — see `showDocument`/`pdfPages` in app.js.
+/* A PDF's own rasterised pages, see `showDocument`/`pdfPages` in app.js.
    One column, one page after another, the way a PDF actually reads. Lives
    inside `.lightbox-doc`, so it inherits that element's own scroll and
    near-opaque background; only the stacking is this rule's job. */
@@ -3085,7 +3569,7 @@ html {
   display: flex;
   flex-direction: column;
   /* **`safe center`, not `center`.** Reported with a screenshot of a lecture
-     slide reading "at-bots and agents" — the left of "chat-bots" scrolled off
+     slide reading "at-bots and agents", the left of "chat-bots" scrolled off
      and unreachable, with a horizontal scrollbar that could not get back to
      it. A centred flex item wider than its scroll container overflows both
      ways, and the overflow past the *start* edge is not scrollable in any
@@ -3112,7 +3596,7 @@ html {
 }
 
 /* Overrides the generic `input[type="search"]` rule (01-forms-settings.css),
-   which is sized for a standalone form field — full-width padding and a
+   which is sized for a standalone form field, full-width padding and a
    bottom margin meant to separate stacked fields. Neither belongs in a
    toolbar row: the margin pushed this input's box taller than its sibling
    `.lightbox-action` buttons (which use `button.small`'s `--target-min`
@@ -3124,13 +3608,13 @@ html {
 
    **Scoped to `.lightbox` because the version without it never applied, and
    the row was reported tall a second time.** The rule it means to beat is
-   `input[type="search"]` in the selector list above — (0,1,1). A bare
+   `input[type="search"]` in the selector list above, (0,1,1). A bare
    `.lightbox-find` is (0,1,0), so it lost `padding` and `margin-bottom`, the
    only two declarations it existed for, no matter which file came last;
    `min-height` was the one thing it won because nothing else set it. Measured
    in Chromium before this change: 40.38px tall with `padding: 7.2px` and a
    live `margin-bottom: 7.2px`, in a row whose zoom label and match count are
-   24px — the input's own box overhanging the row by 8px at the bottom on top
+   24px: the input's own box overhanging the row by 8px at the bottom on top
    of being taller. Adding the ancestor takes it to (0,2,0), and a class
    outranks an element regardless of order, so this cannot quietly lose again
    the way the first attempt did. */
@@ -3140,13 +3624,13 @@ html {
      `max-width` capped that demand at 14rem but left it rigid, so the input
      could never give a pixel back when the row ran short. A basis of the same
      14rem with `shrink: 1` asks for exactly as much and yields under
-     pressure — the pattern `.doc-find-bar input[type="text"]` already uses
+     pressure: the pattern `.doc-find-bar input[type="text"]` already uses
      for the editor's own find field. No `grow`: this is a search box in a
      centred toolbar, not the row's filler.
 
      This does not stop the row wrapping, and it is not meant to.
      `.lightbox-actions` is `flex-wrap: wrap` on purpose, and flexbox wraps
-     before it shrinks — a narrow row still puts the search on its own line,
+     before it shrinks: a narrow row still puts the search on its own line,
      which is the right answer for a toolbar that has to survive an unknown
      number of buttons. Measured on a 387px row, where it does exactly that. */
   flex: 0 1 14rem;
@@ -3158,11 +3642,12 @@ html {
      the form-field rule leaves an input at `font: inherit` (16px), and every
      `.lightbox-action` beside it is `button.small` at 0.85rem. Same number,
      not a token, because it is `button.small` specifically that this row has
-     to read level with — the point of the whole rule. */
+     to read level with, the point of the whole rule. */
   font-size: 0.85rem;
 }
 
 .lightbox-action.hidden,
+.lightbox-page-label.hidden,
 .lightbox-zoom-label.hidden,
 .lightbox-find.hidden,
 .lightbox-find-count.hidden {
@@ -3184,7 +3669,7 @@ mark.lightbox-hit {
   cursor: grab;
 }
 
-/* A PDF's own page column, zoomed the same way a single image is —
+/* A PDF's own page column, zoomed the same way a single image is, 
    `transform: scale()`, which Chromium/Firefox both already factor into a
    `overflow: auto` ancestor's scrollable bounds, so the parent
    `.lightbox-doc`'s existing scrollbars become the pan control with no
@@ -3209,7 +3694,7 @@ mark.lightbox-hit {
   border-radius: var(--radius-lg);
   box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
   cursor: default;
-  /* **Top-left, and it has to be** — reported directly: "when I zoom in on
+  /* **Top-left, and it has to be**, reported directly: "when I zoom in on
      the images or documents in the lightbox, I can't scroll left or up,
      only right or down."
 
@@ -3218,14 +3703,14 @@ mark.lightbox-hit {
      is unusable: a scroll container's scrollable overflow region only ever
      extends past its *end* edges. Content a transform pushes past the
      start edge (left/top) is not added to the scrollable area by any
-     browser — it is unreachable by scrollbar, wheel, or our own drag-pan,
+     browser: it is unreachable by scrollbar, wheel, or our own drag-pan,
      which is why exactly half of every zoomed picture could not be
      inspected. Scaling from the top-left corner keeps the whole magnified
      image inside positive scroll space, so every part of it is reachable.
      The layout box is unchanged by a transform, so the picture still sits
      centred on the stage at rest (zoom 1 clears the transform entirely).
 
-     Merged into this rule rather than a second `.lightbox img {}` block —
+     Merged into this rule rather than a second `.lightbox img {}` block: 
      a duplicate selector reads fine to a browser but not to
      test_lightbox.py, which greps the *first* `.lightbox img {` block by
      string-splitting the file; a second block earlier in the file would
@@ -3235,8 +3720,8 @@ mark.lightbox-hit {
   transform-origin: top left;
 }
 
-/* Stands in for the image when it fails to decode — a deleted underlying
-   file, most often — so paging to it shows a plain explanation instead of a
+/* Stands in for the image when it fails to decode, a deleted underlying
+   file, most often: so paging to it shows a plain explanation instead of a
    blank box with no feedback at all. */
 .lightbox-broken {
   max-width: 60vw;
@@ -3250,7 +3735,7 @@ mark.lightbox-hit {
   display: none;
 }
 
-/* Click-anywhere-to-close alone isn't discoverable — reported directly —
+/* Click-anywhere-to-close alone isn't discoverable, reported directly , 
    so there's now an explicit close affordance too. Fixed to the viewport
    corner, not the image, so it's in the same place regardless of image size
    or aspect ratio. */
@@ -3275,7 +3760,7 @@ mark.lightbox-hit {
   line-height: 1;
   cursor: pointer;
   /* Missing next to .lightbox-nav's own identical fixed-circle shape just
-     below, which already has this — the base `button` rule's
+     below, which already has this, the base `button` rule's
      0.5rem 1rem padding (meant for a labelled button, not an icon-only
      circle) pushed the × glyph off-centre inside the box instead of
      letting the box's own size centre it. Reported live. */
@@ -3284,7 +3769,7 @@ mark.lightbox-hit {
   /* **Above everything else in the viewer, explicitly.** Reported: "the close
      button doesnt work all the time." It is the overlay's *first* child and
      `.lightbox-column` is the second, so with no z-index on either the column
-     paints over it wherever their boxes overlap — nowhere for a short
+     paints over it wherever their boxes overlap, nowhere for a short
      landscape photo, and the whole top-right corner for the document viewer's
      tall split pane. "Sometimes" is what an overlap that depends on the
      content's height looks like from the outside. */
@@ -3307,7 +3792,7 @@ mark.lightbox-hit {
 
 /* What the app knows about the picture, under the picture: the caption a
    vision model wrote and the text it read off the page. Bounded and
-   scrollable rather than allowed to grow — a transcribed page can be
+   scrollable rather than allowed to grow, a transcribed page can be
    hundreds of words, and pushing the image off the top of the viewer to
    show them would trade the thing being viewed for its description. */
 /* The files a message carried, under the message that carried them.
@@ -3338,7 +3823,7 @@ mark.lightbox-hit {
   flex-direction: column;
   gap: var(--space-2);
   /* Bounded so a portrait photo cannot push the rest of the conversation off
-     the screen — a chat is a transcript, and an attachment is a reference in
+     the screen: a chat is a transcript, and an attachment is a reference in
      it, not the subject of the page. Click for full size. */
   max-width: 14rem;
   padding: var(--space-3);
@@ -3366,7 +3851,7 @@ mark.lightbox-hit {
   overflow: hidden;
 }
 
-/* **The badge that says a reading exists**, not the reading itself — asked
+/* **The badge that says a reading exists**, not the reading itself, asked
    for directly: "when an image and/or document is captioned and ocr is used
    it should be tagged under the image in the chat bubble." The caption above
    is the model's *description*; this is its *transcription*, which was
@@ -3394,7 +3879,7 @@ mark.lightbox-hit {
 }
 
 /* A note clipped to the question, and a document: the same card, because
-   they are the same statement — "the answer was given this to read, click to
+   they are the same statement, "the answer was given this to read, click to
    open it". */
 .msg-attachment-note,
 .msg-attachment-doc {
@@ -3416,7 +3901,7 @@ mark.lightbox-hit {
 
 /* **On the user's own bubble, which is a solid accent fill.** Measured in a
    screenshot before this existed: `--chip-bg` over accent is very nearly the
-   accent itself, and `--muted` caption text on it was grey-on-blue — the card
+   accent itself, and `--muted` caption text on it was grey-on-blue, the card
    was there and could not be read. The tokens are page-surface tokens and
    there is no page surface here, so the whole strip switches to the same
    translucent-white treatment the lightbox uses over a photograph, which
@@ -3450,7 +3935,7 @@ mark.lightbox-hit {
 
 .lightbox-info {
   /* Reported directly: hovering this panel still showed the zoom-out cursor
-     — `.lightbox`'s own `cursor: zoom-out` (clicking the overlay's empty
+     - `.lightbox`'s own `cursor: zoom-out` (clicking the overlay's empty
      backdrop closes it) is inherited by every descendant that doesn't say
      otherwise, and this one is text to read and fields to click into, not
      a second way to close the dialog. */
@@ -3458,13 +3943,13 @@ mark.lightbox-hit {
   max-width: min(48rem, 90vw);
   /* No inner scrollbar and no height cap. The overlay scrolls now, so a long
      transcription makes the dialog longer instead of hiding itself behind a
-     second scrollbar inside a box that was already cut off — which is what
+     second scrollbar inside a box that was already cut off, which is what
      the screenshot showed. */
   margin-top: 0;
   padding: var(--space-5) var(--space-6);
   border-radius: var(--radius-md);
   /* Opaque enough to read against whatever is behind the dialog. At 0.45 the
-     Library grid showed straight through a paragraph of transcribed text —
+     Library grid showed straight through a paragraph of transcribed text, 
      visible in the screenshot that came back from the first version of this
      panel. The blur is the same material the rest of the app's floating
      surfaces use. */
@@ -3495,6 +3980,77 @@ mark.lightbox-hit {
   margin-bottom: 0;
   padding-bottom: 0;
   border-bottom: none;
+}
+
+/* **A document's pages, as chips** (UI_MODERNISATION_PLAN Phase 7.1).
+   Reported: "the lightbox needs improving for file and pdf previews, no
+   sections or info are below it really compared to the images."
+
+   Three facts a photograph cannot have, how many pages, which of them have
+   a stored reading, and which one is on screen, drawn with the app's own
+   `.chip` recipe rather than a fourth kind of badge. The colours are
+   overridden here for the same reason `.lightbox-caption` and
+   `.lightbox-facts` override theirs: this panel is a fixed dark surface
+   (rgba(10, 12, 20, 0.86) above), so `--accent-soft`, a pale tint meant for
+   a light page: reads as almost nothing on it. Measured white-on-dark
+   values, matching the rest of the panel's own ramp. */
+.lightbox-pages {
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.lightbox-pages.hidden {
+  display: none;
+}
+
+.lightbox-pages-lead {
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.lightbox-page-chip {
+  /* Digits, so a fixed minimum keeps "1" and "12" the same size and the row
+     from re-flowing as the reader steps through a long document. */
+  min-width: 1.5rem;
+  justify-content: center;
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.lightbox-page-chip:hover,
+.lightbox-page-chip:focus-visible {
+  background: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.96);
+}
+
+/* Read is a *fill*, current is an *edge*, two different claims about the same
+   chip, so they have to be legible together (a page can be both). The surface
+   tiers rule in DESIGN.md says a selected row is a fill and never a fill plus
+   an edge; this is the case that rule's own exception is for, since "read" and
+   "you are here" are orthogonal states rather than two names for selection. */
+.lightbox-page-chip.is-read {
+  background: rgba(255, 255, 255, 0.22);
+  color: rgba(255, 255, 255, 0.96);
+}
+
+.lightbox-page-chip.is-current {
+  border-color: var(--accent);
+  color: rgba(255, 255, 255, 0.96);
+}
+
+/* The page readout beside the stepper buttons. Deliberately the same recipe as
+   `.lightbox-zoom-label` two rules down: the two numbers in this bar are the
+   same kind of thing (where you are), and giving the new one its own colour and
+   size is exactly the "many recipes for one thing" the modernisation plan is
+   subtracting. Only the width differs: "Page 12 of 34" is longer than "100%".
+   Colour comes from the `.muted` class both labels carry. */
+.lightbox-page-label {
+  min-width: 6rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .lightbox-text {
@@ -3531,10 +4087,10 @@ mark.lightbox-hit {
   /* Reported live: the arrow glyphs sat visibly right of centre. The global
      `button` rule's `padding: 0.5rem 1rem` was never reset here (unlike
      `.lightbox-close`, which is why *that* circle centres correctly at the
-     same size) — 1rem of horizontal padding each side left only ~8px of
+     same size): 1rem of horizontal padding each side left only ~8px of
      content box for a ~21px glyph to centre inside. An item wider than its
      own centring box triggers Grid's "safe centre" fallback, which aligns it
-     to the content box's start edge instead of overflowing — and that start
+     to the content box's start edge instead of overflowing, and that start
      edge sits 1rem in from the button's true left edge, which is the exact
      rightward shift this measured as. Zeroing the padding restores the full
      40×40 box for `place-items: center` to centre the glyph inside. */
@@ -3549,19 +4105,13 @@ mark.lightbox-hit {
   place-items: center;
 }
 
-/* **The press cue must keep the centring transform.** Reported live: "the
-   jumping animation of the next and prev buttons when I click them is
-   annoying." It was not an animation anyone designed — the global
-   `button:active` rule (01-forms-settings.css) sets
-   `transform: translateY(1px) scale(0.985)`, and `transform` is one
-   property, not a list: applying it *replaces* this button's own
-   `translateY(-50%)`, so every press dropped the arrow by half its height
-   and snapped it back. Restating the centring alongside the press cue keeps
-   the tactile feedback and removes the jump. Same trap as any element that
-   both centres and animates with transform. */
-.lightbox-nav:active:not(:disabled) {
-  transform: translateY(-50%) scale(0.985);
-}
+/* The press cue used to be restated here, because the global `button:active`
+   rule set `transform` and replaced this button's own centring, so every
+   press dropped the arrow by half its height ("the jumping animation of the
+   next and prev buttons when I click them is annoying"). That cue is written
+   as `translate`/`scale` now (01-forms-settings.css), which compose with this
+   rule's `transform` instead of replacing it, so the restatement is gone: it
+   would have multiplied its own `scale(0.985)` with the global one. */
 
 .lightbox-nav:hover,
 .lightbox-nav:focus-visible {
@@ -3570,7 +4120,7 @@ mark.lightbox-hit {
 
 /* **Out to the edges of the screen, without giving up the fix above.**
    Asked for directly: "maybe move the next and prev arrow buttons to near
-   the edges of the screen again". The word doing the work is *again* —
+   the edges of the screen again". The word doing the work is *again*, 
    they used to be `position: fixed` against the viewport, and that is
    exactly what the comment on `.lightbox-nav` above records as broken:
    `top: 50%` of the viewport is not the middle of the picture once there
@@ -3580,7 +4130,7 @@ mark.lightbox-hit {
    So the anchor stays on the stage (vertical centring keeps working with
    no JS) and the *stage* is widened to the column's full width instead.
    The image is still centred inside it by the stage's own flex centring,
-   so nothing about the picture moves — but the box the arrows hang off is
+   so nothing about the picture moves, but the box the arrows hang off is
    now the full width of the overlay, which puts them at the screen edges
    and keeps them level with the middle of the image at every size. */
 .lightbox-column,
@@ -3590,7 +4140,7 @@ mark.lightbox-hit {
 }
 
 /* Holds the scrolling stage and the two arrows. Positioned, but never
-   scrolls — that is the whole point: the arrows anchor to this and so stay
+   scrolls: that is the whole point: the arrows anchor to this and so stay
    put and stay level while the picture inside scrolls under them. */
 .lightbox-stage-wrap {
   position: relative;
@@ -3634,8 +4184,8 @@ mark.lightbox-hit {
 }
 
 #select-btn.active {
-  background: var(--accent);
-  color: #fff;
+  background: var(--accent-surface);
+  color: var(--on-accent);
 }
 
 .select-check {
@@ -3670,13 +4220,13 @@ mark.lightbox-hit {
 /* --- graph minimap ---------------------------------------------------------
    Non-interactive except for the click-to-centre handled in graph.js, and
    `aria-hidden` because it is a redundant view of a map that already has a
-   full keyboard/screen-reader layer (`initGraphKeyboard`) — announcing 1,500
+   full keyboard/screen-reader layer (`initGraphKeyboard`), announcing 1,500
    unlabelled dots would be noise.
 
    **Its corner is a user setting** (graph.js, `graph-minimap-corner`). It used
    to be hard-coded bottom-right, which was reported and then measured: at
    1400×900 the minimap spans x1160–1338 and the zoom buttons x1298–1334, so it
-   sat completely on top of them — and at z-index 5 against their 2, it won.
+   sat completely on top of them, and at z-index 5 against their 2, it won.
    There is no corner that is free on every screen and every layout (the agent
    monitor takes bottom-left, the toolbar the top), which is exactly why this
    is a choice rather than a better hard-coded guess. Default is top-left: the
@@ -3685,12 +4235,12 @@ mark.lightbox-hit {
    Reported as part of "the graph ui is completely broken", and the
    screenshot makes the case: a fully opaque 175x115 panel sitting *on top
    of* the map, hiding whatever notes are under that corner. A minimap is an
-   orientation aid — it is the least important thing on this screen and it
+   orientation aid: it is the least important thing on this screen and it
    was the most visually solid.
 
    Opacity rather than a smaller box: shrinking it makes it useless as a
-   map. At rest it is a hint of where you are; hovering it — which is what
-   you do before clicking to jump — brings it fully back. */
+   map. At rest it is a hint of where you are; hovering it: which is what
+   you do before clicking to jump, brings it fully back. */
 .graph-minimap {
   position: absolute;
   z-index: 5;
@@ -3711,7 +4261,7 @@ mark.lightbox-hit {
 }
 
 /* Someone who asked for less motion still gets the full-strength panel on
-   hover — only the fade between the two states goes. */
+   hover: only the fade between the two states goes. */
 @media (prefers-reduced-motion: reduce) {
   .graph-minimap {
     transition: none;
@@ -3754,7 +4304,7 @@ mark.lightbox-hit {
 }
 
 /* Press-and-hold scrubs the map around (graph.js, `initGraphMinimap`). The
-   grab cursor is the only thing that says so before you try it — the box
+   grab cursor is the only thing that says so before you try it, the box
    otherwise looks like a click target, which is all it used to be.
    `touch-action: none` is load-bearing, not cosmetic: without it a finger
    drag on a tablet is claimed by the browser's own panning and the
@@ -3767,7 +4317,7 @@ mark.lightbox-hit {
   cursor: grabbing;
 }
 
-/* The current viewport, drawn over the dots. Stroke only — a fill would
+/* The current viewport, drawn over the dots. Stroke only: a fill would
    dim the very nodes it is meant to point at. */
 .graph-minimap-frame {
   fill: none;
@@ -3778,7 +4328,7 @@ mark.lightbox-hit {
 
 @media (max-width: 600px) {
   /* A 168px box is a quarter of a phone screen's width and sits on top of the
-     canvas it is summarising — on the one tab that already has the least room
+     canvas it is summarising, on the one tab that already has the least room
      (see the agent-monitor note in 07-whiteboard-misc.css). Hidden by default
      there; the toolbar toggle still brings it back. */
   .graph-minimap {
@@ -3788,7 +4338,7 @@ mark.lightbox-hit {
 
 /* --- "how are these connected?" ------------------------------------------------
    The dialog a drag-to-link opens. Options are buttons rather than a <select>
-   because each one carries a sentence explaining it — direction matters for
+   because each one carries a sentence explaining it, direction matters for
    half the vocabulary ("continues", "example of" read backwards if the arrow
    is the other way round) and a dropdown has nowhere to say so. */
 .link-kind-card {
@@ -3818,7 +4368,7 @@ mark.lightbox-hit {
   /* The global `button` rule (01-forms-settings.css) sets color to
      --on-accent, meant to sit on that same rule's solid --accent-surface
      fill. This overrides the background to transparent but never touched
-     color, so the text kept --on-accent regardless — which in dark theme
+     color, so the text kept --on-accent regardless, which in dark theme
      is #0d1017, near-black, over the modal card's own near-black
      background. Unreadable, and correctly reported as a contrast bug
      rather than a "wrong colour" one: it isn't low contrast on light theme
@@ -3850,7 +4400,7 @@ mark.lightbox-hit {
    Asked for directly: "inline referencing with hyperlinks in ai chat
    messages would be amazing". Placed by `addInlineCitations` (app.js) from
    the same per-sentence grounding the "Grounded in" row below the answer
-   already used — the row is the key, these are the references.
+   already used: the row is the key, these are the references.
 
    Sized and coloured to read as a reference mark rather than as body text
    that happens to be a number: smaller, accent-coloured, and raised, with a
@@ -3883,7 +4433,7 @@ mark.lightbox-hit {
 }
 
 .answer-citation-link:focus-visible {
-  outline: 2px solid var(--accent-soft);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -3905,11 +4455,20 @@ mark.lightbox-hit {
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
+  /* INBOX 35: this is a `<button>`, and neither this rule nor the one
+     below ever set `text-align`, so the browser's own default for a
+     button (`center`) won this. Measured: a long, truncated title read
+     centred with its ellipsis in the middle of the visible run rather than
+     at its end, the "clip and centre" report. The chip recipe used
+     everywhere else in this app (`.cmd-source-row` above) is left-aligned;
+     matched here too. */
+  text-align: left;
 }
 
 .answer-related-chip {
   max-width: min(18rem, 100%);
   overflow: hidden;
+  text-align: left;
 }
 
 
@@ -3920,7 +4479,7 @@ mark.lightbox-hit {
    note that mentions it was written.
 
    Deliberately quiet and inline rather than a card or a warning: the note is
-   not broken and nothing needs fixing — a file it refers to is simply gone.
+   not broken and nothing needs fixing, a file it refers to is simply gone.
    Sized and coloured like the muted text it sits in so it reads as part of
    the note, which is also why it flows inline instead of holding an
    image-shaped hole open where the picture used to be. */
@@ -3953,7 +4512,7 @@ mark.lightbox-hit {
    accesses specific notes, files and stuff??"
 
    Under the tool row rather than inside its disclosure, because the point is
-   that it is visible *while* the call happens — a person watching a long agent
+   that it is visible *while* the call happens, a person watching a long agent
    turn can see which of their notes it is reaching for without opening
    anything. The disclosure keeps the raw result for when that is what you
    want.
@@ -3972,7 +4531,19 @@ mark.lightbox-hit {
   padding-left: var(--space-6);
 }
 
-/* These open a note, so they are pressable and say so — unlike the read-only
+/* A note chip reads from its left edge and ends in an ellipsis; the button
+   recipe centred it and let a long title spill (reported: "the viewed note
+   badges have their text centered and clipped"). */
+.tool-touched .chip {
+  justify-content: flex-start;
+  text-align: left;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* These open a note, so they are pressable and say so, unlike the read-only
    fact chips in the palette's metadata row, which deliberately do not. */
 .tool-touched-chip {
   cursor: pointer;
@@ -3983,7 +4554,7 @@ mark.lightbox-hit {
 }
 
 /* The chip stays pressed while its preview is open, because the preview
-   appears *below the whole row* rather than under the chip itself — with four
+   appears *below the whole row* rather than under the chip itself, with four
    chips side by side, nothing else would say which one you opened. */
 .tool-touched-chip.active {
   border-color: var(--accent);
@@ -4026,7 +4597,7 @@ mark.lightbox-hit {
 
    A summary row that reads as a control, a hairline rail down the steps so
    they read as one sequence rather than as loose chips, and no card of its
-   own — the bubble is already a surface, and a panel inside a panel is the
+   own: the bubble is already a surface, and a panel inside a panel is the
    "cards are overused" report. */
 .agent-step-group {
   margin: var(--space-2) 0;
@@ -4062,7 +4633,7 @@ mark.lightbox-hit {
 
 /* The spinner glyph, while the group is still collecting steps. A group that
    has finished says so with a tick instead, so this only ever runs on live
-   work — `groupSummary` in app.js swaps the icon. */
+   work: `groupSummary` in app.js swaps the icon. */
 .ph-circle-notch {
   display: inline-block;
   animation: chip-spin 1.1s linear infinite;
@@ -4072,7 +4643,7 @@ mark.lightbox-hit {
    between "still working" and "finished", so removing it would take the
    information away rather than the movement. The progress-motion counter-rule
    further up this file overrides this when the user has asked for movement
-   regardless — a spinner is feedback, not decoration. */
+   regardless: a spinner is feedback, not decoration. */
 @media (prefers-reduced-motion: reduce) {
   .ph-circle-notch {
     animation: none;
@@ -4130,7 +4701,7 @@ mark.lightbox-hit {
   padding: var(--space-2) 0 var(--space-1);
 }
 
-/* **The sources, as cards.** Reported twice — "improve the ui of the sources
+/* **The sources, as cards.** Reported twice, "improve the ui of the sources
    as well in the chat", then "what is shown about the sources, dropdown
    previews, hyperlinks etc." It was a column of one-line strings, which says
    only what each source is *called*.
@@ -4152,12 +4723,12 @@ mark.lightbox-hit {
   /* **Explicit, because a card that opens something is a `<button>`, and the
      global `button` rule centres its flex children.** Measured: the head row
      rendered 476px wide inside a 274px card, starting 101px to the *left* of
-     it — exactly half the difference, the signature of `align-items: center`
+     it: exactly half the difference, the signature of `align-items: center`
      on a child wider than its container. Centred, the head is sized to its own
      content rather than to the card, so the title never reached the width that
      triggers its ellipsis and the row spilled out of both edges. The web cards
      (`<a>`) were fine, which is why it looked like a data problem rather than
-     a cascade one — the two shapes of the same card were styled by different
+     a cascade one: the two shapes of the same card were styled by different
      rules. */
   align-items: stretch;
   gap: var(--space-1);
@@ -4173,7 +4744,7 @@ mark.lightbox-hit {
   min-width: 0;
 }
 
-/* Openable cards are controls and say so — the same affordance rule the row
+/* Openable cards are controls and say so, the same affordance rule the row
    version of this panel already followed. A card that opens nothing keeps the
    quieter, borderless look of a fact. */
 .chat-source-card.is-openable {
@@ -4236,7 +4807,7 @@ mark.lightbox-hit {
 }
 
 /* **The picture the source is holding.** A source card is a note preview, and
-   the widget rows have shown a note's picture since `noteRowImage` shipped —
+   the widget rows have shown a note's picture since `noteRowImage` shipped: 
    these did not, which is half of "the sources ... dont render inline md,
    images or files". A strip rather than a square: the card is 17rem wide and
    two lines tall, so a thumbnail that keeps its own aspect ratio would decide
@@ -4279,7 +4850,7 @@ mark.lightbox-hit {
 }
 
 /* The answer's own block inside a bubble. Reported: "the text is right up
-   against the overly animated borders as well" — the step had a border and no
+   against the overly animated borders as well", the step had a border and no
    padding, so every line of prose touched it. Padding on the inside of a
    border is not decoration; without it the border reads as a crop mark. */
 .msg.assistant .step-answer,
@@ -4295,7 +4866,7 @@ mark.lightbox-hit {
 }
 
 /* The conversation's name, which is also the control that renames it. It has
-   to look like a heading first — it is the page's title — and reveal that it
+   to look like a heading first, it is the page's title, and reveal that it
    is pressable on approach, which is the same rule the note titles follow. */
 .chat-title {
   cursor: pointer;
@@ -4305,7 +4876,7 @@ mark.lightbox-hit {
   transition: background var(--motion-fast) ease;
   /* Reported: "the icon is out of alignment". The pencil below used to be an
      `::after` on a *block* heading, so it sat on the heading's text baseline
-     at `--text-sm` — visibly low against a 1.25rem title, and only ever seen
+     at `--text-sm`, visibly low against a 1.25rem title, and only ever seen
      on hover, which is when nobody is looking for alignment. `inline-flex`
      with `align-items: center` centres it against the cap height instead. */
   display: inline-flex;
@@ -4321,7 +4892,7 @@ mark.lightbox-hit {
 }
 
 /* A hint that this is editable. **Always in the layout, only visible on
-   approach** — the old rule created the glyph on hover, so the heading grew
+   approach**: the old rule created the glyph on hover, so the heading grew
    by ~1.4rem the moment the pointer touched it and everything to its right
    jumped. Fading an element that is already occupying its space costs the
    same and moves nothing. `line-height: 1` because the glyph's own line box
@@ -4347,7 +4918,7 @@ mark.lightbox-hit {
    size from the first's. A fixed grid gives every row one width, so the eye
    reads down a column instead of hunting, and the truncation lands in one
    place. Two across at a comfortable width, one across when the popup is
-   narrow — `auto-fill` decides, so there is no breakpoint to keep in step. */
+   narrow: `auto-fill` decides, so there is no breakpoint to keep in step. */
 .cmd-source-block {
   margin-top: var(--space-3);
 }
@@ -4396,27 +4967,27 @@ mark.lightbox-hit {
 /* --- what the answering model is ---------------------------------------------
    Asked for: "in chat I want more details in features, including model
    attributes, token expense distribution, more features." Fed by
-   `GET /models/spec` — an endpoint that had existed since §11 with no caller.
+   `GET /models/spec`, an endpoint that had existed since §11 with no caller.
 
    Anchored under the chat header rather than floated at the badge: it is a
    panel about the conversation you are in, and the header is where the
    conversation's own facts already live. */
 /* **`position: absolute` needs a positioned ancestor, and this had none.**
    Reported: "clicking the model used in the chat header doesnt work." It did
-   work — `#chat-active-model`'s listener fired, `openChatModelPanel` ran, the
-   `hidden` class came off — and the panel opened **off the bottom of the
+   work: `#chat-active-model`'s listener fired, `openChatModelPanel` ran, the
+   `hidden` class came off: and the panel opened **off the bottom of the
    screen**. Measured at 1440x900: the panel's box landed at (0, 905) while
    the badge it belongs to sits at (487, 86).
 
    `#chat-model-panel` is a direct child of `<body>` (it lives beside the
    other app-level panels in index.html, not inside the chat header), so
-   `top: 100%` resolved against the initial containing block — 100% of the
+   `top: 100%` resolved against the initial containing block, 100% of the
    viewport's height, five pixels past its bottom edge. A control that opens
    something nobody can see is indistinguishable from a control that does
    nothing.
 
    Fixed rather than absolute, with `openChatModelPanel` placing it under the
-   badge in viewport coordinates — the same treatment `clampToolbarMenu` gives
+   badge in viewport coordinates, the same treatment `clampToolbarMenu` gives
    the formatting strip's menus, and for the same reason: where it should go
    depends on where the badge has ended up, which CSS here cannot know. The
    `top`/`left` below are only the pre-measurement seed. */
@@ -4451,7 +5022,7 @@ mark.lightbox-hit {
 }
 
 /* Label and value in two columns, so the eye reads down the values rather than
-   hunting through sentences — this is a specification, not prose. */
+   hunting through sentences: this is a specification, not prose. */
 .chat-model-facts {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -4469,21 +5040,46 @@ mark.lightbox-hit {
   font-variant-numeric: tabular-nums;
 }
 
+/* **`.chat-transcript`: the positioning root for the jump-to-latest pill.**
+   See `.chat-jump-latest`'s own comment just below for the report and the
+   reasoning; this is the wrapper that comment refers to. `#chat-messages`
+   is the one flex child that actually fills it (same `flex: 1 1 auto` it
+   already had, unchanged), so the wrapper's own box size is #chat-messages'
+   size and nothing else, which is what lets the pill float without ever
+   affecting anything outside this wrapper. */
+.chat-transcript {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 /* **The "still writing" / jump-to-latest pill.** See `#chat-jump-latest` in
-   index.html for the report behind it. Anchored to the bottom of the
-   transcript column rather than to the pane it scrolls with — a control that
-   scrolls away with the content is the very problem it exists to solve. */
+   index.html for the report behind it.
+
+   **`position: absolute`, not `sticky`.** Reported: "the still writing/jump
+   to latest pill takes a row of the chat panel rather than floating over
+   it." Measured: `position: sticky` still reserves its own box in normal
+   flow, it only changes how that box behaves once scrolled, so this flex
+   item's own height came and went with `.hidden`, and toggling it shifted
+   the suggestion chips and the composer dock below it up and down the page
+   on every stream, a real layout shift, not a rendering quirk. Absolute
+   positioning, anchored to `.chat-transcript` above (which sizes itself
+   entirely from `#chat-messages`, its only flow child), can only ever
+   overlap the transcript: `.hidden` toggling this element now changes
+   nothing about `.chat-transcript`'s own box. */
 .chat-jump-latest {
-  position: sticky;
+  position: absolute;
+  left: 50%;
   bottom: var(--space-3);
+  transform: translateX(-50%);
   z-index: 4;
-  align-self: center;
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  margin: 0 auto;
   padding: var(--space-2) var(--space-4);
-  border: 1px solid var(--accent);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-pill);
   background: var(--modal-bg-opaque);
   box-shadow: var(--shadow-lg);
@@ -4513,7 +5109,7 @@ mark.lightbox-hit {
 /* **An icon-only mic keeps its shape while recording.** The level meter is
    appended *inside* the button, so a round 2rem icon button stretched into
    a lozenge with a stop-square on one side and four faint bars on the other
-   — reported as "the ui and animation of the speech to text button is
+   - reported as "the ui and animation of the speech to text button is
    broken visually when recording". A labelled recorder ("Stop") still shows
    the meter; the icon-only one keeps the pulsing ring, which is the same
    signal in the space it actually has. */
@@ -4552,4 +5148,379 @@ button.ghost.danger {
 
 button.ghost.danger:hover {
   background: color-mix(in srgb, var(--error) 26%, transparent);
+}
+
+/* --- the chat sidebar on a phone ---------------------------------------------
+   Measured at 390px: the Chats card took 238px of an 844px screen before
+   the conversation began: a heading, a sort select, an empty-state
+   sentence and a "Browse all" button, for a list that on a phone is one
+   or two rows. Below 600px the card keeps its head row (the title and
+   New) and the list itself; sorting and browsing are the Library's job
+   and are one tap away there. Same shape as the Notes category strip
+   above, which already drops its head row at this width. */
+@media (max-width: 600px) {
+  #chat-sidebar {
+    --card-pad-y: var(--space-3);
+  }
+
+  /* The select is dressed by `enhanceSelect` (a `.select-shell` wraps it),
+     so the shell is what has to go, not the hidden native control. */
+  #chat-sidebar .chat-sidebar-sort,
+  #chat-sidebar .select-shell:has(> .chat-sidebar-sort),
+  #chat-sidebar .conv-browse-all {
+    display: none;
+  }
+
+  #chat-sidebar #conv-empty {
+    margin: 0;
+  }
+
+  #chat-sidebar #conversation-list {
+    max-height: calc(3 * var(--control-h-lg));
+    overflow-y: auto;
+  }
+}
+
+/* --- the map is the tab, and its controls float over it -----------------------
+   GRAPH_PLAN.md Phase 2, "the space". Measured before this section existed, at
+   1440x900 with the options panel closed: the card was 1408x767 and the map
+   got 588px of it, so a quarter of the tab was chrome, and every panel that
+   opened (options, trace, the link suggestions) took its height off the map
+   again. The map is the one thing on this tab that can be any size, so it
+   takes the whole card and everything else sits over it on the app's popover
+   shell: the ground is `--modal-bg-opaque` rather than `--modal-bg` for the
+   same reason the toolbar menus use it (04-chat-dock-appearance.css), a
+   4% see-through panel over a moving graph leaves the nodes underneath
+   legible as ghosts through the words.
+
+   The floating column carries `pointer-events: none` and gives it back to its
+   children, so the gaps between the panels are still map: a drag that starts
+   in one of them pans the graph rather than doing nothing. */
+#graph-card {
+  /* **No card padding: the map is the card's content, edge to edge.** A card
+     pads its content away from its own border, which is right for text and
+     rows and wrong for one surface that fills it: the padding was 21px top
+     and bottom and 25px each side, and it read as a grey frame around the
+     map rather than as breathing room. The floating column and the legend
+     carry their own inset from the edge instead, so nothing has moved
+     closer to the border than it was. */
+  padding: 0;
+  /* The floating dock's own height, which three other things need to clear:
+     `--control-h-lg` for the controls in it plus this section's padding and
+     the hairline. It is a calc rather than a measured pixel count so a change
+     to the density scale carries, and it is only right while the dock is one
+     row: measured at a 700px viewport the dock wraps to 111px while this said
+     51px, and everything that clears the dock by this token was told it had
+     60px it did not have. `initGraphDockHeightToken` in graph.js overwrites
+     this with the measured height on the element, so the value below is the
+     floor for the first paint and for a browser with no ResizeObserver, and
+     the truth arrives before anything can be seen to be in the wrong place.
+     The same treatment, for the same reason, as `--header-h` in app.js. */
+  --graph-dock-h: calc(var(--control-h-lg) + var(--space-2) * 2 + 2px);
+  --graph-chrome-top: calc(var(--space-3) * 2 + var(--graph-dock-h));
+}
+
+.graph-overlay {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  right: var(--space-3);
+  /* Bounded at the bottom as well as the top, which it was not, so that a
+     panel in the column can cap itself against the card it floats over
+     (`.graph-overlay .graph-options` below) instead of against the viewport.
+     A percentage max-height needs a containing block with a definite height,
+     and `top` alone does not give one. */
+  bottom: var(--space-3);
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-3);
+  pointer-events: none;
+}
+
+.graph-overlay > * {
+  pointer-events: auto;
+  /* A definite column height means flex may now shrink these to fit it, and
+     a squashed dock is not a thing anyone asked for: the panels cap
+     themselves, in their own rules, by their own reasons. */
+  flex: 0 0 auto;
+}
+
+/* One shell for every panel in the column, so the dock, the options, the trace
+   strip and the suggestions read as one family of floating surfaces rather
+   than four. The blur is dropped with the transparency: an opaque panel has
+   nothing to blur, and three stacked blurred layers over a canvas that
+   repaints every frame is paint nobody sees. */
+.graph-overlay .dock[data-dock-name="graph"],
+.graph-overlay .graph-options,
+.graph-overlay .graph-trace,
+.graph-overlay .graph-trace-result,
+.graph-overlay .graph-help-panel,
+.graph-overlay #link-suggestions {
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--modal-bg-opaque);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.graph-overlay .dock[data-dock-name="graph"] {
+  padding: var(--space-2) var(--space-3);
+}
+
+/* The help panel was absolutely positioned against the card (a popover under
+   a toolbar that used to sit in the flow). In the column it is a row like the
+   others, right-aligned under the "?" it opens from. */
+.graph-overlay .graph-help-panel {
+  position: static;
+  align-self: flex-end;
+  width: min(26rem, 100%);
+}
+
+/* The display options, on the same footing (INBOX 21 and 41). They opened as
+   a full-width strip under the dock, which is what a settings panel looks
+   like when it is part of the page and not what one looks like when it is a
+   popover the gear beside it opened. Right-aligned under that gear, at a
+   menu's width, it reads as the dock's own menu: the same ground, edge,
+   radius and shadow the `.dock-menu-list` recipe uses, which the shared rule
+   above already gives every panel in this column. */
+.graph-overlay .graph-options {
+  align-self: flex-end;
+  width: min(22rem, 100%);
+}
+
+/* A panel over the map is capped and scrolls inside itself. Reported once in
+   full screen ("the suggested-links list runs off the bottom without
+   scrolling"), and floating panels make that the general case rather than one
+   window's bug: the column has no height of its own to push against. */
+.graph-overlay .graph-help-panel {
+  max-height: min(60vh, 26rem);
+  overflow-y: auto;
+}
+
+/* **The suggestions panel is a surface here, so it has to have an inset.**
+   The shared rule above gives it the card ground, the edge, the radius and
+   the shadow of every other panel in this column, and nothing gave it any
+   padding, so its heading and its rows sat flush against that edge on all
+   four sides: measured on the running app, `padding: 0px` inside a 1px
+   border, with one line of text making the whole panel 26px tall. Reported
+   as "the graph suggested links panel is poorly designed and not consistent
+   with the rest of the app ui style". `--space-4` is what `.graph-help-panel`
+   beside it uses, and a panel of prose is what both of them are.
+
+   **The cap moves off the panel and on to the rows.** It used to share the
+   help panel's rule above, which caps the whole box: the heading ("Notes
+   that look related...", with the backfill and close buttons in it) scrolled
+   away with the list, and `.link-suggest-rows` exists precisely so it does
+   not (its own comment: "the heading stays put above them"). Its 55vh was
+   never reached, because the box's own 26rem cap always bound first. Capping
+   the rows here and letting the panel size to them restores the split the
+   list was built with, and leaves one scrollbar where there were two. */
+.graph-overlay #link-suggestions {
+  padding: var(--space-4);
+}
+
+.graph-overlay .link-suggest-rows {
+  max-height: min(50vh, 22rem);
+}
+
+/* The options panel is capped against the card, not the viewport, and the
+   number it subtracts is the zoom strip's own room at the bottom right.
+   Measured at 1440x900 while fixing it: at a 40rem cap the panel ran to
+   y=771 and the zoom strip starts at y=688, so the panel took the top two
+   zoom buttons with it, a panel that covers a control has removed that
+   control. `--graph-chrome-top` is the dock's own room at the top (the same
+   token the minimap's top corners use), and 12rem is the four zoom buttons
+   plus their gutter and a gap. What does not fit scrolls inside the panel,
+   with the cut-off row visible, which is the affordance; running off the
+   card, or over the buttons, is not. */
+.graph-overlay .graph-options {
+  /* The `max()` is the floor, and it is not decoration: on a short window the
+     subtraction goes negative, and a negative `max-height` is not an error
+     that shows up anywhere near the rule that caused it, it is a panel that
+     opens with no height at all. 12rem is four rows and a heading, which is
+     enough to see that a list is there and scroll it. */
+  max-height: max(12rem, calc(100% - var(--graph-chrome-top) - 12rem));
+  overflow-y: auto;
+}
+
+/* The legend: the map's key, floating bottom left, clear of the zoom strip at
+   the bottom right. It keeps its single non-wrapping scrolling row (see
+   `#graph-legend` in 04-chat-dock-appearance.css), so its cost is one row
+   whatever the notebook holds. */
+.graph-legend-row {
+  position: absolute;
+  left: var(--space-3);
+  bottom: var(--space-3);
+  z-index: 5;
+  max-width: calc(100% - var(--space-3) * 2 - 4rem);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--modal-bg-opaque);
+  box-shadow: var(--glass-shadow);
+}
+
+.graph-legend-row #graph-legend {
+  margin: 0;
+}
+
+/* Collapsed, or with no categories to show, the row is not an empty box on
+   the map: it is gone. In the flow it could afford to be an empty wrapper. */
+.graph-legend-row.legend-collapsed,
+.graph-legend-row:not(:has(#graph-legend > *)) {
+  display: none;
+}
+
+/* The map takes the whole card. No border and no corner of its own either:
+   the card outside it already draws both, and two hairlines a pixel apart is
+   the "borders inside borders" DESIGN.md rules out. `#graph-card > #graph-box`
+   rather than `#graph-box` so this beats the id rules in 03 on specificity
+   and not on which file happens to be appended last. */
+#graph-card > #graph-box {
+  height: auto;
+  border: none;
+  border-radius: 0;
+}
+
+/* The minimap's top corners clear the floating dock. The bottom corners are
+   left where they are: bottom left is the legend's, which is a collision the
+   corner setting exists to let someone step out of, and the default (top
+   left) is now the corner nothing else claims. */
+.graph-minimap-tl,
+.graph-minimap-tr {
+  top: var(--graph-chrome-top);
+}
+
+@media (max-width: 600px) {
+  /* The column keeps the phone's own gutter rather than the map's inset. */
+  .graph-overlay {
+    top: var(--space-2);
+    left: var(--space-2);
+    right: var(--space-2);
+  }
+}
+
+/* INBOX 31: `escapeMenuIfClipped` reparents a `details.dock-menu`'s list to
+   <body> the same way it already does for `.action-menu` (see that rule's
+   own comment, above in this file), so a dock menu inside a scrolling
+   ancestor can leave the box that was clipping it. `.action-menu-escaped`
+   was written only for `.action-menu`'s selector, so `.doc-dock-menu-list`
+   needs the same three declarations under its own name; kept as its own
+   rule rather than folded into the other one so neither reads as if it
+   were written for a shape it wasn't. */
+.doc-dock-menu-list.action-menu-escaped {
+  position: fixed;
+  right: auto;
+  z-index: 1020;
+}
+
+/* INBOX 43, the whiteboard's own top-bar menus (Insert, Edit, Arrange, View,
+   Board), which are the third family on the same recipe. They are
+   `position: absolute; right: 0` inside `.wb-board-menu-wrap`, and
+   `#library-view-whiteboard` is `overflow: hidden`: measured at 1280x640
+   with a board open, the View menu ended at y=628 inside the window and the
+   clipping ancestor ended at y=579, so its last 49px were cut off however
+   the menu's own height was capped. `right: auto` matters as much as
+   `position: fixed` here: `wb-board-menu`'s own `right: 0` would otherwise
+   pin the escaped menu to the window's right edge instead of the left the
+   placement code computes. */
+.wb-board-menu.action-menu-escaped {
+  position: fixed;
+  right: auto;
+  z-index: 1020;
+}
+
+
+/* GRAPH_PLAN Phase 3: groups in the display options and the legend. */
+/* The form that makes a group, which is why it is not a `.graph-option-row`
+   (03-dashboard-widgets.css: that recipe is one setting, its name on the left
+   and its control on the right). It still stands on the same height scale, so
+   a form row reads as a different *kind* of row rather than as a row that got
+   away: `max(--control-h, --target-min)` is the same floor the settings rows
+   take, which on a phone is the 44px finger target. */
+.graph-group-add-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  min-height: max(var(--control-h), var(--target-min));
+}
+.graph-group-add-row > input {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+}
+.graph-groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.graph-group-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-h-lg);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+}
+.graph-group-row:hover {
+  background: var(--surface-2);
+}
+.graph-group-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.graph-groups-empty {
+  margin: 0;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-sm);
+}
+.legend-group {
+  font-weight: 500;
+}
+
+
+/* GRAPH_PLAN Phase 4: the selection dock floats under the graph dock, and
+   the right-click menu is a fixed action menu at the pointer.
+
+   **It floats under the dock; it was in the column above it.** Owner: "when
+   I select graphs with the multi select feature, the select panel appears in
+   the top right above the topbar and pushes the top bar down, covering the
+   minimap if it is set to the top left or right, it has to show below the
+   top bar." Measured at 1440x900 before this rule: revealing the dock moved
+   the graph dock from y=81 to y=151, and the minimap (pinned at
+   `--graph-chrome-top`, which is where the dock used to end) was left at
+   y=140 with the pushed-down dock covering it from y=151.
+
+   A transient bar is the one thing in this column that must not move what is
+   already on screen: it appears and disappears under the pointer, mid-drag,
+   several times a minute. So it leaves the flow entirely and is positioned
+   against the column instead, at the dock's own height plus the column's
+   gap, which is the same "clear the dock" offset `--graph-chrome-top` gives
+   the minimap, expressed from inside the column rather than from the card.
+
+   Centred rather than at the column's left edge, which is the one horizontal
+   position that clears *both* top corners the minimap can be set to: at
+   1440px it spans x=473 to x=967 with the minimap's corners ending at 195
+   and starting at 1237. `left`/`right`/`margin-inline` rather than a
+   translate, so the bar lands on whole pixels and its text stays crisp. */
+.graph-selection-dock {
+  position: absolute;
+  top: calc(var(--graph-dock-h) + var(--space-3));
+  left: 0;
+  right: 0;
+  margin-inline: auto;
+  gap: var(--space-2);
+  width: max-content;
+  max-width: 100%;
+}
+.graph-node-menu {
+  z-index: 80;
+  min-width: 13rem;
 }

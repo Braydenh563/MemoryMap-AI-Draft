@@ -6,7 +6,7 @@ plain columns and joins, already exact, and asking a model to guess which
 notes feel "forgotten" would be slower, less explainable, and no more
 correct than just reading the columns that already say so.
 
-Kept intentionally conservative — every signal has to agree before a note
+Kept intentionally conservative: every signal has to agree before a note
 qualifies. A false positive here means nagging someone about a note they
 deliberately keep untouched (a reference note, a finished project write-up),
 which is the same cost `duplicates.py` weighs against a wrongly-matched pair.
@@ -32,19 +32,19 @@ def find_stale_orphaned_notes(
 
     All four have to hold at once:
 
-    - **Old** (`updated_at` older than the cutoff) — a note edited last week
+    - **Old** (`updated_at` older than the cutoff), a note edited last week
       isn't "forgotten" no matter how disconnected it is.
-    - **No link**, in either direction — a linked note is already found
+    - **No link**, in either direction, a linked note is already found
       through whatever it's linked to, whatever its own age.
-    - **No thread** — neither a reply (`parent_id` set) nor has any reply of
+    - **No thread**: neither a reply (`parent_id` set) nor has any reply of
       its own. A reply is reachable from the note it answers; a note with
       replies is reachable from them.
-    - **Not pinned** — pinning is the user already saying "keep this close,"
+    - **Not pinned**: pinning is the user already saying "keep this close,"
       which is the opposite of a note this function exists to surface.
 
     Private notes are included (unlike `duplicates.find_duplicates`,
     ROADMAP.md item 31 asks for notes to be *tagged* here, not their content
-    read or shown anywhere) — but the caller doing the tagging still has to
+    read or shown anywhere), but the caller doing the tagging still has to
     go through `_require_note`/`manager.update_entry` the same as any other
     write to a private note.
     """

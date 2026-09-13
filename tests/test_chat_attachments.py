@@ -52,7 +52,7 @@ def test_an_attached_image_comes_back_renderable(client):
 
 
 def test_the_caption_and_the_reading_travel_with_the_picture(client):
-    """"the captions arent viewable under the image cards" — they are the
+    """"the captions arent viewable under the image cards", they are the
     reason to show a caption at all, and the same two readings the Library
     tile shows, so one picture reads the same way everywhere."""
     from memorymap.core.database import MediaUpload
@@ -75,7 +75,7 @@ def test_the_caption_and_the_reading_travel_with_the_picture(client):
 
 
 def test_a_vision_reading_wins_over_the_offline_one(client):
-    """Same precedence the Library tile uses — the AI reading is the one the
+    """Same precedence the Library tile uses, the AI reading is the one the
     app keeps working with, and showing both in one line would read as one
     doubled transcription."""
     from memorymap.core.database import MediaUpload
@@ -97,7 +97,7 @@ def test_a_vision_reading_wins_over_the_offline_one(client):
 
 def test_an_attached_document_comes_back_as_a_way_to_open_it(client):
     """A non-image dropped on the chat is imported into Documents. There is
-    nothing to preview inline — its text may be a hundred pages — so the
+    nothing to preview inline, its text may be a hundred pages, so the
     navigation *is* the render."""
     document = client.post("/documents", json={"title": "Assignment brief"}).json()
     conversation = _conversation_with(client, document_ids=[document["id"]])
@@ -128,7 +128,7 @@ def test_both_kinds_ride_on_one_message(client):
 def test_a_deleted_attachment_is_absent_rather_than_an_error(client):
     """An upload can be deleted from the Library long after the message that
     carried it. The bubble then shows one fewer thumbnail, which is what
-    happened before any of this existed — it must not 404 the conversation."""
+    happened before any of this existed, it must not 404 the conversation."""
     upload = _upload(client)
     conversation = _conversation_with(client, image_media_ids=[upload["id"]])
     client.delete(f"/media/{upload['id']}")
@@ -154,13 +154,13 @@ def test_a_message_with_nothing_attached_gains_no_key(client):
 def test_the_bubble_renders_the_strip_on_both_paths():
     """A live send and a reopen have to draw the same thing, and they used to
     draw nothing and nothing. Asserted against the source because there is no
-    DOM here — the same reason test_frontend_ids.py exists."""
+    DOM here: the same reason test_frontend_ids.py exists."""
     source = Path("frontend/app.js").read_text(encoding="utf-8")
     assert "function chatAttachmentStrip(" in source
     # The reopen path.
     assert 'addBubble("user", message.content, message.attachments)' in source
     # The live path, which builds its cards from the composer before it is
-    # cleared — after that there is nothing left to build them from.
+    # cleared: after that there is nothing left to build them from.
     assert "sentAttachmentCards" in source
     assert 'addBubble("user", opts.displayText || question, sentAttachmentCards)' in source
 
@@ -173,7 +173,7 @@ def test_the_strip_offers_a_preview_and_a_way_back():
     # `focusLibraryFile`, not a literal `switchTab("library")`, since the
     # Library's media view became two sub-tabs (Images and Files) and which
     # one to open depends on the file. The property this line is really
-    # asserting — that the card offers a way back to the Library — is
+    # asserting, that the card offers a way back to the Library, is
     # unchanged; the helper is where the three steps now live, and it is
     # tested by being the only route any of the three call sites take.
     assert "focusLibraryFile(" in strip, "the card must offer a way back to the Library"
@@ -183,14 +183,14 @@ def test_the_strip_offers_a_preview_and_a_way_back():
 def test_the_ids_are_persisted_by_the_send_path():
     source = Path("frontend/app.js").read_text(encoding="utf-8")
     assert source.count("document_ids: sentDocuments") == 2, (
-        "both save paths — the partial written mid-stream and the final one"
+        "both save paths: the partial written mid-stream and the final one"
     )
 
 
 # --- notes clipped to a question (reported after images and documents) -----------
 #
 # "if the user attaches a note to a chat message how does it show that that
-# note is atatched to that message??" — it did not, anywhere. The ids went to
+# note is atatched to that message??", it did not, anywhere. The ids went to
 # /chat/stream, built one prompt and were thrown away, so both the live bubble
 # and the reopened conversation showed plain text with no sign of what the
 # answer had been given to read.
@@ -219,7 +219,7 @@ def test_a_turn_remembers_which_notes_were_clipped_to_it(ai_client, session):
 
 
 def test_a_private_or_binned_note_loses_its_chip(ai_client, session):
-    """Same treatment as a deleted upload — the chip disappears. Listing a
+    """Same treatment as a deleted upload, the chip disappears. Listing a
     private note's first line in a conversation would put it back on screen in
     the one place the private-notebook rule cannot reach."""
     from memorymap.core.database import Entry
@@ -239,7 +239,7 @@ def test_a_private_or_binned_note_loses_its_chip(ai_client, session):
 
 def test_the_model_is_told_what_the_pictures_in_an_attached_note_say(session):
     """"if there is an image/sketch/file in that note, can the ai read the
-    captions or ocr in those attachments if they already exist??" — it could
+    captions or ocr in those attachments if they already exist??", it could
     not. A note's content carries `/media/<filename>` and nothing else, so a
     note whose whole point was a photographed whiteboard reached the model as a
     sentence and a link."""
@@ -265,7 +265,7 @@ def test_the_model_is_told_what_the_pictures_in_an_attached_note_say(session):
 def test_a_picture_with_no_reading_yet_contributes_nothing(session):
     """"If they already exist" is the operative half: nothing here generates a
     caption or runs vision OCR. Captioning may not have run, may be off, or may
-    have no model — and a chat turn is the worst place to start one."""
+    have no model: and a chat turn is the worst place to start one."""
     from memorymap.api.routes_chat import _media_readings
     from memorymap.core.database import MediaUpload
 
@@ -278,7 +278,7 @@ def test_a_picture_with_no_reading_yet_contributes_nothing(session):
 def test_the_model_is_told_whats_inside_a_notes_own_attached_file(client, session):
     """`_media_readings`' own sibling gap: a note's non-image *file*
     attachments (a PDF, a .docx, a code file) never reached the model at
-    all — content only ever carried `/media/<filename>` references, and a
+    all: content only ever carried `/media/<filename>` references, and a
     file attachment (Attachment table) isn't a content reference, it's a
     separate list on the note. Round-tripped through the real upload route
     so this exercises the same stored_name/uploads_dir path the reader

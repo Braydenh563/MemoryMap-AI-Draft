@@ -9,7 +9,7 @@ Asked for repeatedly, and in the end bluntly:
 
 That description was accurate, and the cause was structural rather than
 cosmetic: `style.css` had 667 margin/padding/gap declarations across more than
-twenty-five distinct values, seven of them between 0.3rem and 0.6rem — all
+twenty-five distinct values, seven of them between 0.3rem and 0.6rem, all
 meaning "a small gap", all slightly different, and each one a place where two
 things that should line up nearly do.
 
@@ -21,7 +21,7 @@ px margin or padding outside the token block, so tab seven cannot reintroduce
 the problem. This is the step that makes it stick; without it this section will
 be rewritten in six months."
 
-The scale is deliberately generous — nine steps, fitted to the distribution
+The scale is deliberately generous, nine steps, fitted to the distribution
 that was already in the file rather than imposed on it, so adopting it moved
 nothing by more than 0.1rem. If a value genuinely needs to be off-scale, add it
 to ALLOWED with the reason. Being made to write the reason is the point.
@@ -38,7 +38,7 @@ from tests._css_paths import FRONTEND_DIR, css_text
 SCALE = {0.05, 0.1, 0.15, 0.25, 0.4, 0.5, 0.6, 0.8, 1.0, 1.25, 1.5, 2.0}
 
 #: Off-scale values that earn their place. Keep this list short, and keep the
-#: reasons real — an entry with a vague reason is a value that should have been
+#: reasons real: an entry with a vague reason is a value that should have been
 #: snapped to the scale instead.
 ALLOWED = {
     # Indent steps for the document outline: each level is one nesting depth,
@@ -60,7 +60,7 @@ VALUE = re.compile(r"(?<![\w.-])(-?[0-9]*\.?[0-9]+)rem\b")
 def _stylesheet() -> str:
     """All of CSS_FILES (see tests/_css_paths.py), comments stripped.
 
-    The comments here explain layout decisions, so they quote lengths — and a
+    The comments here explain layout decisions, so they quote lengths, and a
     naive scan reads those as real declarations. `test_frontend_ids.py` had to
     learn the same lesson about markup comments quoting ids.
     """
@@ -82,7 +82,7 @@ def test_every_spacing_value_is_on_the_scale():
     offenders = _offenders()
     assert not offenders, (
         "These margin/padding/gap values are off the spacing scale:\n  "
-        + "\n  ".join(f"{size}rem — used {n}×" for size, n in sorted(offenders.items()))
+        + "\n  ".join(f"{size}rem: used {n}×" for size, n in sorted(offenders.items()))
         + "\n\nUse a --space-* step (see :root in style.css). If the value is "
         "genuinely special, add it to ALLOWED in this file with the reason."
     )
@@ -93,7 +93,7 @@ def test_the_scale_is_actually_declared():
     properties it is protecting have been renamed out from under it."""
     text = _stylesheet()
     # The steps are wrapped in calc(... * var(--density)) so one setting can
-    # tighten the whole scale — the base value is what has to be on it.
+    # tighten the whole scale, the base value is what has to be on it.
     declared = {
         float(m)
         for m in re.findall(r"--space-\d+:\s*(?:calc\()?([0-9.]+)rem", text)
@@ -126,7 +126,7 @@ def test_every_font_size_is_on_the_scale():
 
     Text that is *almost* the same size in two adjacent components is the
     texture the report called "a bunch of ai generated slop features joined
-    together" — nothing quite lines up, and no size means anything because
+    together", nothing quite lines up, and no size means anything because
     every one is slightly its own.
     """
     offenders = Counter()
@@ -137,7 +137,7 @@ def test_every_font_size_is_on_the_scale():
                 offenders[size] += 1
     assert not offenders, (
         "Off-scale font sizes:\n  "
-        + "\n  ".join(f"{s}rem — used {n}×" for s, n in sorted(offenders.items()))
+        + "\n  ".join(f"{s}rem: used {n}×" for s, n in sorted(offenders.items()))
         + "\n\nUse a --text-* step (see :root in style.css)."
     )
 
@@ -152,7 +152,7 @@ def test_no_corner_is_hard_coded_in_pixels():
     """Corners have to follow the slider in Settings → Appearance.
 
     Everything rounded used to be one of twelve hard-coded pixel values, none
-    of which moved when that slider did — so choosing square corners squared
+    of which moved when that slider did, so choosing square corners squared
     the cards and left every chip, popup and button rounded, and adjacent
     surfaces at 8px and 10px read as belonging to different applications.
 
@@ -168,14 +168,14 @@ def test_no_corner_is_hard_coded_in_pixels():
             offenders[int(raw)] += 1
     assert not offenders, (
         "Hard-coded corner radii:\n  "
-        + "\n  ".join(f"{px}px — used {n}×" for px, n in sorted(offenders.items()))
+        + "\n  ".join(f"{px}px: used {n}×" for px, n in sorted(offenders.items()))
         + "\n\nUse --radius-sm / --radius-md / --radius-lg / --radius-pill."
     )
 
 
 def test_the_corner_tiers_are_derived_from_the_setting():
     """If a tier is ever pinned to a constant, the slider silently stops
-    reaching whatever uses it — which is the bug this replaced."""
+    reaching whatever uses it, which is the bug this replaced."""
     text = _stylesheet()
     for tier in ("--radius-sm", "--radius-md", "--radius-lg"):
         line = re.search(rf"{tier}:\s*([^;]+);", text)
@@ -183,17 +183,64 @@ def test_the_corner_tiers_are_derived_from_the_setting():
         assert "var(--radius)" in line.group(1), f"{tier} does not follow --radius"
 
 
+#: A radius written as a tier minus a length: the shape of a hand-picked inner
+#: corner. `- 1px` is exempt and is a different thing (see the test).
+HAND_PICKED_INNER = re.compile(r"calc\(\s*var\(--radius[a-z-]*\)\s*-([^)]+)\)")
+
+
+def test_an_inner_corner_uses_the_concentric_token():
+    """A shape inside a rounded container is concentric or it is wrong.
+
+    UI_MODERNISATION_PLAN Phase 10 / INBOX 101, from the HIG: "rounded shapes
+    that are concentric to their containers". The inner radius is the outer
+    one minus the padding between them, which is `--radius-inner`. Picking a
+    number instead breaks the relationship at every radius except the one it
+    was eyeballed at, and the radius is a user setting.
+
+    `calc(var(--radius-lg) - 1px)` is deliberately allowed and is not the same
+    thing: three rules square off the top corners of a panel inside a 1px
+    border, where the subtraction is the border's own width rather than a
+    guess at an inset.
+    """
+    offenders = Counter()
+    for declaration in RADIUS.findall(_stylesheet()):
+        for raw in HAND_PICKED_INNER.findall(declaration):
+            if raw.strip() == "1px":
+                continue
+            offenders[raw.strip()] += 1
+    assert not offenders, (
+        "Hand-picked inner radii:\n  "
+        + "\n  ".join(f"minus {v}: used {n}×" for v, n in sorted(offenders.items()))
+        + "\n\nUse var(--radius-inner)."
+    )
+
+
+def test_the_concentric_token_follows_the_setting():
+    """Same reason the three tiers do: pin it to a constant and the slider
+    stops reaching every inner corner in the app at once."""
+    line = re.search(r"--radius-inner:\s*([^;]+);", _stylesheet())
+    assert line, "--radius-inner is not declared"
+    assert "var(--radius)" in line.group(1), "--radius-inner does not follow --radius"
+    # A negative radius is invalid where it is *used*, so the declaration is
+    # dropped and the element inherits something unrelated. At the square end
+    # of the slider --radius is 2px and the subtraction is negative.
+    assert "max(" in line.group(1), (
+        "--radius-inner needs a floor of 0px: --radius goes down to 2px and a "
+        "negative border-radius is an invalid declaration, not a square corner"
+    )
+
+
 # --- the page shell -----------------------------------------------------------
 
 #: Containers that sit directly inside a tab page. Each one used to draw its
-#: own outer gutter, and no two agreed — see .tab-page in style.css.
+#: own outer gutter, and no two agreed, see .tab-page in style.css.
 #:
 #: The four dashboard rows joined this list after the gutter they draw was
 #: *photographed* rather than found by the lint: the hero banner began at x=32
 #: and every row beneath it at x=64, on the same screen, because each added
 #: 2rem of its own on top of --page-gutter. One tab disagreeing with itself is
-#: worse than two tabs disagreeing with each other — both edges are visible at
-#: once — and the rule this file already enforced would have caught it if the
+#: worse than two tabs disagreeing with each other, both edges are visible at
+#: once: and the rule this file already enforced would have caught it if the
 #: list had named them.
 PAGE_CONTAINERS = (
     ".layout",
@@ -209,10 +256,17 @@ PAGE_CONTAINERS = (
 
 #: Selectors with no background of their own: a pure wrapper's padding is an
 #: outer inset by another name, so both properties are checked. A container
-#: that paints something — .dash-hero is a visible panel — owns its padding.
-PURE_WRAPPERS = frozenset(
-    {".layout", ".doc-layout", ".dash-quicklinks", ".dash-stats", ".dash-toolbar", "#dash-grid"}
-)
+#: that paints something, .dash-hero is a visible panel, owns its padding.
+#:
+#: `.dash-toolbar` moved off this list when it became a bar. It was a pure
+#: wrapper: transparent, no edge, no radius, two 28px controls sitting loose
+#: between the stats strip and the grid, which is what docks.md section 3 left
+#: open about it. 08-consistency.css now gives it the same surface every other
+#: head row in the app draws, so it paints, and by this list's own stated
+#: distinction a container that paints owns its padding. The membership test is
+#: "does it have a background", not "is it on the Dashboard": moving it is the
+#: rule being applied, not widened.
+PURE_WRAPPERS = frozenset({".layout", ".doc-layout", ".dash-quicklinks", ".dash-stats", "#dash-grid"})
 
 
 def test_no_page_draws_its_own_outer_gutter():
@@ -220,7 +274,7 @@ def test_no_page_draws_its_own_outer_gutter():
 
     The side inset was 2rem in five separate rules, but the space above the
     first element was 1rem on Notes and Chat, 0 on Documents and 0.8rem on the
-    Dashboard, Reminders and Graph — each *on top of* .tab-page's own 0.8rem.
+    Dashboard, Reminders and Graph, each *on top of* .tab-page's own 0.8rem.
     Content therefore began 1.8rem down one tab and 0.8rem down the next,
     which is the page-level form of "spacing… changes each tab".
 
@@ -232,8 +286,8 @@ def test_no_page_draws_its_own_outer_gutter():
     for selector in PAGE_CONTAINERS:
         # `margin` is what holds a box away from the window, so a horizontal
         # margin on a page container *is* a gutter however it is spelled.
-        # `padding` is internal — .dash-hero is a visible panel and its own
-        # padding is none of the shell's business — except on the pure
+        # `padding` is internal: .dash-hero is a visible panel and its own
+        # padding is none of the shell's business: except on the pure
         # wrappers, which have no background and nothing to pad.
         props = "padding|margin" if selector in PURE_WRAPPERS else "margin"
         # Leading whitespace is allowed so a rule *inside* a media query is
@@ -241,7 +295,7 @@ def test_no_page_draws_its_own_outer_gutter():
         # re-declared `margin: 0.8rem 1rem 0`, putting the gutter back on
         # exactly the screens with the least room for it, and the anchored
         # pattern never saw it.
-        # The boundary stops a prefix from matching a longer name — without it
+        # The boundary stops a prefix from matching a longer name, without it
         # `.dash-hero` claims `.dash-hero-emblem` and reports its rules under
         # the wrong selector.
         for m in re.finditer(
@@ -274,10 +328,26 @@ def test_the_shell_is_declared_once_and_responsively():
 
 #: Tokens whose fallback is legitimate: a font stack has to name real families,
 #: an opacity needs a number when the art is off, and --bar-scale is not a
-#: design token at all — it's set inline, per bar, per frame, by
+#: design token at all, it's set inline, per bar, per frame, by
 #: startMicLevelMeter() in app.js, so its "declaration" is JS, not this
 #: stylesheet.
-FALLBACK_ALLOWED = {"--mono", "--ui-font", "--bg-art-opacity", "--modal-bg", "--chip-bg", "--bar-scale"}
+#:
+#: --wb-map-edge-colour is the same shape and arrived the same way: a mind
+#: map's edge takes its branch's colour, written per element by the map
+#: renderer with `el.style.setProperty`, and falls back to the accent for an
+#: edge whose branch has none. It is written that way rather than as a
+#: `stroke` attribute because a stylesheet declaration beats an attribute and
+#: the attribute version was dead markup, which is what
+#: `tests/test_svg_paint_attributes.py` now catches.
+FALLBACK_ALLOWED = {
+    "--mono",
+    "--ui-font",
+    "--bg-art-opacity",
+    "--modal-bg",
+    "--chip-bg",
+    "--bar-scale",
+    "--wb-map-edge-colour",
+}
 
 VAR_WITH_FALLBACK = re.compile(r"var\(\s*(--[\w-]+)\s*,")
 DECLARED = re.compile(r"(?m)^\s*(--[\w-]+)\s*:")
@@ -288,13 +358,13 @@ def test_no_token_is_used_with_a_dead_fallback():
 
     All six therefore rendered the hard-coded red in *both* themes, ignoring
     the theme-aware `--error` that already existed and is a different colour in
-    dark mode. `var(--text-muted, inherit)` was the same bug quieter still — it
+    dark mode. `var(--text-muted, inherit)` was the same bug quieter still, it
     simply inherited, so the text was never muted at all.
 
     A fallback on a token that IS declared is dead code with a sharper edge: it
     looks like a safety net and is actually a way for a rename to silently stop
     applying, since the rule keeps working while quietly showing the wrong
-    colour. Either the token exists — use it plainly — or it does not, and the
+    colour. Either the token exists, use it plainly, or it does not, and the
     fallback is hiding a bug.
     """
     text = _stylesheet()
@@ -307,7 +377,7 @@ def test_no_token_is_used_with_a_dead_fallback():
         }
     )
     detail = [
-        f"{name} — {'declared, so the fallback is dead code' if name in declared else 'NOT DECLARED, so the fallback is what renders'}"
+        f"{name}: {'declared, so the fallback is dead code' if name in declared else 'NOT DECLARED, so the fallback is what renders'}"
         for name in offenders
     ]
     assert not offenders, "Tokens used with a fallback:\n  " + "\n  ".join(detail)
@@ -323,8 +393,8 @@ def test_every_token_the_stylesheet_uses_is_declared_somewhere():
     The sibling test above only sees tokens written with a fallback, and that
     gap cost the app a visible bug: `.glass` set `background: var(--bg-glass)`
     against a token no theme declares. It resolved to the guaranteed-invalid
-    value, computed to transparent, and — sitting after `.card` at equal
-    specificity — won, so every `class="card glass"` element in the app painted
+    value, computed to transparent, and, sitting after `.card` at equal
+    specificity: won, so every `class="card glass"` element in the app painted
     no background at all. The command palette showed an input and a hint
     floating over the page with no surface behind them.
 
@@ -350,13 +420,13 @@ def test_the_semantic_colour_set_is_complete_in_both_themes():
     text = _stylesheet()
     for token in ("--ok", "--warn", "--error", "--accent", "--muted", "--ink"):
         assert len(re.findall(rf"(?m)^\s*{token}\s*:", text)) >= 2, (
-            f"{token} is declared once — it needs a dark-mode value too"
+            f"{token} is declared once, it needs a dark-mode value too"
         )
 
 
 def test_density_is_a_multiplier_over_the_scale():
     """It used to be nine rules in two places, each re-stating literal paddings
-    for the four components somebody happened to remember — .card, .layout,
+    for the four components somebody happened to remember, .card, .layout,
     .dash-hero and .entry-list li. So "compact" tightened those four and left
     every dialog, chip row, toolbar and settings pane at comfortable.
 
@@ -389,7 +459,7 @@ TEXTUAL_INPUTS = {
     "date", "time", "datetime-local",
 }
 #: Types that are their own kind of control and must NOT get the text-box
-#: treatment — a checkbox with `width: 100%` and 0.8rem of padding is not a
+#: treatment: a checkbox with `width: 100%` and 0.8rem of padding is not a
 #: checkbox any more.
 NON_TEXTUAL_INPUTS = {"checkbox", "radio", "range", "color", "file", "hidden", "submit", "button"}
 
@@ -398,7 +468,7 @@ def test_every_text_input_in_the_markup_is_styled():
     """Reported: "all the ui elements need the same style otherwise they look
     out of place."
 
-    The base rule had been extended a type at a time — text, password, number —
+    The base rule had been extended a type at a time, text, password, number , 
     so every other text-like input fell through to the browser's default and
     sat next to a styled one with a different border, height and background.
     `search` was the note filter, the conversation search and the settings
@@ -420,7 +490,7 @@ def test_every_text_input_in_the_markup_is_styled():
 
 def test_the_shared_rule_never_swallows_a_non_text_control():
     """A checkbox with `width: 100%` and 0.8rem of padding stops being a
-    checkbox. The rule lists its types explicitly for exactly this reason —
+    checkbox. The rule lists its types explicitly for exactly this reason, 
     a negation would be forever chasing the next control that isn't a text
     box."""
     block = re.search(
@@ -444,7 +514,7 @@ def test_the_shared_rule_never_swallows_a_non_text_control():
 #
 #   - A control class can declare padding and font-size and no height, and
 #     then render at five different heights depending only on what each
-#     instance happens to contain. `button.small` did exactly that — measured
+#     instance happens to contain. `button.small` did exactly that: measured
 #     live at 19, 24, 25, 26 and 30px across six screens.
 #   - A hit target can be below the size a person can reliably hit. The
 #     Semantic toggles measured 32x18 and the reminder checkboxes 13x13,
@@ -459,13 +529,13 @@ def test_the_hit_target_floor_is_declared_and_used():
 
     DESIGN.md's "Hit targets" section is the contract. Without this, the token
     can be quietly dropped by a later refactor and every control it was
-    holding up goes back to being sized by its content — which is how it got
+    holding up goes back to being sized by its content, which is how it got
     to 19px in the first place.
     """
     css = css_text()
     assert "--target-min:" in css, (
         "--target-min is gone. It is the floor under every interactive "
-        "element (DESIGN.md, 'Hit targets') — a control with no declared "
+        "element (DESIGN.md, 'Hit targets'), a control with no declared "
         "height falls back to being sized by whatever text it holds."
     )
     for selector in ("button.small", 'input[type="checkbox"]'):
@@ -483,7 +553,7 @@ def test_every_indefinite_animation_answers_reduced_motion():
 
     DESIGN.md states the rule and why the branch must *keep the information*:
     stopping a spinner is right, removing the thing it was telling you is not.
-    This checks the mechanical half — that a branch exists at all — because
+    This checks the mechanical half, that a branch exists at all, because
     that is the half a new component silently skips.
     """
     css = css_text()
@@ -518,7 +588,7 @@ def _rule_block(css: str, selector: str) -> str | None:
     `selector` as a whole entry.
 
     Written as a depth-tracking scan rather than a regex over `{...}` pairs.
-    A flat regex desyncs on the first `@keyframes` — nested braces — and then
+    A flat regex desyncs on the first `@keyframes`, nested braces, and then
     attributes every later rule to the wrong selector, which is how this
     helper failed twice before being written this way. Comments are stripped
     first so a brace inside one cannot do the same.
@@ -548,8 +618,8 @@ def _rule_block(css: str, selector: str) -> str | None:
 def test_the_hidden_attribute_is_enforced_over_the_apps_own_display_rules():
     """`<button hidden>` must actually be hidden.
 
-    Reported with a screenshot — "there's an empty bubble in the header next
-    to the model name??" — and measured as `hidden: true` with
+    Reported with a screenshot, "there's an empty bubble in the header next
+    to the model name??", and measured as `hidden: true` with
     `display: "flex"`, a 24.8x20px pill with nothing in it. The attribute's
     `display: none` comes from the *user agent* stylesheet, so any author rule
     beats it, and this app sets `display: flex` on every `button`: every
@@ -561,5 +631,5 @@ def test_the_hidden_attribute_is_enforced_over_the_apps_own_display_rules():
     a screenshot plus several rounds to rediscover.
     """
     block = _rule_block(_stylesheet(), "[hidden]")
-    assert block is not None, "no `[hidden]` rule — see this test's docstring"
+    assert block is not None, "no `[hidden]` rule: see this test's docstring"
     assert "display" in block and "none" in block and "!important" in block

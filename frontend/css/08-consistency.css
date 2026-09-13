@@ -1,0 +1,2123 @@
+/* ============================================================================
+   08-consistency.css - one recipe per repeated shape
+   ============================================================================
+
+   Reported, with screenshots, after a round of real use:
+
+   > "in a lot of the application areas, each of the menu items and elements
+   > feel very disconnected and separate, maybe due to their backgrounds or
+   > obviousness as separate elements ... the dropdown menus and elements in
+   > them need to not feel disconnected ... I feel like all these top docks
+   > need a unified bar where the buttons and dropdowns and comboboxes feel a
+   > part of that and not just separated buttons chucked together at the top
+   > of the panel ... there are areas where the icons and accompanying text
+   > dont align."
+
+   Every rule in this file exists because a shape the app already has was
+   drawn two or more ways. It is the last stylesheet index.html loads on
+   purpose: everything it settles is a decision the earlier files each made
+   for themselves, and the point is that one answer now wins over all of
+   them without any earlier file having to be reopened. A ninth family joins
+   this file rather than declaring its own recipe somewhere else.
+
+   Why a new file rather than edits in place: 00-07 are cut at
+   section-comment boundaries and their concatenation order is load-bearing
+   (tests/_css_paths.py says why). A cross-cutting decision has no single
+   section it belongs in, so putting it at the end is both the correct
+   cascade position and the only one that does not disturb the split. */
+
+/* ---------------------------------------------------------------------------
+   1. One menu row
+   ---------------------------------------------------------------------------
+
+   The report, exactly: the Graph dock's "more" menu (Save this view / Delete
+   saved view / Export as PNG) drew every row as a filled lavender block with
+   a gap under it, so the menu read as three buttons that happened to be
+   stacked rather than as a list you run your eye down.
+
+   Measured before this rule, at 1440 in the light theme:
+
+     Graph  ⋯  menu   3/3 rows  bg oklab(0.4966 -0.0027 -0.1868)  (the accent)
+                                white text, 40px tall, 8/16px padding
+     Graph View menu  2/2 action rows  the same accent fill
+     Note-card kebab  0/10 rows filled  transparent, ink text, 24px tall
+     nav-history      0/4 rows filled   transparent, ink text, 34.5px tall
+
+   The cause is one missing class, and it is worth writing down because the
+   shape recurs: `.menu-item` (02-chat-graph.css) is the flat recipe, and 20
+   of the 27 `.doc-dock-menu-item` buttons in index.html never carried it.
+   A `<button>` with no class is the app's *filled primary* - so a menu row
+   that forgets `.menu-item` does not fall back to something neutral, it
+   falls all the way up to the loudest control in the design system. The
+   previous round fixed this by adding the class at seven call sites; adding
+   a class per call site is a fix that has to be repeated by every future
+   menu, so this rule decides it by container instead.
+
+   Three rows drifted for a second reason, and it is the same one CLAUDE.md
+   records for the nav-history popup: these are `<button>`s, so the app's
+   generic control-height rule applies to them, and a menu row's height must
+   come from its content. `height: auto; min-height: 0` is what stops a row
+   from being sliced by an inherited fixed height.
+
+   The measured spread of row paddings was 0.15/0.5rem (the note kebab, where
+   `.entry-actions button` at 0,1,1 quietly outranked `.menu-item` at 0,1,0),
+   0.4/0.5rem (nav-history), 0.5/0.8rem (`.menu-item`'s own declaration) and
+   0.5/0.6rem (`.wb-export-menu button`). One padding, `--space-2
+   --space-5`, lands every menu in the app on a 34px row: nav-history's
+   height, which is the one nothing has ever been reported against.
+
+   **Specificity is the whole reason this is written as shell-plus-row.**
+   `.menu-item` on its own is 0,1,0 and loses to `.entry-actions button`
+   (0,1,1) and to `.wb-board-menu button` (0,1,1) - both of which are real
+   rules doing a real job elsewhere in their own file. Pairing the shell
+   class with the row class makes every declaration here 0,2,0, which wins
+   without any `!important` and without touching the rules it outranks. */
+:is(
+  .action-menu,
+  .select-menu,
+  .doc-dock-menu-list,
+  .nav-history-menu,
+  .library-image-menu-list,
+  .wb-export-menu,
+  .wb-board-menu
+) :is(
+  .menu-item,
+  .doc-dock-menu-item,
+  .nav-history-item,
+  .library-image-menu-item,
+  .action-menu-item,
+  .wb-menu-item,
+  .select-option
+) {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-2);
+  width: 100%;
+  /* `height: auto` so a row that wraps to two lines still grows; the floor is
+     the control height so that a row with a control in it and a row that is
+     only a label stand at one height. Measured before this: 34.53px for a
+     plain row against 36px for a row with a button in it, inside the same
+     popover (`scratchpad/ui-sweeps/wbmenus.js`). The floor is a floor, not a
+     cap, which is the direction that cannot reintroduce the nav-history clip
+     (CLAUDE.md: rows pinned to 32.36px while their content needed 35px).
+
+     **`--control-h-lg`, never `--control-h`, in a rule that can land
+     anywhere.** `--control-h` has no root value at all: it is declared
+     fourteen times in scoped blocks at 1.875rem, 2rem, 2.25rem and 2.5rem,
+     so a menu recipe reading it resolves to whichever surface the popover
+     happens to be inside. Writing `--control-h` here first was measured
+     doing exactly that: the View menu's rows came back 34px, 33px, 35.17px
+     and 22.39px in one popover. `--control-h-lg` is declared once, at the
+     root (00-tokens-shell.css:375). */
+  height: auto;
+  min-height: var(--control-h-lg);
+  margin: 0;
+  padding: var(--space-2) var(--space-5);
+  border: none;
+  border-radius: var(--radius-md);
+  background: none;
+  box-shadow: none;
+  color: var(--ink);
+  font-size: var(--text-md);
+  font-weight: 500;
+  line-height: 1.6;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* The export menu's rows are bare `<button>`s with no row class of their own
+   (06-timeline-dialogs.css drew them directly). 0,1,1 here, and this file is
+   later than that one, so it wins on order rather than on weight. */
+.wb-export-menu > button,
+.wb-export-menu > div > button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-2);
+  width: 100%;
+  height: auto;
+  min-height: var(--control-h-lg);
+  margin: 0;
+  padding: var(--space-2) var(--space-5);
+  border: none;
+  border-radius: var(--radius-md);
+  background: none;
+  box-shadow: none;
+  color: var(--ink);
+  font-size: var(--text-md);
+  font-weight: 500;
+  line-height: 1.6;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* Hover is a ghost tint; accent-soft is reserved for *selected*.
+   Before this they were the same colour, which is why an open select listbox
+   could not show you which option you were already on once the pointer
+   entered it - the chosen row and the hovered row were both `--accent-soft`.
+   Two states need two tints. */
+:is(
+  .action-menu,
+  .select-menu,
+  .doc-dock-menu-list,
+  .nav-history-menu,
+  .library-image-menu-list,
+  .wb-export-menu,
+  .wb-board-menu
+) :is(
+  .menu-item,
+  .doc-dock-menu-item,
+  .nav-history-item,
+  .library-image-menu-item,
+  .action-menu-item,
+  .wb-menu-item,
+  .select-option
+):hover,
+:is(
+  .action-menu,
+  .select-menu,
+  .doc-dock-menu-list,
+  .nav-history-menu,
+  .library-image-menu-list,
+  .wb-export-menu,
+  .wb-board-menu
+) :is(
+  .menu-item,
+  .doc-dock-menu-item,
+  .nav-history-item,
+  .library-image-menu-item,
+  .action-menu-item,
+  .wb-menu-item,
+  .select-option
+):focus-visible,
+.wb-export-menu > button:hover,
+.wb-export-menu > button:focus-visible,
+.wb-export-menu > div > button:hover,
+.wb-export-menu > div > button:focus-visible {
+  background: var(--ghost-btn-bg);
+  color: var(--ink);
+}
+
+/* Selected: the accent fill, and only here.
+
+   `.active` and `.is-on` are in this list because two controls that carry a
+   mode moved into an overflow menu for the seven-control ceiling: `#select-btn`
+   (`enterSelectMode` adds `.active`) and `#graph-trace-toggle` (`graph.js`
+   adds `.is-on`). Both set their state in JS by class, and the menu-row recipe
+   above sets `background: none` at 0,2,0, so without this a mode you had
+   turned on showed nothing at all once it lived in a menu. Drawn here rather
+   than by changing the two call sites to `aria-pressed`, because the class is
+   what the existing handlers write and a state that only renders is not worth
+   a behaviour change. */
+.select-menu .select-option.is-chosen,
+.doc-dock-menu-list .doc-dock-menu-item[aria-pressed="true"],
+.doc-dock-menu-list .doc-dock-menu-item.active,
+.doc-dock-menu-list .doc-dock-menu-item.is-on,
+.action-menu .menu-item[aria-pressed="true"],
+.nav-history-menu .nav-history-item.nav-history-current {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* **One id, restated, because an id beats two classes.**
+   `#select-btn.active` in 02-chat-graph.css is 1,1,0 and sets
+   `background: var(--accent-surface)`, the solid accent. It was written when
+   the button stood in the dock, where a filled active state is right. Now that
+   the button lives in the overflow menu it outranked the flat-menu recipe
+   (0,2,0) and the selected rule above (0,2,0) alike, and turning select mode
+   on painted a solid lavender block in a flat list: the exact defect item 1
+   existed to remove, reintroduced by moving a button.
+
+   Measured, not guessed: `scratchpad/ui-sweeps/whichrule.js` listed every rule
+   matching the element and declaring `background`, in cascade order, and
+   `#select-btn.active` was the winner. (It has to be asked for the `background`
+   shorthand: a `var()` inside a shorthand is stored as a pending substitution,
+   so asking for `background-color` returns nothing and the rule looks absent.)
+
+   Restated here at 1,2,0 rather than edited in 02, which is this file's whole
+   contract: the earlier files are not reopened. */
+.doc-dock-menu-list #select-btn.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.nav-history-menu .nav-history-item.nav-history-current {
+  cursor: default;
+}
+
+/* Two rows keep a layout the shared recipe would flatten, and say why.
+
+   `.wb-menu-item` is a three-track grid (icon · name · shortcut key) so the
+   `<kbd>` sits on one right edge down the whole menu; a flex row would let
+   each key land wherever its label ended.
+
+   `.has-submenu` pushes its ▸ to the far edge for the same reason. */
+.wb-board-menu .wb-menu-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.action-menu .menu-item.has-submenu,
+.doc-dock-menu-list .menu-item.has-submenu {
+  justify-content: space-between;
+}
+
+/* Danger and unavailable are colour changes on the one row, not other rows.
+   Restated at 0,3,0 because the shared rule above sets `color` at 0,2,0 and
+   would otherwise put the ink colour back on "Move to bin". */
+.action-menu .menu-item.menu-danger,
+.doc-dock-menu-list .menu-item.menu-danger,
+.doc-dock-menu-list .doc-dock-menu-item.menu-danger {
+  color: var(--error);
+}
+
+.action-menu .menu-item.menu-item-unavailable,
+.doc-dock-menu-list .menu-item.menu-item-unavailable {
+  color: var(--muted);
+}
+
+.action-menu .menu-item.menu-item-unavailable:hover,
+.action-menu .menu-item.menu-item-unavailable:focus-visible {
+  background: none;
+}
+
+/* A select's opener inside a dock menu is a *field*, not a menu row - it is
+   the control the section's label names. Excluded from the row recipe by not
+   being in its list; restated here only so the row padding above cannot be
+   read as applying to it by someone skimming. */
+.dock-menu-list .select-shell > .select-opener {
+  width: 100%;
+}
+
+/* The whiteboard's own two menus were the last floating surfaces outside the
+   one popover shell: glass fill, `--glass-border`, `--radius`, an inset
+   highlight and a full blur pass each. 07-whiteboard-misc.css's shell rule
+   lists eleven surfaces and these two were not among them. Same job, so the
+   same shell - opaque, because a menu that floats over a board full of
+   sticky notes has the same legibility problem the note editor gave the
+   toolbar menus (CLAUDE.md's ghost-text story). */
+.wb-board-menu,
+.wb-export-menu {
+  background: var(--modal-bg-opaque);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* Section boundaries inside a menu are one hairline, in `--divider` - the
+   separator tier, not the edge tier (DESIGN.md, "the border budget"). Three
+   menus drew this three ways: `--divider` on the dock menus, `--glass-border`
+   on the shape menu, `--border` on the space menu. */
+.wb-shape-menu-divider,
+.space-menu-divider {
+  background: var(--divider);
+}
+
+.wb-board-menu .wb-menu-section + .wb-menu-section,
+.wb-export-menu > div + div {
+  border-top: 1px solid var(--divider);
+  padding-top: var(--space-2);
+}
+
+/* One padding on the shell, so the gap above the first row equals the gap
+   beside it. `.wb-board-menu` was on `--space-3` with a `--space-3` row gap
+   between sections, which put more air between two rows than around the
+   whole list. */
+.action-menu,
+.select-menu,
+.doc-dock-menu-list,
+.nav-history-menu,
+.wb-export-menu,
+.wb-board-menu {
+  padding: var(--space-2);
+}
+
+.wb-board-menu,
+.wb-export-menu {
+  gap: var(--space-2);
+}
+
+/* ---------------------------------------------------------------------------
+   2. A disclosure inside a card is a header, not a button
+   ---------------------------------------------------------------------------
+
+   Reported with a screenshot of the Help guide: "Capturing notes", "Asking &
+   chatting" and the six topics under them each render as a grey button
+   inside a grey card inside the page. The same shape appears on Settings →
+   Models, where "Advanced response settings" is a grey button inside a card.
+
+   Measured before this rule, at 1440, light theme:
+
+     .help-accordion details   border 1px rgba(31,36,48,0.10), radius 8.4px
+     its > summary             background rgba(31,36,48,0.12) (--ghost-btn-bg)
+                               border 1px rgba(31,36,48,0.22)  radius 8.4px
+     #sampling-box             background rgba(31,36,48,0.04), radius 14px
+     its > summary             the same fill, border and radius as above
+
+   So: two borders, two radii and a fill, all inside a section that already
+   draws the page. Nothing in that stack tells you which box is the thing.
+
+   **The cause is two rounds that decided the opposite thing, both still in
+   the file.** 07-whiteboard-misc.css:3053 gives every `<summary>` a hover
+   tint and says, in its own comment, that a resting fill was deliberately
+   refused because it "would turn every collapsed section into a
+   button-looking slab and compete with the real buttons inside them". Six
+   hundred lines later, 07-whiteboard-misc.css:3640 adds exactly that resting
+   fill and border, under the heading "a disclosure row reads as a control at
+   rest". The second rule wins on order, so what actually ships is the thing
+   the first comment predicted would go wrong.
+
+   Both were right about their own case, which is why this is a split rather
+   than a revert. A `<summary>` in a dock or a toolbar *is* a control in a
+   row of controls, and it has to carry the tonal fill or it reads as a gap
+   between two buttons. A `<summary>` that heads a folded section of a card
+   is a heading with a chevron, and a fill there is the third box in a stack
+   of three. The rule below names the second set; every other summary in the
+   app keeps the resting fill.
+
+   Specificity, since it is not obvious: the rule being overridden is
+   `summary:not(.icon-only):not(.icon-button)`, which is (0,2,1) - the two
+   `:not()`s each count as a class. A container class plus the element is
+   (0,1,2) and loses. Each selector below carries the two `:not()`s of its
+   own plus a container class, so it lands at (0,3,1) or better and wins on
+   weight rather than on which file happens to be later. */
+.help-accordion details > summary:not(.icon-only):not(.icon-button),
+.settings-group > summary:not(.icon-only):not(.icon-button),
+.settings-fold > summary:not(.icon-only):not(.icon-button),
+.advanced-css > summary:not(.icon-only):not(.icon-button),
+.task-log > summary:not(.icon-only):not(.icon-button) {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-3) var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: none;
+  box-shadow: none;
+  color: var(--ink);
+  font-weight: 600;
+  list-style: none;
+  cursor: pointer;
+}
+
+.help-accordion details > summary::-webkit-details-marker,
+.settings-group > summary::-webkit-details-marker,
+.settings-fold > summary::-webkit-details-marker,
+.advanced-css > summary::-webkit-details-marker,
+.task-log > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* The chevron the native marker was hiding. Borrowed exactly from the chat
+   timeline's thinking step (02-chat-graph.css) - a triangle built from
+   borders, so it needs no icon font, inherits `currentColor`, and the two
+   disclosures in the app read as one component. */
+.help-accordion details > summary:not(.icon-only):not(.icon-button)::before,
+.settings-group > summary:not(.icon-only):not(.icon-button)::before,
+.settings-fold > summary:not(.icon-only):not(.icon-button)::before,
+.advanced-css > summary:not(.icon-only):not(.icon-button)::before,
+.task-log > summary:not(.icon-only):not(.icon-button)::before {
+  content: "";
+  flex: none;
+  width: 0;
+  height: 0;
+  border-left: 0.32rem solid currentColor;
+  border-top: 0.24rem solid transparent;
+  border-bottom: 0.24rem solid transparent;
+  color: var(--muted);
+  transform-origin: 40% 50%;
+  transition: transform var(--motion-base) ease;
+}
+
+.help-accordion details[open] > summary::before,
+.settings-group[open] > summary::before,
+.settings-fold[open] > summary::before,
+.advanced-css[open] > summary::before,
+.task-log[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .help-accordion details > summary::before,
+  .settings-group > summary::before,
+  .settings-fold > summary::before,
+  .advanced-css > summary::before,
+  .task-log > summary::before {
+    transition: none;
+  }
+}
+
+/* Hover is the only state that fills. Restated because the flat rule above
+   outranks 07-whiteboard-misc.css's `summary:…:hover` and would otherwise
+   take the pointer feedback away with the resting fill. */
+.help-accordion details > summary:not(.icon-only):not(.icon-button):hover,
+.settings-group > summary:not(.icon-only):not(.icon-button):hover,
+.settings-fold > summary:not(.icon-only):not(.icon-button):hover,
+.advanced-css > summary:not(.icon-only):not(.icon-button):hover,
+.task-log > summary:not(.icon-only):not(.icon-button):hover {
+  background: var(--ghost-btn-bg);
+}
+
+/* The accordion is one group, not eight boxes. `--surface-2` with no border
+   is the group tier DESIGN.md already defines, and it is exactly what
+   `.settings-group` next door computes to - so the Help guide and the
+   Settings panes stop being two different-looking lists of foldable things.
+   Rows inside it are separated by the divider tier, which is the line
+   *between* rows rather than an edge around each one. */
+.help-accordion {
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+}
+
+.help-accordion > details {
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+}
+
+.help-accordion > details + details {
+  border-top: 1px solid var(--divider);
+}
+
+/* The topic body indents to the chevron's text column so a paragraph does
+   not start under the arrow. `--space-7` (1.25rem) is the scale step nearest
+   the real offset - the chevron's 0.32rem plus the summary's `--space-3` gap
+   and `--space-2` inset come to 1.22rem - and a token is what the spacing
+   lint asks for rather than a fourth almost-the-same literal. */
+.help-accordion > details > :not(summary) {
+  margin-left: var(--space-7);
+}
+
+/* The "Related:" row under a topic separates metadata from the paragraph
+   above it, which is the divider tier's job - it was drawing `--border`, the
+   edge tier, so it read heavier than the lines separating whole topics. */
+.help-accordion p.help-topic-links {
+  border-top-color: var(--divider);
+}
+
+/* ---------------------------------------------------------------------------
+   3. A dock is one bar, and its controls belong to it
+   ---------------------------------------------------------------------------
+
+   Reported: "the notes top dock feels very squished and the title feels like
+   it has no room, I feel like all these top docks need a unified bar where
+   the buttons and dropdowns and comboboxes feel a part of that and not just
+   separated buttons chucked together at the top of the panel."
+
+   Phase 8 gave every tab's control row one grammar (`.dock` and its four
+   zones, 07-whiteboard-misc.css) and that part holds: the zones are in the
+   right order on all five docks and every control is one height. What it did
+   not give them is a *surface*. Measured at 1440, light theme, before:
+
+     every .dock   background rgba(0,0,0,0)   no border   no radius   no padding
+
+   So the bar is nothing. The controls sit directly on the page, and the only
+   thing telling you they are related is that they happen to be on one line -
+   which is the report, almost word for word.
+
+   The second half is that the controls do not agree with each other either.
+   Counted per dock, before:
+
+     Notes      12 controls   5 fills   6 radii   5 borders   4 heights
+     Graph      11 controls   4 fills   5 radii   5 borders   3 heights
+     Timeline    9 controls   5 fills   5 radii   5 borders   5 heights
+     Library    11 controls   5 fills   5 radii   5 borders   2 heights
+     Reminders   5 controls   3 fills   2 radii   3 borders   3 heights
+
+   Five radii in one strip: 8.4px on buttons and menu openers, 11.2px on the
+   search field and the select opener, 9.8px on the native select behind it,
+   15.4px on the segmented wells, and 50% on the help dot. Five fills: the
+   tonal 0.12 ink, the field's 55% white, the chip well's 0.07 ink, the
+   accent, and transparent. Nothing in that set reads as one component.
+
+   One of those transparents was a bug rather than a choice: the ⋯ "more"
+   opener is a `<summary class="ghost small icon-only …">`, and the rule that
+   dresses a summary excludes `.icon-only`, so it measured
+   `background rgba(0,0,0,0)  border 0px  radius 0px` - no fill, no edge, no
+   corner - sitting immediately beside a refresh button wearing the full
+   tonal treatment. It was the one control in the row with no appearance at
+   all.
+
+   The design here is the one the report asks for: the bar carries the
+   surface, the controls are quiet inside it, and exactly three things are
+   allowed to be loud - the search field and the sort select (inset, because
+   they take input), the one primary action (filled, because it is what the
+   surface is for), and a selected segment (accent, because on is the
+   accent - DESIGN.md's rule, unchanged). Everything else earns its presence
+   from the bar behind it and answers the pointer with a tint. */
+.dock {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+}
+
+/* The title gets room and keeps it. `flex: 0 1 auto` let the identity zone
+   absorb a narrow window's shortfall before the row's own `flex-wrap` ever
+   ran, which is the "the title feels like it has no room" half of the
+   report; `0 0 auto` makes the row wrap instead of crushing the heading.
+   The `min-width: 0` the three zones share is what allowed it, so identity
+   opts back out of that. */
+.dock > .dock-identity {
+  flex: 0 0 auto;
+  min-width: auto;
+}
+
+.dock .dock-identity h2 {
+  flex: 0 0 auto;
+  min-width: max-content;
+}
+
+/* Search takes the slack, with a ceiling. Measured on the Library at 1440
+   the search field was 760px wide - a single-line query in a box wide enough
+   for a paragraph, with the rest of the row crowded into the last third.
+
+   14rem is a basis, and a basis is what decides when the row wraps: flexbox
+   breaks a wrapping row into lines on each item's flex basis and only shrinks
+   what is left on a line afterwards, so a zone asking for 224px before anyone
+   has asked it to shrink can push the actions zone onto a second line even
+   where the search box inside it would have fitted at 135px. That is the right
+   default for a dock that spans a tab; a dock in a narrow column overrides the
+   basis for itself (the Logs console, 06-timeline-dialogs.css) rather than
+   moving this number for everybody, because shrinking it here trades a wrap
+   for the possibility of a zone narrower than the controls inside it. */
+.dock .dock-find {
+  flex: 1 1 14rem;
+}
+
+.dock .dock-find input[type="search"] {
+  flex: 1 1 12rem;
+  min-width: 8rem;
+  max-width: 28rem;
+}
+
+/* One inset for anything that takes input: one fill, one edge, one radius,
+   one height. Three of these (search, the select opener, the native select
+   behind it) drew three radii while sitting side by side. */
+.dock input:not([type="checkbox"]):not([type="radio"]),
+.dock select:not(.select-native-hidden):not(.dock-native-hidden),
+.dock .select-shell > .select-opener {
+  height: var(--control-h);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--field-inset);
+}
+
+/* Quiet by default. A control in a bar does not need its own fill to be
+   findable - the bar is what makes it findable - and 22 filled boxes in one
+   strip is what "separated buttons chucked together" describes. The tint
+   arrives under the pointer, which is the same shape an unselected segment
+   already uses. `1px solid transparent` rather than `none` so the geometry
+   does not move on hover and `[data-contrast="on"]` can colour the edge back
+   in. */
+/* The second selector is the same one again with the two `:not()`s the rule
+   it overrides carries. `summary:not(.icon-only):not(.icon-button)`
+   (07-whiteboard-misc.css) is (0,2,1); `.dock > * > details > summary` is
+   (0,1,3) and loses on class count, which is why the *labelled* menu openers
+   ("Filter", "View", "Options") kept the tonal fill through a first pass
+   while the icon-only ⋯ - excluded from that rule - did not. Restating the
+   selector with the exclusions makes it (0,3,3) and settles both. */
+.dock > * > button.ghost,
+.dock > * > details > summary,
+.dock > * > details > summary:not(.icon-only):not(.icon-button),
+.dock > * > .menu-wrap > button.ghost,
+.dock .dock-link {
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: none;
+  box-shadow: none;
+  color: var(--ink);
+}
+
+.dock > * > button.ghost:hover,
+.dock > * > button.ghost:focus-visible,
+.dock > * > details > summary:hover,
+.dock > * > details > summary:focus-visible,
+.dock > * > details > summary:not(.icon-only):not(.icon-button):hover,
+.dock > * > details > summary:not(.icon-only):not(.icon-button):focus-visible,
+.dock > * > details[open] > summary:not(.icon-only):not(.icon-button),
+.dock > * > details[open] > summary,
+.dock > * > .menu-wrap > button.ghost:hover,
+.dock .dock-link:hover {
+  background: var(--ghost-btn-bg);
+  color: var(--ink);
+}
+
+/* The one filled control per bar keeps its fill, and the radius everything
+   else in the row now uses. */
+.dock > * > button:not(.ghost):not(.icon-only):not(.linklike) {
+  border-radius: var(--radius-md);
+}
+
+/* A segmented control is a choice, not a button run, so it keeps its well
+   and its accent-filled selection (DESIGN.md: "on is the accent"). Only its
+   corners join the rest of the bar - a 15.4px pill beside 8.4px buttons was
+   two of the five radii on its own. */
+.dock .seg,
+.dock .segmented-control {
+  border-radius: var(--radius-md);
+}
+
+/* And its segments are inset by the well's own padding rather than each
+   deciding its own height: measured, the Notes and Timeline segments were
+   28px inside a 36px well while the Library's were 36px inside the same
+   36px well, so one group looked inset and the other looked flush. */
+.dock .seg,
+.dock .segmented-control {
+  padding: var(--space-1);
+}
+
+.dock .seg > button,
+.dock .segmented-control > button,
+.dock .seg > label,
+.dock .segmented-control > label {
+  height: auto;
+  align-self: stretch;
+  border-radius: var(--radius-sm);
+}
+
+/* The help dot is the app's one round control and stays round, but it sizes
+   itself to the row like everything else rather than sitting 4px shorter
+   than its neighbours (32px against 36px, measured on three docks). */
+.dock .graph-help-toggle,
+.dock [class*="help"][class*="icon-only"] {
+  width: var(--control-h);
+  height: var(--control-h);
+}
+
+/* Zones are separated by a hairline, not by guessing at a gap. The gap alone
+   was the Phase 8 decision and it is not enough once the bar has a surface:
+   `--space-4` between groups against `--space-3` inside one is a 3.2px
+   difference, which no eye reads as a boundary. */
+.dock > * + * {
+  border-left: 1px solid var(--divider);
+  padding-left: var(--space-4);
+}
+
+/* `.dock-actions` carries `margin-left: auto`, so without this its hairline
+   would float in the middle of the empty space rather than sitting against
+   the cluster it introduces. */
+.dock > .dock-actions {
+  padding-left: var(--space-4);
+}
+
+/* Icon-only utilities are one cluster at the far end (refresh · help · more),
+   not three separately-spaced buttons. The negative margin is written from
+   the two tokens it sits between so it tracks the density setting rather
+   than freezing at one multiplier's pixel value. */
+.dock-actions > :is(.icon-only, .dock-more, [class*="help"])
+  + :is(.icon-only, .dock-more, [class*="help"]) {
+  margin-left: calc(var(--space-1) - var(--space-3));
+}
+
+/* **The one dock whose actions zone does not fit the "one filled control,
+   then a few icon utilities" shape Phase 8 sized `margin-left: auto` for.**
+   Owner: "the ui at the top of the boards and maps subtab dock is broken
+   and miss wrapped. remember responsive design!" This dock has four
+   full-text buttons before its icon utilities (New board, New mind map,
+   Map from notes, Import outline), 730-850px depending on width, and no
+   `.dock-more` to fold any of them into (every other `.dock` this recipe
+   serves has one, which is why none of them show this). `margin-left:
+   auto` on `.dock-actions` pins it to the row's right edge only when it
+   fits *beside* identity/find/arrange; once `.dock-find`'s own growth
+   (`flex: 1 1 14rem`, uncapped on the wrapper even though the input inside
+   it is capped at 28rem) leaves too little room, `.dock-actions` wraps
+   alone, and the auto margin still fires on that lone line, landing its
+   left edge wherever that line's leftover width happens to put it: under
+   the *middle* of row one's search box, not under anything that explains
+   why. Measured at 1700px: actions started at x=778 on a 1642px-wide dock,
+   under empty space between the search box and the sort select above it.
+
+   Dropping the auto margin here fixes both readings of "broken": when the
+   zone fits beside the others (1440px+ in this dock, measured), removing
+   it changes nothing, there was next to no free space for the margin to
+   consume in that case anyway. When it does not fit and wraps, the zone
+   now packs to `.dock`'s own `justify-content: flex-start` default and
+   sits flush under the dock's own left edge, the same edge the title and
+   search box above it share, rather than at a right-margin distance that
+   depends on how far `.dock-find` happened to grow on the line above. */
+[data-dock-name="library-boards"] .dock-actions {
+  margin-left: 0;
+}
+
+/* The documents editor's head already *is* a bar - `.doc-toolbar`
+   (05-sidebars-themes.css) has carried a `--card` fill, an edge and a radius
+   since the "fix the toolbar" round, so there is nothing to build here, only
+   to match: it drew `--glass-border` at `--radius` against the dock's
+   `--border` at `--radius-lg`, which is two bars an inch apart in the same
+   app disagreeing about what the edge of a bar looks like.
+
+   The whiteboard's top bar is deliberately not in this list. It floats over
+   the canvas rather than sitting on the page, so DESIGN.md's floating-surface
+   rule applies to it and `--modal-bg` with `--glass-border` is the correct
+   answer there, not drift. */
+.doc-toolbar {
+  border-color: var(--border);
+  border-radius: var(--radius-lg);
+}
+
+/* ---------------------------------------------------------------------------
+   6. One toggle-row recipe: the switch says on, not the row
+   ---------------------------------------------------------------------------
+
+   Reported: "some rows are full-width lavender-tinted bars (the 'Ask the AI
+   where each note belongs' group) while the sibling 'Enable autonomous
+   optimization' is a bare toggle."
+
+   Measured on Settings, light theme, before: 54 of the 56 rows on Tools it
+   can use, and 5 of 6 in the Autonomous background AI group, carried
+   `rgba(79, 109, 245, 0.14)` - `--accent-soft` - as a full-width fill. The
+   two that did not (web search, read url) were simply the two that default
+   off. So the panel is a wall of lavender slabs with two gaps in it, and the
+   pattern the eye picks up is not "these are on", it is "these two rows are
+   different kinds of thing".
+
+   The fill was a deliberate decision in an earlier round and its comment is
+   still in 04-chat-dock-appearance.css: "the fill says which rows are on at
+   a glance, and that is all the row needs to add." That reasoning is exactly
+   right for the case it was written against and exactly wrong here, and the
+   difference is whether the row's control is visible:
+
+   - A **radio** `.check-row` hides its own circle (06-timeline-dialogs.css
+     does this on purpose, so a group of options reads as one control with
+     one answer). There the row's fill *is* the selection indicator, and
+     removing it would leave a chosen option with nothing marking it. It
+     stays.
+   - A **checkbox** `.check-row` and a `.setting-check` both draw a real,
+     visible switch. The fill repeats what the switch already says, and at 54
+     rows the repetition is louder than the information.
+
+   So the fill is scoped to the row that needs it and the rest get a
+   `--divider` hairline instead - the separator tier, which is what tells you
+   these are one stack of settings rather than a run of separate cards. */
+.check-row:has(input[type="checkbox"]:checked),
+.setting-check:has(input[type="checkbox"]:checked) {
+  background: none;
+}
+
+.check-row:has(input[type="checkbox"]:checked):hover,
+.setting-check:has(input[type="checkbox"]:checked):hover {
+  background: var(--ghost-btn-bg-hover);
+}
+
+/* One stack, one line between its rows. The negative margin that used to
+   collapse the gap between consecutive rows goes with it: it existed to make
+   separate-looking rows read as a set, which is now the hairline's job.
+
+   The `li` form is not redundant. Every `.setting-check` on Tools it can use
+   is built (app.js `renderToolFocus`'s loop) as `<li><label class="tool-row
+   setting-check">`, so the rows are never each other's siblings and a plain
+   `.setting-check + .setting-check` matched nothing at all - measured: 60
+   rows, 0 hairlines, after a first pass that only had the sibling form. */
+.check-row:has(input[type="checkbox"]) + .check-row:has(input[type="checkbox"]),
+#settings-modal .check-row:has(input[type="checkbox"])
+  + .check-row:has(input[type="checkbox"]),
+.setting-check + .setting-check,
+#settings-modal .setting-check + .setting-check,
+li:has(> .setting-check) + li:has(> .setting-check) > .setting-check,
+li:has(> .check-row) + li:has(> .check-row) > .check-row {
+  margin-top: 0;
+  border-top-color: var(--divider);
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+.check-row:has(input[type="checkbox"]):has(+ .check-row input[type="checkbox"]),
+.setting-check:has(+ .setting-check) {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   4. One gap between an icon and the label it leads
+   ---------------------------------------------------------------------------
+
+   Reported: "there are areas where the icons and accompanying text dont
+   align."
+
+   The vertical half of that does not reproduce, and it is worth saying so
+   with the number rather than fixing something that is not broken: swept
+   across seven tabs and seven Settings sections at 1440 (scratchpad/
+   ui-sweeps/iconalign.js, which compares each icon's vertical centre with a
+   Range around the label's own text nodes), **0 of 274 icon-and-text
+   controls are off by more than 1px, and the worst in the app is 0.87px.**
+
+   The horizontal half is real, and the same sweep names it: **10 distinct
+   icon-to-label gaps** across those rows - 4, 5.1, 5.5, 6.4, 8, 8.4, 11.9,
+   12.8, 13.5 and 14.4px. That is one visual relationship drawn at ten
+   widths, which is exactly the kind of almost-the-same difference DESIGN.md
+   opens by saying reads as unconsidered.
+
+   The cause is two mechanisms doing one job. `.ph-lead` carries
+   `margin-inline-end: 0.35em` (07-whiteboard-misc.css) from when these rows
+   were inline boxes; the rows are flex now and most of them also set their
+   own `gap`. Where only one applies you get 5.5px (the margin, at a 15.64px
+   icon) or 6.4px (`--space-2`). Where both apply they add up: 6.4 + 5.5 =
+   11.9 on the dock menu openers and their rows, 8 + 5.5 = 13.5 on the
+   filter check rows, 8 + 6.4 = 14.4 on a bare summary.
+
+   So: one mechanism. The container's `gap` is the one that survives, because
+   it is the same property already spacing every other child in the row (a
+   caret, a count, a shortcut key), and `.ph-lead`'s margin goes to zero in
+   the families measured as flex rows. 142 of the 243 gaps were already
+   `--space-2`; this brings the rest to it rather than inventing a new value.
+
+   `.ph-lead` keeps its margin everywhere else, which is where it is still
+   the only thing providing the gap: an icon inside a paragraph or any other
+   non-flex context is untouched by both rules below. */
+button,
+summary,
+.menu-item,
+.doc-dock-menu-item,
+.doc-dock-menu-btn,
+.dock-menu-check,
+.dock-link,
+.nav-history-item,
+.library-image-menu-item,
+.wb-menu-item,
+.quick-link,
+.status-item {
+  gap: var(--space-2);
+}
+
+/* A `.chip` is deliberately not in that list. It already declares
+   `gap: 0.3em`, which is 3.6px at its own 0.75rem size - a chip is small
+   enough that `--space-2` would be a third of its width. Zeroing the
+   double-counted margin below is all it needs. */
+
+button > .ph-lead,
+summary > .ph-lead,
+.menu-item > .ph-lead,
+.doc-dock-menu-item > .ph-lead,
+.doc-dock-menu-btn > .ph-lead,
+.dock-menu-check > .ph-lead,
+.dock-link > .ph-lead,
+.nav-history-item > .ph-lead,
+.library-image-menu-item > .ph-lead,
+.wb-menu-item > .ph-lead,
+.chip > .ph-lead,
+.quick-link > .ph-lead,
+.status-item > .ph-lead {
+  margin-inline-end: 0;
+}
+
+/* A summary in the settings modal was the last family still on `--space-3`
+   between its icon and its label: 12 of the 243 gaps measured 8px against
+   the 217 on `--space-2`. It is set at (0,1,1) in 01-forms-settings.css, so
+   restating it at the same weight from a later file is what settles it. */
+.about-whats-new,
+.settings-section summary,
+.help-accordion > summary {
+  gap: var(--space-2);
+}
+
+/* ---------------------------------------------------------------------------
+   7. Meta looks like meta
+   ---------------------------------------------------------------------------
+
+   Reported: on the Skills cards "'2 steps' and '1 tool' render as buttons and
+   'Never run.' renders as a chip-button"; on the Library image cards the
+   model-name and "Read by ..." chips look like buttons too. The persona
+   list's "built-in" chip was named as the reference.
+
+   Measured, light theme. The reference first, so the target is a number and
+   not a feeling:
+
+     persona "built-in"   bg --chip-bg (31,36,48,0.07)   no border
+                          radius 15.4px (pill)  pad 1.6/9.6  12px/400
+                          colour --muted        height 24px
+
+   And the three that do not match it, on one card, side by side:
+
+     "Built-in"     bg --accent-soft   pill   12px/600   height 21.2px
+     "2 steps"      bg --ghost-btn-bg  border 1px --ghost-btn-border
+                    radius 8.4px  pad 6.4/8  11.2px/600  height 31.6px
+     "Never run."   bg --chip-bg  radius 4.2px  pad 4/8  11.2px  height 24.8px
+
+   Four heights, three radii and three fills for four pieces of the same kind
+   of information, stacked in one card.
+
+   "2 steps" and "1 tool" are the third site of the bug item 2 records:
+   they are `<summary class="chip skill-fact">` elements, and
+   `summary:not(.icon-only):not(.icon-button)` (07-whiteboard-misc.css:3640)
+   outranks `.chip` at 0,2,1 against 0,1,0, so the summary rule's tonal fill,
+   its edge and its button padding all landed on top of the chip recipe. The
+   markup asked for a chip and got a button, silently.
+
+   These two are genuinely clickable (they expand the step and tool lists in
+   place, which was itself asked for), so they keep `cursor: pointer` and a
+   hover. The hover deepens the chip tone rather than switching to the button
+   fill: a disclosure that is invisible until you find it is the problem that
+   round was solving, and taking the affordance away to make it quieter would
+   just trade one report for the other. */
+.skill-card-facts .chip.skill-fact,
+.skill-fact-expand > summary.skill-fact {
+  /* `.chip`'s own declared padding, restated rather than referenced: `.chip`
+     is 0,1,0 and loses to the summary rule at 0,2,1, so the value has to be
+     repeated at a weight that wins. It is the one literal in this file, and
+     it is a literal because it is a copy - inventing a token-shaped
+     near-equivalent here would move these chips off the persona reference
+     they are being matched to. */
+  padding: 0.1rem 0.6rem;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--chip-bg);
+  color: var(--muted);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  height: auto;
+  min-height: 0;
+}
+
+.skill-fact-expand > summary.skill-fact:hover,
+.skill-fact-expand > summary.skill-fact:focus-visible,
+.skill-fact-expand[open] > summary.skill-fact {
+  background: var(--ghost-btn-bg);
+  color: var(--ink);
+}
+
+/* "Never run." / "Last run ..." is a sentence about the card, not a control
+   on it. A fill and a radius made it the fourth box in a row of three. */
+.skill-card-when {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--muted);
+}
+
+/* The card's own "Built-in" marker is the same fact the persona list states,
+   so it says it the same way. `--accent-soft` is this app's *selected* tone
+   (DESIGN.md), and nothing about a built-in skill is selected. */
+.skill-card .chip.skill-builtin,
+.skill-card-header .chip:not(.skill-fact) {
+  background: var(--chip-bg);
+  color: var(--muted);
+  font-weight: 500;
+}
+
+/* Library image cards: the model name and the "Read by ..." row are facts
+   about the picture. Same recipe, same reason. The usage chip stays
+   `cursor: pointer` because it really does navigate to the note it names.
+
+   **`.library-image-model-chip` was a selector that matched nothing.** It was
+   written here from the shape of the feature rather than from the markup, and
+   `document.querySelectorAll('.library-image-model-chip').length` is 0 on a
+   Library with images in it (`scratchpad/ui-sweeps/imagebadges.js`), so the
+   half of item 7 this rule was meant to settle never ran once.
+
+   Measured on one card, with the badges given text and unhidden, before this:
+
+     usage chip           h=24    no border   1.6/9.6  12px    weight 500
+     caption badge        h=28    1px border  4/8      12px    weight 400
+     vision OCR badge     h=26.8  1px border  4/8      11.2px  weight 400
+
+   Three heights, two borders, two paddings, two sizes and two weights for
+   three pieces of the same kind of information in the same card. The meta
+   recipe is no border, no hover, muted, and the usage chip is already on it,
+   so the badges came to it.
+
+   **The three badges are gone entirely now** (INBOX 56): who described the
+   picture and who read it are one muted line at the foot of the card, in
+   plain text, because a pill next to the usage chips read as another button.
+   `.library-image-caption-badge`, `.library-image-vision-ocr-badge` and
+   `.library-image-ocr-badge` are struck from this rule with them, rather
+   than left behind: a selector kept "in case it gains a call site" is the
+   `.library-image-model-chip` mistake this comment already records, one
+   paragraph up. */
+.library-image-usage-chip,
+.library-image-tile .chip:not(.chip.tag) {
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: var(--space-1) var(--space-4);
+  background: var(--chip-bg);
+  color: var(--muted);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  box-shadow: none;
+}
+
+.library-image-usage-chip:hover,
+.library-image-usage-chip:focus-visible {
+  background: var(--ghost-btn-bg);
+  color: var(--ink);
+}
+
+/* ---------------------------------------------------------------------------
+   5. The Write-with-AI footers are one row, primary on the right
+   ---------------------------------------------------------------------------
+
+   Reported: the Write-with-AI footer ("Save as note", a tags input, "Extract
+   notes", then "Discard" wrapped to a second line) and the "Draft it / Undo /
+   Optional: make it shorter" row above it.
+
+   Measured, both `.draft-controls` rows, children grouped by their y:
+
+                       1440              1024
+     Draft it row      h 40, 1 line      h 86, 2 lines
+     Save as note row  h 86, 2 lines     h 133, 3 lines
+
+   Three of those four are wrapped, and the reason is the same in each: the
+   free-text input declares no basis, so it holds its full intrinsic width and
+   pushes whatever follows it onto the next line instead of giving up space.
+   A control that can shrink is the one that should.
+
+   The order is the other half. Both rows lead with their primary - "Draft
+   it" and "Save as note" are the first children - so the eye finds the
+   irreversible action first and the row reads right-to-left. `order` puts
+   the quiet actions first, the input in the middle taking the slack, and the
+   one filled button at the far end, without moving a line of markup. */
+.draft-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.draft-controls > button.ghost {
+  order: 1;
+  flex: 0 0 auto;
+}
+
+/* The slack goes here. A 6rem basis with `min-width: 0` is what lets the row
+   compress instead of wrapping; the input is still the widest thing in it at
+   both widths measured. */
+.draft-controls > input[type="text"] {
+  order: 2;
+  flex: 1 1 6rem;
+  min-width: 0;
+}
+
+.draft-controls > button:not(.ghost) {
+  order: 3;
+  flex: 0 0 auto;
+}
+
+/* The chat head's kebab drew the summary.icon-only fill while its two
+   siblings (fork, compress) are bare icon buttons (reported: "why is the
+   ellipse button in the chat header highlighted a different colour"). The
+   three are one cluster; the icon recipe is no fill at rest. */
+.chat-toolbar summary.icon-only,
+.chat-toolbar summary.icon-button {
+  background: transparent;
+}
+
+/* The reminder form's date and time pickers took the text-field recipe
+   (paragraph padding and a bottom margin) beside a select on the control
+   height, so the row's three controls were three heights (reported with a
+   screenshot). One height, no stray margin. */
+.reminder-form input[type="date"],
+.reminder-form input[type="time"],
+.reminder-form .small-select {
+  height: var(--control-h-lg);
+  padding-top: 0;
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+
+/* An enhanced select's list is a menu, but not a tall one: the menu recipe's
+   viewport-high ceiling overrode .select-menu's 18rem because the element
+   carries both classes, so the skills picker ran the full height of the
+   window (reported with a screenshot). The select's own ceiling wins. */
+.action-menu.select-menu {
+  max-height: min(18rem, 60vh);
+  overflow-y: auto;
+}
+
+/* ---------------------------------------------------------------------------
+   The five whiteboard menus (Insert, Edit, Arrange, View, Board)
+
+   consistency.md item 1 left these five reasoned from the cascade and not
+   measured, because the driver could not open a board. It can: create one
+   through `POST /whiteboard/boards` and call the app's own
+   `openWhiteboardBoard(id)`. Driven that way (`scratchpad/ui-sweeps/wbmenus.js`)
+   the five shared one shell recipe, as reasoned, but their rows did not share
+   one height: 34.53px, 36px, 36.89px and 32px inside the same popover, with
+   two font sizes and four paddings.
+
+   The two causes, both measured rather than guessed:
+
+   1. A `<kbd>` shortcut hint is drawn by the global `kbd` rule
+      (01-forms-settings.css:695) as a chip with a background, a 1px border and
+      a 2px bottom border. Inside a menu row's grid that box is the tallest
+      track, so every row with a shortcut stood 2.36px taller than every row
+      without one. A shortcut hint is meta, not a control: the contract's meta
+      recipe is no border, no fill, muted. Removing the box removes the split.
+
+   2. `.wb-menu-row` puts a real control on the right of a label. Those
+      controls kept the app-wide ghost button's resting fill and their own
+      heights, so the View and Board menus read as the owner's complaint
+      verbatim: buttons chucked into a dropdown rather than part of it. Inside
+      a menu the ghost recipe applies: no fill at rest, the tint on hover.
+--------------------------------------------------------------------------- */
+
+/* 1. Shortcut hints are meta. */
+:is(
+  .action-menu,
+  .select-menu,
+  .doc-dock-menu-list,
+  .nav-history-menu,
+  .library-image-menu-list,
+  .wb-export-menu,
+  .wb-board-menu
+) kbd {
+  padding: 0;
+  border: none;
+  /* No `border-radius` reset: with no border and no fill the global kbd rule's
+     `--radius-md` corner paints nothing, and declaring `0` here would add a
+     fifth radius to the surface family `tests/test_ui_signatures.py` counts,
+     which is a real new recipe for no visible gain. */
+  background: none;
+  color: var(--muted);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+}
+
+/* 2. A control in a menu row is a ghost control: one height, no rest fill.
+   `.wb-menu-controls > button` covers the two icon buttons beside the colour
+   picker; the bare `.wb-menu-row > button` covers Export, Clear, Help and the
+   toolbar-side toggle. */
+.wb-board-menu .wb-menu-row > button,
+.wb-board-menu .wb-menu-controls > button {
+  height: var(--control-h-lg);
+  min-height: var(--control-h-lg);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  background: none;
+  box-shadow: none;
+  font-size: var(--text-md);
+}
+
+.wb-board-menu .wb-menu-row > button:hover,
+.wb-board-menu .wb-menu-row > button:focus-visible,
+.wb-board-menu .wb-menu-controls > button:hover,
+.wb-board-menu .wb-menu-controls > button:focus-visible {
+  background: var(--ghost-btn-bg);
+}
+
+/* The rows themselves stand on the same height as a menu item, so a label
+   row and a shortcut row are one rhythm down the menu. */
+.wb-board-menu .wb-menu-row {
+  min-height: var(--control-h-lg);
+  font-size: var(--text-md);
+}
+
+/* An enhanced select inside a menu is a field, and a field's ink is the row's
+   ink: it was 12px against the rows' 13.6px. */
+.wb-board-menu .select-shell .select-opener {
+  height: var(--control-h-lg);
+  font-size: var(--text-md);
+}
+
+/* ---------------------------------------------------------------------------
+   The two rows that still wrapped at 1024
+
+   consistency.md item 5 closed with one row at 1440 and two rows still on two
+   lines at 1024. Measured again here with `scratchpad/ui-sweeps/wraps.js`,
+   which counts lines from the bucketed y of a row's children rather than from
+   the row's height, so a tall child and a wrapped row cannot be confused:
+
+     1440   .draft-controls[0] 1 line   .draft-controls[1] 1 line
+            .capture-field-row[0] 1 line   .ask-query-row 1 line
+     1024   .draft-controls[1] 2 lines (h=88)
+            .capture-field-row[0] 2 lines (h=88)
+
+   That measurement also settles the item's third bullet, which asked for the
+   Ask composer's reading to be confirmed before anything was touched: it is
+   `flex-wrap: nowrap` with a 40px child in a 55px row and its children share
+   one line at both widths. A tall child, not a wrap. Nothing to fix, and this
+   is why nothing here touches it.
+
+   72rem rather than the 1100px the item suggested: the app's other width
+   query is in rem (`.wb-topbar` at 56rem), 72rem is 1152px so it clears the
+   1024 failure with room, and it stays under the contract's 1280 laptop
+   breakpoint so a laptop keeps the two-column Writing Room it is wide enough
+   for. One query covers both rows rather than inventing a breakpoint each. */
+@media (max-width: 72rem) {
+  /* The Writing Room is a two-column layout, so at 1024 each column is about
+     340px and four controls cannot fit on one line at any distribution of that
+     space. The row is not the problem; the column count is. There is already a
+     `max-width: 900px` collapse in 04-chat-dock-appearance.css and this raises
+     the point it happens, rather than adding a second, competing rule. */
+  .draft-columns {
+    grid-template-columns: 1fr;
+  }
+
+  /* The attach row is a label, a select and five labelled buttons in about
+     675px. Re-merging it with the commit row below is the one fix ruled out:
+     index.html:708 records why the attach family was moved out of that row.
+     So the five lose their words and keep their icons, the same move
+     `.wb-topbar .wb-menu-label` already makes at 56rem.
+
+     `font-size: 0` rather than hiding a label element, because these labels
+     are bare text nodes with no element to hide and this file may not add one.
+     All five carry an `aria-label` and a `title`, so the accessible name and
+     the tooltip survive; only the painted glyphs go.
+
+     **The five are named, not selected by `.capture-field-row > button`.**
+     Written that way first and measured: the selector also caught the commit
+     row below, which does not wrap, and `#save-draft-btn` has no icon at all,
+     so it rendered 34px wide with nothing in it. It also silenced `#save-btn`,
+     the surface's one primary, which is the last label that should go. A rule
+     that hides text has to name what it hides.
+
+     1.15rem on the icon, not a smaller token: that is exactly the 18.4px the
+     icon measured before the collapse (1.15em of the button's 16px), so the
+     glyph is the same size with the word gone rather than a size the row has
+     never drawn. Its trailing margin goes because a gap before a label is
+     dead space on one side when there is no label. */
+  #entry-attach-file,
+  #entry-attach-existing,
+  #sketch-btn,
+  #mic-note,
+  #improve-btn {
+    font-size: 0;
+  }
+
+  #entry-attach-file > .ph,
+  #entry-attach-existing > .ph,
+  #sketch-btn > .ph,
+  #mic-note > .ph,
+  #improve-btn > .ph {
+    margin-inline-end: 0;
+    font-size: 1.15rem;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   The last two head rows that were not on the bar recipe
+
+   consistency.md section 3 listed the Chat head, the Dashboard head and the
+   seven Library sub-tab heads as "named in the brief but NOT on the recipe",
+   each waiting on another agent's branch. That branch has landed, and measured
+   here (`scratchpad/ui-sweeps/heads2.js`) nine of those are done: all twelve
+   `[data-dock-name]` surfaces draw the identical bar (`--card` at 1px
+   `--border`, radius 11.2px, padding 8/9.6, h=54), one control radius each and
+   at most one filled control each. That part of the table is stale and this
+   file's job there is finished.
+
+   Two things the same sweep found are not.
+--------------------------------------------------------------------------- */
+
+/* 1. The Chat head's kebab kept a resting fill while the three icon buttons
+   beside it were quiet, which is the "why is that one button highlighted"
+   report in a new place. The quiet rule above already names `.menu-wrap`, but
+   as a child of a zone, and this kebab is two wrappers deep:
+
+     .dock > div.dock-actions > span#chat-actions-menu > span.menu-wrap > button
+
+   so the rule missed it and nothing said why. A descendant combinator covers
+   any wrapper depth. It cannot leak into an open menu: a menu's rows live in
+   `.doc-dock-menu-list`, never in a `.menu-wrap`. */
+.dock .menu-wrap > button.ghost {
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: none;
+  box-shadow: none;
+  color: var(--ink);
+}
+
+.dock .menu-wrap > button.ghost:hover,
+.dock .menu-wrap > button.ghost:focus-visible {
+  background: var(--ghost-btn-bg);
+}
+
+/* 2. The Dashboard toolbar was not a bar at all: transparent, no edge, no
+   radius, holding two 28px controls between the stats strip and the grid,
+   against every dock's 36px. docks.md section 3 left it open by name.
+
+   It gets the bar surface and the bar's control height rather than a
+   `data-dock-name` and the four zones: it holds a hint and two buttons, it has
+   no identity, find or arrange zone to declare, and inventing them to satisfy
+   a lint would be the markup following the test rather than the design. The
+   grammar lint asserts the set of dock names in the markup, so adding no
+   attribute leaves it exactly as it was.
+
+   The hero above it is untouched, deliberately: docks.md section 3 records
+   that the owner prefers it as it is. */
+.dash-toolbar {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  /* INBOX 32: the bar surface above gave it an edge and a radius but no
+     room, so it touched the stats strip above and the widget grid below,
+     the one un-spaced pair of neighbours on the page. Measured before this
+     rule: 0px both sides. `--space-5`, not the smaller tokens the bar's own
+     padding uses, because this is the gap *between* two other bars, not
+     padding inside one. */
+  margin-block: var(--space-5);
+}
+
+/* The left-side label INBOX 32 asked for: "Your dashboard", quiet, giving
+   the bar an identity zone the way every other dock has one, without
+   opting it into the dock grammar itself (it has no find or arrange zone
+   to declare, see the comment on `.dash-toolbar` above). */
+.dash-toolbar-label {
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.dash-toolbar button {
+  height: var(--control-h-lg);
+  min-height: var(--control-h-lg);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: none;
+  box-shadow: none;
+  color: var(--ink);
+}
+
+.dash-toolbar button:hover,
+.dash-toolbar button:focus-visible {
+  background: var(--ghost-btn-bg);
+}
+
+/* ---------------------------------------------------------------------------
+   Settings headings sit at one left edge
+
+   docks.md section 6 measured two edges, 529px and 546px, and left the
+   decision open. Measured across all seventeen sections here
+   (`scratchpad/ui-sweeps/setindent.js`) there are three, and the split is
+   clean: 43 headings sit at 546 because they head a `.settings-group`, 11 sit
+   at 529 because they head a section directly, and all 11 are direct children
+   of `.settings-section`. The 17px is `.settings-group`'s own inset, its 1rem
+   padding plus the 1px transparent border it keeps so high-contrast mode has
+   an edge to colour in.
+
+   The 11 move to the 43, not the other way round: aligning the minority is the
+   smaller change, and a heading that starts left of every other heading in the
+   dialog reads as a mistake rather than as a level. The item asked for the
+   change to be made to the headings rather than to the rule, and this is that:
+   `.settings-group` is not touched.
+
+   `calc(1rem + 1px)` and not `var(--space-6)`, deliberately. The two look
+   identical today and are not the same value: `--space-6` is
+   `calc(1rem * var(--density))`, and `.settings-group`'s padding is a raw
+   1rem. Reading the token here would align the edges at one density setting
+   and split them again at every other one, which is the same class of bug as
+   a value that is only wrong where it is used. The 1px is the group's border,
+   named in its own comment as geometry that other measurements are taken
+   against. */
+#settings-modal .settings-section > h3,
+/* One of the eleven does not sit directly under its section: Help's heading is
+   inside a `.row.space-between` so a button can sit opposite it. It is still a
+   section heading and still needs the inset, and it is measured, not assumed:
+   with only the first selector, `setindent.js` reported 53 headings at 546 and
+   "Help & guide" alone at 529. A `.row` inside a `.settings-group` is not
+   reached by this, which is correct: its heading is already at 546. */
+#settings-modal .settings-section > .row > h3 {
+  padding-left: calc(1rem + 1px);
+}
+
+/* ---------------------------------------------------------------------------
+   The two dialogs reported as off the modal recipe
+
+   The recipe, from the contract: a title row, a body, a footer whose last
+   control is the surface's one primary, and one control height throughout.
+   Measured before this with `scratchpad/ui-sweeps/dialogs.js`:
+
+     new board      no heading at all; children were p, input, seg, actions;
+                    button heights 27.2 and 28
+     widgets        heading present but at the same level as the body, so it
+                    scrolled with the list; 98 buttons at two heights; four
+                    controls a row, every one drawing its own resting tint,
+                    which is 96 tinted boxes in one dialog
+
+   Neither dialog had a true accent primary loose in its body, which is worth
+   saying because the first pass of the sweep claimed both did: it counted any
+   non-transparent fill, and a ghost button at rest has one. The defect is the
+   number of tinted boxes and the number of heights, not a stray primary.
+--------------------------------------------------------------------------- */
+
+/* The prompt dialog's title row. `promptDialog` now emits an h3 rather than a
+   paragraph (app.js says why); this gives it the heading's own size and takes
+   the paragraph margin off. */
+.confirm-card .confirm-head {
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.confirm-card .confirm-title {
+  margin: 0;
+  font-size: var(--text-lg);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+/* One control height in a dialog, the same one the bars use. The footer's two
+   buttons measured 28px and the kind segment 27.2px, three sizes for controls
+   sitting 16px apart. `--control-h-lg` and not `--control-h`, for the reason
+   the menu recipe above gives at length: `--control-h` has no root value and a
+   dialog is exactly the kind of surface that can open anywhere. */
+.confirm-card .confirm-actions > button,
+.confirm-card > input,
+.confirm-card .seg > button {
+  height: var(--control-h-lg);
+  min-height: var(--control-h-lg);
+}
+
+/* The widgets dialog: head and foot hold still, the body is the only thing
+   that scrolls. Without this the heading and the filter field scrolled away
+   with the twenty-four rows they are there to control.
+
+   `[open]`, and this is the whole bug: a closed <dialog> is display: none
+   only by the browser's own stylesheet, so an unconditional `display: flex`
+   here painted the closed dialog inline on the Dashboard, behind the hero,
+   with a Done button that had nothing to close (`.close()` on a dialog that
+   was never opened is a no-op). Reported with a screenshot within an hour
+   of merging. Any display rule on a <dialog> must be scoped to `[open]`. */
+.dash-widgets-dialog[open] {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  max-height: 85vh;
+}
+
+.dash-widgets-dialog > .modal-head,
+.dash-widgets-dialog > .modal-foot {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.dash-widgets-dialog > .modal-head h3 {
+  margin: 0;
+}
+
+.dash-widgets-dialog > .modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* A widget row is a name and its controls, not five boxes. The three verbs
+   are one cluster at the row's end; "Wide" keeps its word because its state
+   has to be readable without hovering. Quiet at rest, tint under the pointer,
+   which is the icon recipe and the same move the docks made. */
+.dash-widget-row-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-4);
+}
+
+.dash-widget-row-cluster {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.dash-widget-row-controls button {
+  height: var(--control-h-lg);
+  min-height: var(--control-h-lg);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: none;
+  box-shadow: none;
+}
+
+.dash-widget-row-cluster button {
+  width: var(--control-h-lg);
+}
+
+.dash-widget-row-controls button:hover:not(:disabled),
+.dash-widget-row-controls button:focus-visible {
+  background: var(--ghost-btn-bg);
+}
+
+/* Remove keeps the danger colour on its glyph and loses the resting tint that
+   came with it. The controls container also carries `.entry-actions`, so
+   `.entry-actions button.danger` (0,2,1) outranked the quiet rule above
+   (0,1,1) and the one destructive icon in each of twenty-four rows kept a red
+   box at rest: measured rgba(248,113,113,0.16) after the other three had gone
+   quiet, which is the "which of these is the loud one" problem inverted. The
+   tint is a hover state, and the ink says danger the rest of the time. */
+.dash-widget-row-controls button.danger,
+.entry-actions.dash-widget-row-controls button.danger {
+  background: none;
+  color: var(--error);
+}
+
+.dash-widget-row-controls button.danger:hover:not(:disabled),
+.dash-widget-row-controls button.danger:focus-visible,
+.entry-actions.dash-widget-row-controls button.danger:hover:not(:disabled),
+.entry-actions.dash-widget-row-controls button.danger:focus-visible {
+  background: var(--error-soft);
+}
+
+/* On, and only on: the toggle's state is the one fill in the row. */
+.dash-widget-row-controls button[aria-pressed="true"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* Every control in the dialog on one height, not only the ones in a row. The
+   sweep found two left behind by a narrower rule: "Reset layout" in the
+   summary line at 28px and the footer's own "Done" at 40px, in a dialog whose
+   other 96 controls were 36. */
+.dash-widgets-dialog #dash-widgets-search,
+.dash-widgets-dialog button {
+  height: var(--control-h-lg);
+  min-height: var(--control-h-lg);
+}
+
+.dash-widgets-dialog #dash-widgets-search {
+  margin: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   The last icon-to-label gap family
+
+   consistency.md item 4 left two buckets open and named the space switcher as
+   "a markup question, not a CSS one: inspect that button's children directly".
+   Done, with `scratchpad/ui-sweeps/gapwhy.js`, which dumps child nodes
+   including text nodes because a computed-style dump cannot show a stray
+   space. There was no stray space. `.space-switcher-name` carries
+   `margin-inline-start: var(--space-1)` on top of the container's own 6.4px
+   gap, and 6.4 + 4 is the 10.4px the sweep reported.
+
+   The margin goes and the container's gap does the job, which puts these 14
+   controls in the same bucket as the other 228. The caret's own `--space-1`
+   stays: its rule says why (it was a negative margin, reported as too tight,
+   and a caret separated from the label is not read as part of it), and that is
+   a gap between two icons rather than an icon-to-label gap.
+
+   The 8px `<summary>` bucket the item also named is gone: the sweep now finds
+   three distinct gaps, not four, and no summary in any of them. */
+.space-switcher-name {
+  margin-inline-start: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   The whiteboard top bar's controls
+
+   consistency.md section 3 settled the bar's SURFACE as a deliberate exception
+   and left its controls open: it floats over the canvas, so DESIGN.md's
+   floating-surface rule makes `--modal-bg` with `--glass-border` right there
+   rather than the dock's `--card` and `--border`. That decision stands and
+   nothing here touches the surface.
+
+   Its controls were the worst remaining bar in the app. Measured
+   (`scratchpad/ui-sweeps/wbtopbar.js`, dark, 1440): 14 controls, 13 of them
+   drawing a resting fill, at 2 heights (32 and 36) and 3 radii (8.4, 9.8,
+   11.2). Thirteen filled boxes in one strip is the owner's report in its
+   original words, on the surface it was probably written about.
+
+   The same treatment the docks had: quiet at rest, the tint under the pointer,
+   one height, one radius. Fields keep their inset, because a box you type into
+   should look like one; they join the height and radius instead. */
+.wb-topbar button,
+.wb-topbar summary {
+  height: var(--control-h-lg);
+  min-height: var(--control-h-lg);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: none;
+  box-shadow: none;
+  color: var(--ink);
+}
+
+.wb-topbar button:hover:not(:disabled),
+.wb-topbar button:focus-visible,
+.wb-topbar summary:hover,
+.wb-topbar summary:focus-visible {
+  background: var(--ghost-btn-bg);
+}
+
+/* On stays visible: a toggle that is doing something says so, and this is the
+   one fill the strip keeps besides its fields. */
+.wb-topbar button[aria-expanded="true"],
+.wb-topbar button.is-on,
+.wb-topbar button.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.wb-topbar select,
+.wb-topbar input,
+.wb-topbar .select-shell > .select-opener {
+  height: var(--control-h-lg);
+  border-radius: var(--radius-md);
+}
+
+
+/* DOCUMENTS_PLAN Phase 1, the chrome: three questions, three places.
+   Measured before: the header held ten controls at four heights (44, 39,
+   36, 28), the file-type select and two icon buttons sat beside the title,
+   and the more menu drew its on-state rows with a tinted fill (reported
+   with a screenshot as "the dropdown is visually broken"). Now: title,
+   save state, Edit / Read, AI edit and the more menu, all at one height;
+   a menu row that is on shows a check at its right edge and no fill; the
+   two typing helpers are switch rows at the same height as the buttons. */
+.doc-dock {
+  --control-h: var(--control-h-lg);
+}
+.doc-dock-identity {
+  --identity-h: var(--control-h-lg);
+}
+.doc-view-cluster {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.doc-view-menu > summary {
+  width: var(--control-h-lg);
+}
+.doc-dock-menu-list .doc-dock-menu-item[aria-pressed="true"],
+.doc-dock-menu-list .doc-dock-menu-item.active,
+.doc-dock-menu-list .doc-dock-menu-item.is-on {
+  background: none;
+  font-weight: 500;
+}
+.doc-dock-menu-list .doc-dock-menu-item[aria-pressed="true"]::after,
+.doc-dock-menu-list .doc-dock-menu-item.active::after,
+.doc-dock-menu-list .doc-dock-menu-item.is-on::after {
+  content: "\2713";
+  margin-left: auto;
+  padding-left: var(--space-3);
+  color: var(--accent);
+}
+.doc-dock-menu-list .doc-dock-menu-check {
+  justify-content: space-between;
+  min-height: var(--control-h-lg);
+}
+.doc-dock-menu-list .doc-dock-menu-check > input {
+  margin-left: auto;
+}
+.doc-dock-menu-list #doc-file-type {
+  width: 100%;
+  max-width: none;
+}
+/* INBOX 18: the pinned group at the end of a formatting strip had square
+   corners and was opaque only on the note form. One ground, one radius,
+   on every strip that has it. */
+.doc-toolbar-tools {
+  border-radius: var(--radius-sm);
+  background: var(--modal-bg-opaque);
+  padding-right: var(--space-2);
+}
+/* **The Edit / Read pills sit *inside* the segment; they are not its
+   siblings**, and treating them as siblings is what pushed their labels out
+   of the rounded edge in the owner's screenshot ("the documents edit and read
+   toggle options dont fit in the toggle and go out of it at the bottom").
+
+   Measured with a document open at 1440 and at 1280: `.doc-dock .seg` is
+   `height: var(--control-h)` (36px, the dock's own `--control-h-lg`) with the
+   base `.seg` rule's `padding: 0.25rem`, so its content box is 28px tall. The
+   rule here then pinned each button to `--control-h-lg` as well: a 36px box
+   starting 4px down a 36px pill. Both viewports read `scrollHeight` 40
+   against `clientHeight` 36 on the segment, and every button's
+   `getBoundingClientRect().bottom` 4px below the segment's own. The
+   `overflow: visible` a segmented control needs for its focus ring is what
+   made that spill visible rather than clipped.
+
+   The row's one-height contract is unchanged, because the segment is the
+   control that carries it; its buttons take exactly what the padding leaves.
+   Written as the arithmetic rather than as `1.75rem` so it cannot drift if
+   the dock's `--control-h` moves, and it lands on `--target-min` (28px)
+   either way, clear of WCAG 2.2 AA's 24px target floor. `min-height: 0`
+   because the global hit-target floor is the other half of what held them at
+   36px, and `place-items: center` because a button that no longer stretches
+   has to centre its own icon and label. */
+.doc-dock .seg {
+  --seg-pad: 0.25rem;
+  padding: var(--seg-pad);
+  align-items: center;
+}
+
+.doc-dock .seg button {
+  height: calc(var(--control-h) - 2 * var(--seg-pad));
+  min-height: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+/* A ticked helper row shows its state in the switch, not in a fill: the
+   tinted row was the one thing the owner's screenshot pointed at. */
+.doc-dock-menu-list .doc-dock-menu-check:has(input:checked) {
+  background: none;
+}
+
+/* --- Help & guide: the topics box and the "Ask the guide" box are two
+   groups, and read as one until there was air between them. Reported with a
+   screenshot: "there's no gap between the ask the guide box and help
+   dropdowns panel". The group gap every other Settings section uses. */
+.help-accordion + .help-chat-group {
+  margin-top: var(--space-6);
+}
+
+/* --- Progress that keeps moving (INBOX 95) -------------------------------
+   The writing trace (the drawn line beside "Writing…") was left out of the
+   `data-progress-motion="always"` exception the dots already have, so with
+   Reduce motion or Performance mode on, the dots bounced while waiting and
+   the trace froze the moment text streamed: "the icon which should be
+   different when the text is streaming" did not move. Same rule, same
+   reason as the dots: an indicator is feedback, not decoration. */
+:root[data-progress-motion="always"] .ai-writing-edge {
+  animation: ai-writing-draw 1.5s ease-in-out infinite !important;
+}
+
+:root[data-progress-motion="always"] .ai-writing-node {
+  animation: ai-writing-node-lit 1.5s ease-in-out infinite !important;
+}
+
+/* --- Settings rows that wrap their actions under the title (INBOX 82) ----
+   Reported with two screenshots (the Tesseract OCR package, the BGE model):
+   the status chip and the two buttons dropped to a second line under the
+   heading. The row is one flex line: the title takes the room, the actions
+   keep theirs, the description spans the full width beneath. */
+.extras-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+}
+
+.extras-row > .entry-meta {
+  /* Measured after the first cut: two of four rows still wrapped their
+     actions under the title (a long name plus a status chip plus three
+     buttons at the modal's width). A smaller basis and a wrapping meta
+     let the chip drop under the name before the actions leave the line. */
+  flex: 1 1 10rem;
+  flex-wrap: wrap;
+  min-width: 0;
+  margin: 0;
+}
+
+.extras-row > .entry-actions {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.extras-row > :not(.entry-meta):not(.entry-actions) {
+  flex: 1 1 100%;
+}
+
+/* --- The chat header stays one line (INBOX 91) ---------------------------
+   The identity zone of every dock is `flex: 0 0 auto` so a heading is never
+   crushed; the chat's identity carries the title *and* the model, exchange,
+   window and token readouts, so at width it took the whole row and the
+   three actions wrapped under it. Here the identity shrinks with an
+   ellipsis on the title and the readouts stay on one line. */
+.chat-toolbar.dock > .dock-identity {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.chat-toolbar .chat-headline {
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.chat-toolbar .chat-headline > :first-child {
+  flex: 0 1 auto;
+  min-width: 4rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-toolbar .chat-subline {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* The mark a keyboard save leaves on the button it pressed (app.js,
+   `flashSaved`). Reported on 2026-09-09: Ctrl+S in settings "needs visual
+   confirmation as well". A ring rather than a colour change, so it reads the
+   same on an accent button and on a ghost one, and short enough that it is
+   an acknowledgement rather than a state. No animation under reduced motion,
+   where the toast the save handler raises is the whole confirmation. */
+@keyframes just-saved-ring {
+  /* `--just-saved-rest` is the control's own resting shadow, handed over by
+     `flashSaved` before the class goes on. `box-shadow` is one property
+     holding a list, so animating it replaces whatever was there: without this,
+     a button with a glow of its own (`#prefs-save`, measured at
+     rgba(70,100,240,0.25) 0 2px 10px) lost it for the ring's whole duration
+     and snapped it back at the end. The fallback is a transparent zero shadow
+     so a control with none is unaffected. */
+  0% { box-shadow: var(--just-saved-rest), 0 0 0 0 var(--accent); }
+  100% { box-shadow: var(--just-saved-rest), 0 0 0 6px transparent; }
+}
+
+.just-saved {
+  /* Declared here, plainly, rather than left to a `var(..., fallback)` in the
+     keyframes: `test_style_scale.py` fails a token used with a fallback, and
+     it is right to, a fallback is a value nobody can find by searching for the
+     token. `flashSaved` overwrites this on the element's own style with the
+     control's measured resting shadow; a transparent zero shadow is what a
+     control that has none should compose with. */
+  --just-saved-rest: 0 0 #0000;
+  animation: just-saved-ring var(--motion-slow) ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .just-saved {
+    animation: none;
+  }
+}
+
+/* ==========================================================================
+   THE QUIET SIDE OF THE BUTTON RAMP: A RUN OF ROW ACTIONS
+   ==========================================================================
+
+   `button.ghost` draws its hairline and its small lift again
+   (01-forms-settings.css, and the long comment there says why). That is
+   right for a button standing on its own, and wrong for a *run* of them: a
+   note list at 1440 renders thirteen cards, each carrying four row actions
+   and a kebab, and measured after that change fifty-two outlined, shadowed
+   boxes were on screen at once. That is the same three-lines-deep texture
+   the dock rule above exists to prevent, in the one place the dock rule
+   cannot see: these are not in a bar, they are on a card.
+
+   The distinction the ramp actually turns on is not bar-or-not, it is
+   *does this control already sit inside something that frames it*. A dock
+   frames its controls. So does a note card, and a card whose own edge is
+   already drawn does not want five more inside it. The container is the
+   affordance; the tint under the pointer is the state, which is exactly the
+   grammar the dock rule states.
+
+   `:hover` on the row, not only on the button, because the whole point of a
+   row action is that it belongs to the row: bringing the set up together
+   when the pointer enters says "these act on this card" far better than
+   lighting one at a time. The individual hover stays on top of it. */
+.entry-actions > button.ghost,
+.entry-actions > .menu-wrap > button.ghost,
+.library-image-actions > button.ghost,
+.library-image-actions > .menu-wrap > button.ghost,
+.monitor-header-actions > button.ghost {
+  background: none;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+li:hover > .entry-meta .entry-actions > button.ghost,
+li:focus-within > .entry-meta .entry-actions > button.ghost,
+.entry-actions > button.ghost:hover,
+.entry-actions > button.ghost:focus-visible,
+.entry-actions > .menu-wrap > button.ghost:hover,
+.entry-actions > .menu-wrap > button.ghost:focus-visible,
+.library-image-actions > button.ghost:hover,
+.library-image-actions > button.ghost:focus-visible,
+.library-image-actions > .menu-wrap > button.ghost:hover,
+.library-image-actions > .menu-wrap > button.ghost:focus-visible,
+.monitor-header-actions > button.ghost:hover,
+.monitor-header-actions > button.ghost:focus-visible {
+  background: var(--ghost-btn-bg);
+}
+
+.entry-actions > button.ghost:hover,
+.entry-actions > button.ghost:focus-visible,
+.entry-actions > .menu-wrap > button.ghost:hover,
+.entry-actions > .menu-wrap > button.ghost:focus-visible,
+.library-image-actions > button.ghost:hover,
+.library-image-actions > button.ghost:focus-visible {
+  border-color: var(--ghost-btn-border);
+}
+
+/* --- the Graph dock's second row, and the nine pixels that cause it -------
+   `finalqa.js` at 1024 in both themes: "[graph] row wraps: .dock tops=93,137".
+   Measured: the dock's content box is 965px (981 minus its own 8px padding
+   each side) and its three zones want 448 + 224 + 298 with two 9.6px gaps,
+   which is 974. Nine pixels. The actions group, the one holding "Add note"
+   and the four icon buttons, is what goes over the edge and down a line, so
+   the tab's own primary action is on a row of its own with 667px of empty
+   space beside it.
+
+   `.dock`'s `flex-wrap: wrap` is deliberate and stays; what is wrong is that
+   this dock's identity zone carries three things (a heading, a live stats
+   readout and a labelled link) where every other dock carries one or two.
+   The link's *label* is the part that can go: at 147px it is the widest
+   single item in that zone, the icon is the same tree mark the Boards and
+   maps sub-tab uses, and the full sentence is in the button's own title.
+   111px back, and the row then measures 878 against 965 with room to spare
+   rather than nine pixels of debt.
+
+   Below 1200 rather than at 1024: the debt is nine pixels at 1024 and the
+   zones do not shrink with the window, so it is only luck that 1100 is not
+   the same picture, and a control that appears and disappears twice across
+   one drag of a window edge reads as a glitch. */
+@media (max-width: 1199.98px) {
+
+  #graph-concept-maps .dock-link-label {
+    display: none;
+  }
+}
+
+/* **The fold on a picture card is a chip, not a bar** (INBOX 118: the
+   full-width tinted disclosure "is the heaviest element on the card").
+
+   The decision it is bent around is not being remade: a `<summary>` rests
+   with a ground and a hairline (`summary:not(.icon-only):not(.icon-button)`,
+   07-whiteboard-misc.css) because "a disclosure that looks like a line of
+   text is a control nobody finds", and that holds here too. What the owner
+   is looking at is not the ground, it is the *span* of it. Measured at 1440
+   dark on a 180.3px tile: the bar ran 159.1px by 32.8px, so a control
+   holding one folded-away reading covered the full width of the card at the
+   weight of a filled button, directly under a 12px description, and it was
+   the first thing the eye landed on in a gallery of twenty.
+
+   Sized to its words instead, and one step down the type scale so it sits
+   below the prose it belongs to rather than over it. `max-width: 100%` and
+   no `nowrap`: past the card's width the label wraps rather than clipping,
+   which is what a 390px card does not need and a narrow tile might.
+
+   (0,3,1) against that rule's (0,2,1), and later in the cascade, so it wins
+   on specificity rather than on file order alone. Images only: the fold on a
+   Files row heads a full-width row and stays a full-width bar. */
+.library-image-card-fold > summary:not(.icon-only):not(.icon-button) {
+  width: fit-content;
+  max-width: 100%;
+  font-size: var(--text-xs);
+  /* The chip tier of ground rather than the button tier, which is both half
+     of what made it read as heavy and the only way the label passes AA here.
+     Sampled from the rendered pixels (`scratchpad/pngpixel.py`, not a
+     composite guess, since every surface under this one is translucent over
+     the page's art): on dark the label painted rgb(168,176,189) on a
+     rgb(74,80,93) ground, 3.70:1 at 11.2px against the 4.5 it owes. The same
+     text on `--chip-bg` measures 5.10:1, and light was already 5.71:1 and
+     goes up. The hover fill is untouched, so the control still answers the
+     pointer with the app's own ghost tone.
+
+     The *edge* carries what the fill gives up. With the ground this quiet the
+     hairline is most of what says "control", and a quieter ground is also a
+     quieter border, since a border paints over its own element's fill:
+     measured off the pixels, the chip's edge against the card fell to 2.48:1
+     in dark on the way down to `--chip-bg`, under the 3:1 a control's
+     boundary owes. One step up the same ladder of tokens puts it at 3.30:1
+     dark and 2.19:1 light, against 3.2 and 1.97 before any of this: better in
+     both themes without putting the slab back. Light stays under 3:1 because
+     every tonal control in this app does there; that is the button ramp's
+     business, not this card's. */
+  background: var(--chip-bg);
+  border-color: var(--ghost-btn-border-hover);
+}
+
+/* ---------------------------------------------------------------------------
+   8. A panel head is identity, one fact, then the actions, and it does not
+      wrap
+   ---------------------------------------------------------------------------
+
+   Reported twice about the same head, the Ask sub-tab's "AI answer". First:
+   "at 100% and 95% zoom on my laptop, the ai answer with the ai model badge
+   and the retry, copy and dictate read out loud buttons are misalligned because
+   of wrap", which was answered by grouping the label with the badge so the row
+   broke into two tidy lines rather than three ragged ones. Then, with a
+   screenshot of that two-line result: "these buttons and badges wrap onto a new
+   line and I want them restructured some other way".
+
+   Measured before this family (`scratchpad/ui-sweeps/askhead.js`, at 1440, 1024
+   and 820, with the reported model name and with a real long one,
+   hf.co/unsloth/Qwen2.5-14B-Instruct-GGUF:Q4_K_M):
+
+     width  model name   head height   actions vs label
+     1440   granite      55.6px        27px lower
+     1440   long         73.6px        45px lower
+     1024   granite      55.6px        28px lower
+     1024   long         91.6px        64px lower
+     820    granite      55.6px        28px lower
+     820    long         73.6px        46px lower
+
+   A 21.2px line of text in a 91.6px head is not a head that wrapped, it is a
+   head that came apart. The cause is that the row had four items competing for
+   one width and no rule about which of them gives way, so the browser decided,
+   differently at every width.
+
+   The recipe, which is the dock grammar (DESIGN.md) applied to a panel head:
+   **identity, then at most one fact, then the actions; the row never wraps; and
+   the fact is the only zone allowed to shrink**, because it is the only one
+   whose width is not the app's to choose (a model id is whatever the person
+   pulled). An ellipsised fact with the whole phrase on its tooltip is a
+   deliberate loss of the tail of a string; a head that reflows every time the
+   model changes is not a design at all.
+
+   Each declaration here has to be in this file rather than beside its family in
+   01: `flex-wrap` loses to `.panel-head` (07) and `.chat-half h3`, the badge's
+   `display` loses to `.chip`, and the buttons' height loses to the icon-only
+   floor at the end of 07. All three ties are on equal specificity, all three
+   were measured being lost, and this is the file whose job is to win them by
+   coming last.
+
+   `.chat-half h3.answer-head` rather than `.answer-head` alone, and the reason
+   is worth the two extra words: `.chat-half h3` (01) declares `flex-wrap: wrap`
+   at (0,1,1), which beats a bare class at (0,1,0) whatever the file order, so
+   the first version of this rule changed nothing at all and was measured doing
+   it (the head still stood 88px tall with a long model id). Source order only
+   settles a tie; it does not win an argument against a more specific rule. */
+.chat-half h3.answer-head {
+  flex-wrap: nowrap;
+  gap: var(--space-2);
+}
+
+/* **A zone can only shrink if every box above it lets it.** With the head set
+   to `nowrap` the badge still refused to ellipsise and the head measured 669.4px
+   inside a 356.4px column at 1024: a grid item's `min-width` is `auto`, which
+   floors it at its own max-content contribution, so the column simply grew past
+   its track and took the card and the page with it. `min-width: 0` on the two
+   halves is what hands the shrinking back to the badge, and it is the half of
+   this recipe that is easiest to leave out, because nothing about the symptom
+   points at the grid. */
+.chat-grid > .chat-half {
+  min-width: 0;
+}
+
+/* **The one shrinking zone.** `display: inline-block` overrides `.chip`'s
+   `inline-flex`: `text-overflow` applies to a block container's own text, not
+   to the anonymous flex item that text becomes inside a flex box, so an
+   ellipsis on the flex version silently does nothing. Nothing is ever appended
+   to this chip (`renderChatMeta` writes `textContent` and no icon), so it loses
+   no icon slot by leaving flex layout.
+
+   `text-transform: none` because `.card h3` is the app's eyebrow recipe and is
+   uppercase, and a model id's own case is part of the id: `Q4_K_M` and `q4_k_m`
+   are different strings to whoever typed one of them. */
+.answer-model {
+  display: inline-block;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* **The actions are on the app's control height, not on a padding of their
+   own.** They measured 28px at a 12.8px font, which is `--target-min`'s floor
+   rather than a height anyone chose: the two rem values that produced it said
+   nothing about the row they were in. `--control-h-lg`, the height every head
+   row in the app takes (`.library-head` borrowed it first, for the same
+   complaint one card over), and never `--control-h`, which has no root value
+   and resolves to whichever surface a rule lands inside (see family 1). */
+.answer-actions button {
+  min-height: var(--control-h-lg);
+  min-width: var(--control-h-lg);
+}
+
+/* **This head joins family 4 while we are here**, and it pays for itself in the
+   measurement above. `.answer-title` set its own `gap: 0.4rem` and the sparkle
+   also carried `.ph-lead`'s `margin-inline-end: 0.35em`, the exact
+   double-counting family 4 was written for: 6.4 + 4.8 = 11.2px between an icon
+   and the two words it leads, against the app's 6.4px everywhere else. Taking
+   the margin off is 4.8px back in a row that was four pixels short of fitting
+   `granite4.1:3b` uncut at 1024, so the ellipsis is now reserved for ids that
+   genuinely are long. */
+.answer-title {
+  gap: var(--space-2);
+}
+
+.answer-title > .ph-lead {
+  margin-inline-end: 0;
+}

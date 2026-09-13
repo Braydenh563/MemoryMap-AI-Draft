@@ -1,4 +1,4 @@
-"""Editing a file in place — where it is honest, and where it is refused.
+"""Editing a file in place, where it is honest, and where it is refused.
 
 REDESIGN.md §R7.1 item 2, from the request: *"all the files should be
 managable, viewable and editable in the library and document/file/text
@@ -6,7 +6,7 @@ editor."*
 
 `core/docview.py` has said since it was written that the viewer is read-only,
 and its reason is right: extraction is one-way, and text pulled out of a .docx
-is not a .docx. This does not widen that rule — it draws the line where the
+is not a .docx. This does not widen that rule, it draws the line where the
 rule's own reason stops applying. For a .md, a .txt, a .csv or a source file,
 "extraction" is `bytes.decode()`: the text *is* the file.
 
@@ -133,7 +133,7 @@ def test_the_reason_is_computed_before_the_empty_body_return():
     """A .docx on an install without markitdown extracts to nothing, so the
     viewer's "no readable text" branch returns early. The read-only reason
     used to be computed past that return and was therefore never shown for
-    exactly the files that most needed it — measured live: the note read only
+    exactly the files that most needed it, measured live: the note read only
     "Importing documents needs the optional markitdown package"."""
     app = (Path(__file__).resolve().parents[1] / "frontend" / "app.js").read_text(
         encoding="utf-8"
@@ -171,7 +171,7 @@ def test_the_preview_response_carries_its_own_policy(client):
     """**The whole reason this is a route rather than a `blob:` in the
     browser.** A `blob:` document inherits its creator's CSP, so the app's
     `style-src 'self'` applied to the framed page and refused the page's own
-    `<style>` — measured in Chromium, with `background-color` coming back
+    `<style>`, measured in Chromium, with `background-color` coming back
     transparent on a page that sets `#eef`. A same-origin response carries its
     own policy, and this asserts every token that policy needs."""
     attachment_id = _attach(client, "page.html", b"<html><body>hi</body></html>")
@@ -188,13 +188,13 @@ def test_the_preview_response_carries_its_own_policy(client):
         "that file"
     )
     assert "img-src data:" in policy and "img-src data: 'self'" not in policy, (
-        "inline images only — with 'self' a framed page could probe this "
+        "inline images only: with 'self' a framed page could probe this "
         "app's own endpoints by pointing an <img> at them"
     )
     assert "frame-ancestors 'self'" in policy, (
         "default-src 'none' covers frame-ancestors too, so without this the "
         "response forbids being framed at all and the pane renders "
-        "chrome-error:// — measured, after exactly that shipped once"
+        "chrome-error://: measured, after exactly that shipped once"
     )
 
 
@@ -235,7 +235,7 @@ def test_the_highlighter_builds_nodes_and_never_markup():
     editor = _editor_js()
     body = editor[editor.index("function highlightCodeInto(") :]
     assert "innerHTML" not in body, (
-        "spans are built with textContent — an innerHTML here is the bug"
+        "spans are built with textContent, an innerHTML here is the bug"
     )
     assert "document.createTextNode" in body and "span.textContent" in body
 
@@ -271,7 +271,7 @@ def test_keywords_do_not_use_the_user_chosen_accent():
     assert "var(--accent)" not in rule
     tokens = (css_dir / "00-tokens-shell.css").read_text(encoding="utf-8")
     assert tokens.count("--syntax-keyword:") == 3, (
-        "light, the manual dark toggle, and the OS-default dark block — CSS "
+        "light, the manual dark toggle, and the OS-default dark block, CSS "
         "has no variables-for-variables, which is why that file already "
         "carries the dark palette twice"
     )
@@ -281,7 +281,7 @@ def test_export_names_the_file_after_what_the_text_is():
     """Save hands back the file as it is on disk; Export text hands back what
     the viewer is showing, which for a scanned PDF is the only readable form
     of it the app has. `report.pdf` exports as `report.md` or `report.txt`
-    depending on `kind` — never as something claiming to still be a PDF."""
+    depending on `kind`, never as something claiming to still be a PDF."""
     app = (Path(__file__).resolve().parents[1] / "frontend" / "app.js").read_text(
         encoding="utf-8"
     )

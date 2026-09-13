@@ -8,14 +8,14 @@ three times, so it is not hypothetical.
 
 Two facts are load-bearing and live outside the main file:
 
-- HISTORY.md answers "has this been built?" — the audit that found four of §2's
+- HISTORY.md answers "has this been built?", the audit that found four of §2's
   six "quick wins" already done is in there.
 - ANALYSIS.md holds §33's constraint that **odysseus is AGPL and this project
   is MIT, so no code crosses in either direction**. That is invisible if you
   only read the backlog, and expensive to violate.
 
 So this checks that every file announces the others, that the two facts above
-are reachable, and — the one that actually matters — that no section was lost
+are reachable, and, the one that actually matters, that no section was lost
 in the split.
 """
 
@@ -38,7 +38,7 @@ def test_the_split_lost_nothing():
     for label, path in [("ROADMAP", ROADMAP), *COMPANIONS.items()]:
         body = path.read_text(encoding="utf-8")
         # A section split into (short pointer, real content) is fine and is how
-        # §6 works — it was finished, so it lives in HISTORY, but the number is
+        # §6 works: it was finished, so it lives in HISTORY, but the number is
         # kept in the backlog so a §6 reference still lands somewhere sensible.
         # A pointer is short and links to the file that holds the real thing.
         for match in re.finditer(r"(?m)^## (\d+[a-z]?)\. .*?(?=\n## |\Z)", body, re.S):
@@ -55,7 +55,7 @@ def test_the_split_lost_nothing():
 
 
 def test_every_file_points_at_the_others():
-    """Entering from any one of the four has to lead to the rest — that is the
+    """Entering from any one of the four has to lead to the rest, that is the
     whole defence against reading one and stopping."""
     roadmap = ROADMAP.read_text(encoding="utf-8")
     for name in COMPANIONS:
@@ -73,7 +73,7 @@ def test_the_two_load_bearing_facts_are_flagged_from_the_entry_point():
     that finished work and the licence constraint live elsewhere."""
     roadmap = ROADMAP.read_text(encoding="utf-8")
     # Anchored on the heading, not on a sentence inside it. This used to slice
-    # at the literal "Ordered by *how much it unlocks*", which is prose — so
+    # at the literal "Ordered by *how much it unlocks*", which is prose: so
     # restructuring the list (exactly the thing this file is meant to survive)
     # made the assert raise `substring not found` rather than fail with a
     # reason. "Everything before the first list item" is the durable boundary.

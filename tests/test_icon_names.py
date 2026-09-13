@@ -1,14 +1,14 @@
 """Every icon this app asks for has to exist in the font it ships.
 
 Reported with a screenshot: the active Favourites button rendered as an
-**empty circle** — a button with nothing in it. The cause is a whole class of
+**empty circle**: a button with nothing in it. The cause is a whole class of
 bug rather than one icon. The off state asked for `ph:star`, the on state for
 `ph:star-slash`, and `star-slash` is not in this app's vendored Phosphor
 subset (1,530 of Phosphor's icons, not all of them).
 
 **A missing glyph in an icon font is not an error.** The character simply has
 nothing to draw. Nothing logs, nothing throws, the CSS class is applied
-exactly as written, and the source reads as correct at every line — the same
+exactly as written, and the source reads as correct at every line, the same
 shape as the `APPEARANCE_DEFAULTS` bug in CLAUDE.md: a value that is invalid
 *where it is used*, not where it is set. It reached a user because one icon
 name out of 176 was wrong and there was no way to know.
@@ -27,7 +27,7 @@ FRONTEND = Path(__file__).resolve().parents[1] / "frontend"
 PHOSPHOR_CSS = FRONTEND / "vendor" / "phosphor" / "style.css"
 
 #: `ph-lead` is this app's own utility class for the margin between an icon
-#: and its label (see `setLabel` in app.js) — it rides on the same element and
+#: and its label (see `setLabel` in app.js): it rides on the same element and
 #: is deliberately not an icon.
 NOT_ICONS = {"lead"}
 
@@ -38,7 +38,7 @@ def _available() -> set[str]:
 
 
 def _strip_line_comments(source: str) -> str:
-    """A `ph:name` inside prose is documentation, not a request for a glyph —
+    """A `ph:name` inside prose is documentation, not a request for a glyph, 
     two of them explain the label grammar itself."""
     return "\n".join(line.split("//")[0] for line in source.splitlines())
 
@@ -63,7 +63,7 @@ def test_every_icon_asked_for_is_in_the_font():
     requested = _requested()
     missing = {name: sorted(where) for name, where in requested.items() if name not in available}
     assert not missing, (
-        "these icon names are not in frontend/vendor/phosphor — they render as "
+        "these icon names are not in frontend/vendor/phosphor, they render as "
         f"an empty button with nothing logged: {missing}"
     )
 
@@ -73,6 +73,6 @@ def test_the_lint_is_actually_looking_at_something():
     forever. These two numbers are the guard against that."""
     assert len(_available()) > 1_000, "the Phosphor subset looks truncated"
     assert len(_requested()) > 100, (
-        "far fewer icon names found than this app uses — the scan is broken, "
+        "far fewer icon names found than this app uses, the scan is broken, "
         "not the icons"
     )

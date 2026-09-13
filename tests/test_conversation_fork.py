@@ -1,7 +1,7 @@
 """Forking a conversation.
 
 Asked for directly: "ability to fork conversations". The need is the one every
-chat interface grows into — a thread reaches a good state and you want to try
+chat interface grows into, a thread reaches a good state and you want to try
 a different direction *without losing the one you have*. Before this the only
 way was to keep asking and then delete what you did not want, which is
 destructive and cannot be undone.
@@ -49,7 +49,7 @@ def test_the_original_is_untouched(client):
 
 
 def test_editing_the_fork_cannot_reach_its_parent(client):
-    """A copy rather than a branch pointer — see the route's own docstring for
+    """A copy rather than a branch pointer, see the route's own docstring for
     why a tree with shared ancestry is the wrong size of machinery here."""
     original = _chat(client, "Planning", [("one?", "1"), ("two?", "2")])
     fork = client.post(f"/conversations/{original}/fork", json={}).json()
@@ -59,7 +59,7 @@ def test_editing_the_fork_cannot_reach_its_parent(client):
 
 def test_the_fork_says_where_it_came_from(client):
     """Two identically-named chats in the Library is what makes forking
-    unusable — you cannot tell which one you are about to open."""
+    unusable: you cannot tell which one you are about to open."""
     original = _chat(client, "Planning", [("one?", "1")])
     fork = client.post(f"/conversations/{original}/fork", json={}).json()
     assert fork["title"] == "Planning (fork)"

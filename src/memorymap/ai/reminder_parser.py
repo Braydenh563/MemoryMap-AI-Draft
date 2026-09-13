@@ -1,6 +1,6 @@
 """Turn a natural-language reminder into structured fields (Magic Add).
 
-Reuses the local utility model — the same one the digest/janitor use — so
+Reuses the local utility model, the same one the digest/janitor use, so
 nothing leaves the machine. Parsing is best-effort: if the model is unavailable
 or returns something unusable, callers get a sensible fallback (the raw text,
 due tomorrow at 9am, normal priority) rather than an error.
@@ -31,7 +31,7 @@ _PRIORITIES = ("low", "normal", "high")
 #
 # So the common shapes are resolved here first, and the model is the fallback
 # rather than the first resort. That also makes Magic Add work with Ollama
-# switched off, which matches the app's second design principle — the thing
+# switched off, which matches the app's second design principle, the thing
 # should still work when the AI doesn't.
 #
 # entry/timewords.py is deliberately NOT reused: it resolves to a DATE with a
@@ -78,7 +78,7 @@ _FRACTION_PATTERNS = [(re.compile(p, re.IGNORECASE), d) for p, d in _FRACTIONS]
 
 
 def relative_delta(text: str) -> tuple[timedelta, str] | None:
-    """(how far ahead, the phrase that said so) — or None if nothing matched.
+    """(how far ahead, the phrase that said so), or None if nothing matched.
 
     Only handles "in …" forms on purpose. "at 8pm" and "tomorrow morning" are
     a different problem: they name a wall-clock target rather than an offset,
@@ -142,7 +142,7 @@ _SYSTEM = (
     'Reply with ONLY a JSON object of the form '
     '{{"text": string, "due_at": ISO-8601 date-time, "priority": one of '
     '"low"/"normal"/"high"}}. '
-    "That time is the user's own local clock — answer on the same clock, and "
+    "That time is the user's own local clock, answer on the same clock, and "
     "resolve relative times (tomorrow, this evening, next week, in 2 hours) "
     "against it. If a time of day is given but no date, choose the next time "
     "that is still in the future. If no time at all is given, use 9am the "
@@ -185,7 +185,7 @@ def parse_reminder(text: str, ollama, model_manager, now: datetime) -> dict:
     ]
     try:
         reply = ollama.chat(model_manager.utility_model(), messages)
-    except Exception:  # noqa: BLE001 — any model failure degrades gracefully
+    except Exception:  # noqa: BLE001  # any model failure degrades gracefully
         return _fallback(text, now)
 
     parsed = _extract_json(reply.get("content", "") if isinstance(reply, dict) else "")

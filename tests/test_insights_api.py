@@ -1,7 +1,7 @@
 """The /insights router: stats, on-this-day, greeting, tag cloud, heatmap,
 and the dashboard layout preference.
 
-(The digest's own content logic — what makes a week worth summarising — has
+(The digest's own content logic, what makes a week worth summarising, has
 its own file, test_digest_structure.py; the HTTP/streaming half of the
 digest endpoint lives there too, next to that logic.)
 """
@@ -54,7 +54,7 @@ def test_on_this_day_resurfaces_old_notes(client):
 def test_on_this_day_excludes_private_notes(client):
     """Every other view filters `is_private` before a note reaches the
     caller; this one didn't, and read `entry.content` straight off the
-    column — ciphertext, for a private note — instead of through
+    column, ciphertext, for a private note, instead of through
     `readable_content`."""
     session = deps.get_db().session()
     try:
@@ -81,7 +81,7 @@ def test_greeting_uses_ai_when_available(ai_client, fake_ollama):
 
 def test_greeting_keeps_its_terminal_mark_separate(ai_client, fake_ollama):
     """The mark is returned apart from the phrase so a name can slot in
-    before it — "Rise and shine, Sam!" rather than "Rise and shine!, Sam"."""
+    before it: "Rise and shine, Sam!" rather than "Rise and shine!, Sam"."""
     fake_ollama.librarian_reply = "Rise and shine!"
     body = ai_client.get("/insights/greeting?block=morning").json()
     assert body["greeting"] == "Rise and shine"
@@ -102,7 +102,7 @@ def test_greeting_keeps_interior_capitals(ai_client, fake_ollama):
 
 
 def test_greeting_weaves_in_the_saved_name(ai_client, fake_ollama, monkeypatch):
-    """With a display name set, the model is asked to use it — and when it
+    """With a display name set, the model is asked to use it, and when it
     does, the response says so, so the frontend won't append it again."""
     # Name use is deliberately probabilistic; pin it so the test is stable.
     monkeypatch.setattr(routes_insights, "NAME_USE_CHANCE", 1.0)
@@ -125,7 +125,7 @@ def test_greeting_normalises_the_name_casing(ai_client, fake_ollama):
 
 
 def test_greeting_flags_when_the_model_ignores_the_name(ai_client, fake_ollama, monkeypatch):
-    """The model dropping the name must not lose it — append_name stays
+    """The model dropping the name must not lose it, append_name stays
     true so the frontend appends it as before."""
     monkeypatch.setattr(routes_insights, "NAME_USE_CHANCE", 1.0)
     ai_client.put("/preferences", json={"display_name": "Brayden"})
@@ -142,7 +142,7 @@ def test_greeting_without_a_name_is_unchanged(ai_client, fake_ollama):
 
 
 def test_greeting_sometimes_skips_the_name(ai_client, fake_ollama, monkeypatch):
-    """Not every greeting uses the name — when we skip it, the frontend must
+    """Not every greeting uses the name, when we skip it, the frontend must
     not bolt it on, or the variety is lost."""
     monkeypatch.setattr(routes_insights, "NAME_USE_CHANCE", 0.0)
     ai_client.put("/preferences", json={"display_name": "Brayden"})
@@ -241,7 +241,7 @@ def test_greeting_strips_quotes_and_trailing_punctuation(ai_client, fake_ollama)
 
 
 def test_greeting_never_contains_a_name(ai_client, fake_ollama):
-    # The endpoint returns a phrase only — the frontend adds the display name,
+    # The endpoint returns a phrase only, the frontend adds the display name,
     # so a stored name must not leak into the API response.
     ai_client.put("/preferences", json={"display_name": "Brayden"})
     fake_ollama.librarian_reply = "Good morning"
@@ -274,7 +274,7 @@ def test_tag_cloud_weights_by_frequency(client):
 def test_all_tags_is_not_rescanned_for_an_unchanged_notebook(client, monkeypatch, session):
     """Was a full non-deleted-entry scan + per-row json.loads, paid again on
     every Library tab open, every tag_cloud call, and every /tags call. Same
-    fingerprint-cache pattern as routes_graph.py's pagerank — this pins that
+    fingerprint-cache pattern as routes_graph.py's pagerank: this pins that
     a second call within the same notebook version doesn't redo the scan."""
     from memorymap.entry import manager
 

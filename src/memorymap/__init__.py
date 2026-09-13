@@ -1,3 +1,3 @@
-"""MemoryMap AI — a 100% offline, local-first AI notebook."""
+"""MemoryMap AI: a 100% offline, local-first AI notebook."""
 
-__version__ = "0.2.2"
+__version__ = "0.3.0"

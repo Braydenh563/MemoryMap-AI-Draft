@@ -1,0 +1,444 @@
+/* =============================================================================
+   The documents editor: layout around the engine (DOCUMENTS_PLAN Phase 2)
+   =============================================================================
+
+   **What belongs here and what does not.** This file lays out the *space* the
+   editor occupies: the host the CodeMirror view mounts into, the fallback
+   textarea beside it, and the find panel's chrome. CodeMirror's own internals
+   (the content column, the gutter, the selection, the cursor) are styled from
+   the theme object in documents.js, built out of the same tokens, and the
+   reason is mechanical rather than stylistic: the library styles itself
+   through constructed stylesheets on `document.adoptedStyleSheets`, and
+   adopted sheets sort *after* every document stylesheet. A rule written here
+   would lose to CodeMirror's own base rule at equal specificity, silently, in
+   exactly the way this project's notes on "a policy refusing the work" keep
+   describing. So: layout here, ink in the theme.
+
+   Linked after 08-consistency.css so it is the last word on the panes it lays
+   out, and version-stamped like every other local stylesheet
+   (tests/test_asset_cache_busting.py). */
+
+/* The host, empty until a document is opened for the first time. `flex: 1`
+   rather than a height: it shares `.doc-source-wrap`'s column with the
+   fallback textarea, and only one of the two is ever on screen. */
+.doc-editor {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The wrapper says which engine is in charge, so the fallback textarea can be
+   taken out of the layout without being taken out of the DOM: it is still the
+   surface the adapter falls back to if the bundle never loads, and a
+   `display: none` textarea is one that keeps its value and its listeners. */
+.doc-source-wrap.has-cm > #doc-content,
+.doc-source-wrap.has-cm > .doc-gutter {
+  display: none;
+}
+
+/* The view fills the host, and carries the reading measure the textarea used
+   to carry. `.cm-editor` is CodeMirror's outer element; giving it a height
+   here rather than in the theme is the one exception to the rule above, and
+   it is safe because the library sets no height of its own.
+
+   **The cap is on the editor, not on `.cm-content`, and that is measured
+   rather than preferred.** `.cm-scroller` is a flex row and `.cm-content` is
+   a `flex-grow` item inside it, so a `max-width` there clamps the column but
+   the leftover space stays on one side: measured at 1440, an 1,082px pane
+   with a 794px column left 0px to its left and 288px to its right, which
+   reads as the writing having drifted rather than as a measure. Capping the
+   whole editor centres the column *and* keeps the line-number gutter beside
+   the text it numbers, which is what the textarea and its gutter did.
+
+   78ch rather than the preview's 72: markdown adds syntax characters that are
+   not prose, so the same prose measure needs slightly more room when the
+   marks are visible. `.doc-wide` on the tab is the opt-out
+   (see `applyDocWidth`). */
+.doc-editor .cm-editor {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+  max-width: 78ch;
+  margin-inline: auto;
+}
+
+#tab-documents.doc-wide .doc-editor .cm-editor {
+  max-width: none;
+}
+
+/* Asked for directly: "the plain text view should be more like a vs code
+   editor with a plain black or white background." Plain is Source with the
+   language compartment emptied (documents.js), and the CM6 theme's own `&`
+   rule leaves `.cm-editor` transparent in every view (docCmTheme), so
+   painting the ground on `.doc-editor` behind it never fights the library's
+   own adopted stylesheet the way a rule on `.cm-editor` itself would. The
+   fallback textarea (`#doc-content`, no CM6 bundle) gets the same ground. */
+.doc-source-wrap[data-doc-view="plain"] .doc-editor,
+.doc-source-wrap[data-doc-view="plain"] > #doc-content {
+  background: #fff;
+}
+
+:root[data-mode="dark"] .doc-source-wrap[data-doc-view="plain"] .doc-editor,
+:root[data-mode="dark"] .doc-source-wrap[data-doc-view="plain"] > #doc-content {
+  background: #000;
+}
+
+/* Find and replace, restyled onto the app's own field recipe rather than
+   left with the library's defaults (DOCUMENTS_PLAN Phase 2 decision 7). The
+   panel is CodeMirror's own DOM, so this is layout and chrome only: the input
+   and button *shapes* come from the app's existing rules by reusing their
+   selectors here rather than by re-describing them. */
+.doc-editor .cm-panels {
+  background: var(--card);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.doc-editor .cm-panels.cm-panels-top {
+  border-bottom: 1px solid var(--border);
+}
+
+.doc-editor .cm-panels.cm-panels-bottom {
+  border-top: 1px solid var(--border);
+}
+
+.doc-editor .cm-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+}
+
+.doc-editor .cm-search .cm-textfield {
+  background: var(--input-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-3);
+  font: inherit;
+  min-width: 12ch;
+}
+
+.doc-editor .cm-search .cm-textfield:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.doc-editor .cm-search .cm-button {
+  background: var(--ghost-btn-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-3);
+  font: inherit;
+  cursor: pointer;
+}
+
+.doc-editor .cm-search .cm-button:hover {
+  background: var(--ghost-btn-bg-hover);
+}
+
+.doc-editor .cm-search label {
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.doc-editor .cm-search button[name="close"] {
+  color: var(--muted);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: var(--space-1);
+}
+
+/* =============================================================================
+   The properties panel (DOCUMENTS_PLAN Phase 3 item 4)
+   =============================================================================
+
+   The panel is built in script (documents.js, `renderDocProperties`) and
+   inserted as the first child of `.doc-editor`, which is a flex column, so it
+   sits above the CodeMirror view and shares its column. It cannot be a widget
+   inside the view: a replace decoration from a plugin may not contain a line
+   break and frontmatter is three lines at the very least.
+
+   The same rows are drawn read-only into the preview (`.doc-props-read`), so
+   Live and Read agree about what a property looks like.
+
+   The measure matches `.doc-editor .cm-editor` above, or the fields would run
+   the full width of the pane while the writing under them stops at 78ch, which
+   reads as two unrelated surfaces stacked on top of each other. */
+.doc-props {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 100%;
+  max-width: 78ch;
+  margin-inline: auto;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  /* Eight properties is a tall block above someone's writing, so the panel
+     scrolls rather than pushing the first line of the document off screen.
+     The cap is a line-height multiple rather than a round number: it is
+     "about five rows", which is what a document's properties usually are. */
+  max-height: 10lh;
+  overflow-y: auto;
+  flex: 0 0 auto;
+}
+
+#tab-documents.doc-wide .doc-props {
+  max-width: none;
+}
+
+.doc-props.hidden {
+  display: none;
+}
+
+/* One label column for every row, the same one every settings row in the app
+   reserves (`--form-label-col`), so the values start on one edge. */
+.doc-prop-row {
+  display: grid;
+  grid-template-columns: var(--form-label-col) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.doc-prop-key {
+  color: var(--muted);
+  font-size: var(--text-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.doc-prop-value {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+/* Two classes deep on purpose: the app's own `input[type="text"]` rule is
+   0,1,1 specific and would otherwise win, which is measured rather than
+   guessed (it did: 41.6px tall fields at 13.6px in a row of 28px controls,
+   and a panel 210px tall for three properties). */
+.doc-props input.doc-prop-input,
+.doc-props input.doc-prop-add {
+  font: inherit;
+  font-size: var(--text-md);
+  color: var(--text);
+  background: var(--field-inset);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+  min-width: 0;
+}
+
+.doc-props input.doc-prop-input {
+  flex: 1 1 auto;
+}
+
+/* The field that adds a tag sits at the end of the chips it adds to, so it is
+   sized to the word being typed rather than to the row. */
+.doc-props input.doc-prop-add {
+  flex: 0 1 8ch;
+  background: none;
+}
+
+.doc-props input.doc-prop-input:hover,
+.doc-props input.doc-prop-add:hover {
+  border-color: var(--border);
+}
+
+.doc-props input.doc-prop-input:focus-visible,
+.doc-props input.doc-prop-add:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--field-inset);
+}
+
+.doc-prop-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* The chip's own remove button, and the row's: the app's icon-only ghost, at
+   the size a chip can carry. */
+.doc-prop-btn {
+  padding: 0;
+  min-width: 0;
+  min-height: 0;
+  line-height: 1;
+  color: var(--muted);
+  background: none;
+  border: 0;
+}
+
+.doc-prop-btn:hover {
+  color: var(--text);
+  background: none;
+}
+
+/* The row's trash button appears on hover or focus, so eight properties are
+   eight values rather than eight values and eight buttons. It stays in the
+   layout either way: revealing it by changing `display` would make every row
+   jump sideways as the pointer crossed it. */
+.doc-prop-row > .doc-prop-btn {
+  opacity: 0;
+}
+
+.doc-prop-row:hover > .doc-prop-btn,
+.doc-prop-row:focus-within > .doc-prop-btn {
+  opacity: 1;
+}
+
+.doc-prop-new {
+  display: flex;
+  align-items: center;
+}
+
+.doc-props input.doc-prop-new-input {
+  max-width: var(--form-label-col);
+}
+
+/* Read view: the same rows without the fields. */
+.doc-props-read {
+  border-bottom: 1px solid var(--border);
+  padding-inline: 0;
+}
+
+/* A phone has no room for a label column and a value side by side: the key
+   goes above its value and the whole row reads as one block. */
+@media (max-width: 600px) {
+  .doc-prop-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .doc-prop-key {
+    grid-column: 1 / -1;
+  }
+}
+
+/* =============================================================================
+   Columns and image options (DOCUMENTS_PLAN Phase 3 item 5)
+   =============================================================================
+
+   These classes are the one exception to this file's "layout here, ink in the
+   theme" rule, and the reason is the rule's own: CodeMirror styles itself
+   through adopted stylesheets that sort after every document stylesheet, so a
+   rule here loses to one of CodeMirror's *at equal specificity*. CodeMirror has
+   no rule for `.doc-cols` or `.cm-md-figure`, and one copy of these serves both
+   places they appear: the block widget inside the editor and the same markup
+   in the preview. Two copies, one per surface, is how Live and Read start
+   disagreeing about what a column looks like. */
+.doc-cols {
+  /* Declared here and overwritten per block from script (`--doc-cols`), rather
+     than used as `var(--doc-cols, 2)`: a fallback on a token nothing declares
+     is what `tests/test_style_scale.py` fails on, and it is right to, a
+     fallback is how a rename stops applying without anything breaking. */
+  --doc-cols: 2;
+  display: grid;
+  /* The count comes from the block: `:::columns` with two breaks is three
+     columns, and the fence's own optional number is deliberately ignored (see
+     documents.js). `minmax(0, 1fr)` for the reason the table grid gives: a
+     column's implicit minimum is its content's min-content width, so one long
+     unbroken word would push the block wider than the page. */
+  grid-template-columns: repeat(var(--doc-cols), minmax(0, 1fr));
+  gap: var(--space-7);
+  align-items: start;
+  margin-block: var(--space-4);
+}
+
+.doc-col {
+  min-width: 0;
+}
+
+/* The first and last thing in a column carry the block's own spacing, not
+   their own, or the two columns start at different heights whenever one opens
+   with a heading and the other with a paragraph. */
+.doc-col > :first-child {
+  margin-top: 0;
+}
+
+.doc-col > :last-child {
+  margin-bottom: 0;
+}
+
+/* An image with a caption or an alignment: `![A river|400|center](…)` and
+   `![[river.jpg|400|center]]` both land here. Without either option an image
+   is still a bare `<img>` and this wrapper never exists. */
+.cm-md-figure {
+  display: inline-block;
+  max-width: 100%;
+}
+
+.cm-md-figure-left,
+.cm-md-figure-center,
+.cm-md-figure-right {
+  display: block;
+}
+
+.cm-md-figure-center {
+  text-align: center;
+}
+
+.cm-md-figure-right {
+  text-align: right;
+}
+
+.cm-md-caption {
+  display: block;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  margin-top: var(--space-1);
+}
+
+/* A phone is one column wide, whatever the document says. Two 170px columns
+   of prose are not two columns, they are two ragged strips. */
+@media (max-width: 600px) {
+  .doc-cols {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-5);
+  }
+}
+
+/* An embedded block (DOCUMENTS_PLAN Phase 4 item 2).
+
+   Every other embed in this editor draws an *object* through the renderer
+   that owns it: a note card, a map chip, a file tile. A block is not an
+   object, it is a paragraph of this notebook's own writing, so it is drawn as
+   what it is: quoted text with a line saying where it came from. The quote
+   bar is the same 3px accent the callout and the blockquote use, so the three
+   quoted things in this editor agree. */
+.doc-embed-block {
+  margin: var(--space-2) 0;
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid var(--accent);
+  background: var(--surface-2);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+.doc-embed-block-body > :first-child {
+  margin-top: 0;
+}
+
+.doc-embed-block-body > :last-child {
+  margin-bottom: 0;
+}
+
+/* The source line is a link, not a caption: it opens the document at the
+   block. Right-aligned and small, which is where a citation goes. */
+.doc-embed-block-source {
+  display: block;
+  margin-top: var(--space-1);
+  margin-left: auto;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}

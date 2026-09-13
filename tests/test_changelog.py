@@ -1,7 +1,7 @@
 """CHANGELOG.md, readable inside the app (roadmap §36E).
 
 Asked for: "a way to view application changelogs by accessing the changelog.md
-file or smth". Serving the file is the whole point — the alternative is a
+file or smth". Serving the file is the whole point, the alternative is a
 second in-app list that says roughly the same things and drifts from the real
 one within a release.
 
@@ -18,7 +18,7 @@ def test_the_changelog_is_served(client):
 
 
 def test_it_is_the_real_file_not_a_copy(client):
-    """If this ever diverges, someone has started maintaining a second list —
+    """If this ever diverges, someone has started maintaining a second list, 
     which is exactly what serving the file exists to prevent."""
     from pathlib import Path
 
@@ -30,7 +30,7 @@ def test_it_is_the_real_file_not_a_copy(client):
 
 def test_a_missing_file_is_not_an_error(client, monkeypatch):
     """A packaged build may not ship it. Missing release notes are not worth a
-    500 — the About panel hides the control instead."""
+    500: the About panel hides the control instead."""
     import memorymap.api.app as app_module
 
     real_read = type(app_module.Path("x")).read_text

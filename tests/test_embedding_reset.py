@@ -35,7 +35,7 @@ def test_switch_backend_clears_stale_error(ai_client):
 def test_a_missing_package_triggers_extras_start_once(app_state, monkeypatch):
     """`_load_st_model` is mocked to raise the exact failure this sandbox
     produces naturally when sentence-transformers isn't installed (CLAUDE.md's
-    own instruction) — mocked explicitly, not left to the ambient
+    own instruction): mocked explicitly, not left to the ambient
     environment, since CI's own workflow installs the full requirements.txt
     including the real package, where the natural failure never happens and
     this test silently stopped testing anything (reported: CI passed
@@ -61,7 +61,7 @@ def test_a_missing_package_triggers_extras_start_once(app_state, monkeypatch):
 
 def test_a_different_failure_never_triggers_an_install(app_state, monkeypatch):
     """Only a genuine "the package isn't there" error is worth reinstalling
-    over — a different failure (corrupted install, OOM, a real bug) retrying
+    over: a different failure (corrupted install, OOM, a real bug) retrying
     the exact same pip install would do nothing but waste time and hide the
     real problem."""
     service = deps.get_embeddings()
@@ -78,10 +78,10 @@ def test_a_different_failure_never_triggers_an_install(app_state, monkeypatch):
 
 def test_auto_install_does_nothing_when_extras_refuses_to_start(app_state, monkeypatch):
     """Already running, already installed (a different, real failure), or
-    genuinely unavailable — extras.start says so via its own return value,
+    genuinely unavailable: extras.start says so via its own return value,
     and this must not crash or loop on any of those, just accept it.
 
-    `_load_st_model` mocked explicitly — see the sibling test above for why
+    `_load_st_model` mocked explicitly: see the sibling test above for why
     relying on the ambient environment (no sentence-transformers installed)
     silently stopped exercising this on CI, where the real package is
     present."""
@@ -103,11 +103,11 @@ def test_auto_install_retries_the_load_once_the_background_install_finishes(
 ):
     """End to end, without a real pip: extras.start is mocked to report a
     completed install almost immediately, and the service's own watcher
-    thread is what's under test — it has to notice completion and clear the
+    thread is what's under test: it has to notice completion and clear the
     cached failure so the *next* embed attempt actually retries, without the
     caller having to do anything.
 
-    `_load_st_model` mocked explicitly — see the first test above in this
+    `_load_st_model` mocked explicitly: see the first test above in this
     file for why relying on the ambient environment (no sentence-
     transformers installed) silently stopped exercising this on CI, where
     the real package is present and the load just succeeds instead of

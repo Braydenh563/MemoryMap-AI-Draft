@@ -6,7 +6,7 @@ surfaces rather than sitting beside them.** A "library" that duplicated the
 Documents tab and the conversation sidebar would be a third place to look for
 things that already had two, which is worse than no library. So the Documents
 tab's list moves here, the chat sidebar's list moves here, and the tab bar gets
-no longer — it was already at the width where another tab hurts (measured: it
+no longer: it was already at the width where another tab hurts (measured: it
 wraps to a second row below about 1350px).
 
 The list is assembled **here** rather than in `app.js` out of four fetches, for
@@ -36,20 +36,21 @@ from memorymap.core.database import (
     Document,
     Entry,
 )
+from memorymap.core import events
 from memorymap.core.deps import get_session
 from memorymap.entry.manager import extract_title, remove_title, strip_inline_markdown
 
 router = APIRouter(tags=["library"])
 
 #: Per kind, not overall. A notebook with 300 documents and 4 chats should not
-#: hand back 300 documents and no chats — every kind gets its own allowance, so
+#: hand back 300 documents and no chats, every kind gets its own allowance, so
 #: the filter chips are never empty for a reason nobody can see.
 PER_KIND_LIMIT = 200
 
 #: Enough of a thing to recognise it, not enough to render a card that scrolls.
 PREVIEW_CHARS = 160
 
-#: A note's own words *are* the note — there is no title to fall back on and no
+#: A note's own words *are* the note, there is no title to fall back on and no
 #: filename to recognise it by, so 160 characters was cutting most cards off
 #: mid-sentence. Reported: "I can't see a lot of the response in the cards."
 NOTE_PREVIEW_CHARS = 420
@@ -63,8 +64,8 @@ ACTIVITY_DETAIL_CHARS = 400
 #: Heading/blockquote markers, stripped before the whitespace collapse below
 #: erases the line starts they depend on. The frontend card renderer does
 #: this same strip (app.js's `libraryCard`) for markers still at a real line
-#: start, but a document's *second* heading — "## Introduction" partway
-#: through the file — only reads that way before `" ".join(text.split())`
+#: start, but a document's *second* heading: "## Introduction" partway
+#: through the file: only reads that way before `" ".join(text.split())`
 #: below turns every newline into a space; after that it is indistinguishable
 #: from a mid-sentence "##". Reported directly: a document's preview showed
 #: the raw `##`.
@@ -75,7 +76,7 @@ def _clip(text: str, limit: int = PREVIEW_CHARS) -> str:
     text = _MD_BLOCK_MARKER.sub("", text or "")
     # An image-only note (a sketch, most often, but any note that's just a
     # pasted image works the same way) read as literal `![sketch](/media/
-    # ...)` here — the graph's node labels had the identical bug and this is
+    # ...)` here: the graph's node labels had the identical bug and this is
     # the same fix, factored out so a third copy of it never has to happen.
     text = strip_inline_markdown(text)
     text = " ".join(text.split())
@@ -83,18 +84,18 @@ def _clip(text: str, limit: int = PREVIEW_CHARS) -> str:
 
 
 #: A pasted or dropped image lives as inline markdown in a note's own
-#: content (`![alt](url)`), never as an Attachment — only a sketch's drawing
+#: content (`![alt](url)`), never as an Attachment, only a sketch's drawing
 #: is stored that way. `thumb_by_entry` below only ever looks at Attachment
 #: rows, so a note like that got no thumbnail at all: a sketch's card showed
 #: its drawing and a pasted-image note's card showed nothing, which is the
 #: exact inconsistency reported ("make sketches render the same as images").
-#: Bounded, linear-scan character classes — no nested quantifiers — same
+#: Bounded, linear-scan character classes, no nested quantifiers, same
 #: ReDoS-avoidance shape as every other content-scanning regex in this app.
 _INLINE_IMAGE_URL = re.compile(r"!\[[^\]\n]{0,200}\]\(([^)\n\s]{1,500})\)")
 
 
 def _first_inline_image_url(content: str) -> str | None:
-    """The first image a note's *text* points at, if any — same URL shapes
+    """The first image a note's *text* points at, if any, same URL shapes
     the note editor itself already renders inline (`isRenderableUrl` in
     app.js: same-origin absolute paths or a plain `https://` link), so a
     thumbnail never appears here for something the note itself wouldn't
@@ -119,6 +120,40 @@ def _human_size(size: int) -> str:
     return f"{size / (1024 * 1024):.1f} MB"
 
 
+#: The two board types, mirrored from `routes_whiteboard.BOARD_TYPES` rather
+#: than imported, because importing that module here would pull the whole
+#: whiteboard router into the Library's import graph for the sake of one set
+#: of two strings. `tests/test_library_boards.py` fails if they drift.
+_BOARD_TYPES = {"board", "map"}
+
+
+def _entry_kind(entry: Entry) -> str:
+    """"note", "board" or "map", for one row of the entries table.
+
+    Reported on 2026-09-09: "in the all library subtab, the mindmap I made
+    called bubble tea shows as a note", while Boards and maps drew the same
+    thing correctly as a map with 3 nodes. Not a slip in one view: the
+    storage model shows through. MINDMAP_PLAN §4 chose option B, so a board
+    *is* an `Entry` carrying `is_board`, and a mind map is a board whose
+    `board_settings` JSON says `type: "map"`. This feed selected entries and
+    called every one of them a note, which is true of the row and false of
+    the thing, so "Everything" listed a person's maps under the wrong icon
+    and the Notes chip counted them.
+
+    Unparseable or absent settings mean a plain board, the same fallback
+    `routes_whiteboard._board_settings` takes for the same reason: a board
+    whose settings JSON has been corrupted is still a board.
+    """
+    if not getattr(entry, "is_board", False):
+        return "note"
+    try:
+        parsed = json.loads(entry.board_settings or "{}")
+    except (TypeError, ValueError):
+        parsed = {}
+    board_type = parsed.get("type") if isinstance(parsed, dict) else None
+    return board_type if board_type in _BOARD_TYPES else "board"
+
+
 def _documents(session: Session) -> list[dict]:
     rows = session.scalars(
         select(Document).order_by(Document.updated_at.desc()).limit(PER_KIND_LIMIT)
@@ -135,7 +170,7 @@ def _documents(session: Session) -> list[dict]:
                 "updated_at": doc.updated_at.isoformat(),
                 "detail": f"{words:,} word{'' if words == 1 else 's'}",
                 # What "biggest" means for this kind. Deliberately not
-                # normalised across kinds — comparing a document's words with
+                # normalised across kinds: comparing a document's words with
                 # an image's bytes would be a number that sorts and means
                 # nothing, so the sort is within a kind or across a mixed list
                 # where the person can see what they are looking at.
@@ -172,7 +207,7 @@ def _chats(session: Session) -> list[dict]:
                 "id": chat.id,
                 "title": chat.title or "Untitled chat",
                 # The first question, because you remember what you asked far
-                # more often than what the chat ended up being called — the
+                # more often than what the chat ended up being called, the
                 # same reasoning the conversation list already used.
                 "preview": _clip(first_question),
                 "updated_at": chat.updated_at.isoformat(),
@@ -187,7 +222,7 @@ def _chats(session: Session) -> list[dict]:
 
 
 def _images(session: Session) -> list[dict]:
-    """Attached files, images first — but not images *only*.
+    """Attached files, images first, but not images *only*.
 
     §4 says "images", and a Library that showed the photo you attached and
     silently hid the PDF beside it would be lying about what it holds. The
@@ -211,12 +246,15 @@ def _images(session: Session) -> list[dict]:
         # Reported: "sketches appear in the files section in the library all
         # tab with other file attachments." A sketch is a note whose whole
         # content is its drawing (`![sketch](...)` and nothing else), stored
-        # as an Attachment — it is a picture, and the Images sub-tab already
+        # as an Attachment: it is a picture, and the Images sub-tab already
         # lists it as one. Listing its attachment here again as a "file"
         # put every sketch in two places, one of them wrong.
-        if (attachment.mime or "").startswith("image/") and not strip_inline_markdown(
-            entry.content or ""
-        ).strip():
+        # An image attachment is never a "file" here: it has the Images
+        # sub-tab and the note card's own thumbnail. Reported with a
+        # screenshot: "sketches still show in the library all tab's files
+        # section". The old rule only skipped images on notes with no text,
+        # so a captioned sketch counted as a PDF-shaped file.
+        if (attachment.mime or "").startswith("image/"):
             continue
         kind_word = (attachment.mime or "").split("/")[-1].upper() or "FILE"
         items.append(
@@ -241,7 +279,7 @@ def _images(session: Session) -> list[dict]:
 def _archive(session: Session) -> list[dict]:
     """The recycle bin, under its honest name.
 
-    §4 lists an "archive" and this app has no separate archive — it has a bin
+    §4 lists an "archive" and this app has no separate archive, it has a bin
     that keeps notes until it is emptied. Inventing a second concept so the
     word matches would give the user two places deleted notes might be; showing
     the bin here is the same list from the surface built for finding things.
@@ -257,7 +295,7 @@ def _archive(session: Session) -> list[dict]:
     ).all()
     # Same reasoning as `_notes()` below: a bin card showed a sketch's
     # drawing (a real Attachment) but nothing for a pasted-image note (inline
-    # markdown, no Attachment) — the bin shouldn't be less consistent than
+    # markdown, no Attachment): the bin shouldn't be less consistent than
     # the live list just because it's a smaller surface.
     entry_ids = [entry.id for entry in rows]
     thumb_by_entry: dict[int, int] = {}
@@ -274,7 +312,7 @@ def _archive(session: Session) -> list[dict]:
         content = entry.content or ""
         # Same fix as `_notes()` below, for the same reason: a note that wrote
         # its own heading should be titled by that heading, not by a 60-char
-        # clip of the raw content — which quoted the heading into the title
+        # clip of the raw content, which quoted the heading into the title
         # *and* opened the preview line with it again right underneath.
         own_title = extract_title(content) if content else None
         preview_source = remove_title(content) if own_title else content
@@ -305,7 +343,7 @@ def _shelved(session: Session) -> list[dict]:
     `_archive()`'s own docstring records a deliberate earlier decision:
     this app has no separate archive, it has a bin, and inventing a second
     concept just to match the word "archive" would give a deleted note two
-    possible homes. This is not that — `Entry.archived_at` never implies
+    possible homes. This is not that, `Entry.archived_at` never implies
     `is_deleted`, nothing here is bound for auto-clear or purge, and a
     shelved note stays reachable everywhere except the ordinary list and
     the Notes tab, the same "kept, out of the way" shape the bin already
@@ -315,8 +353,8 @@ def _shelved(session: Session) -> list[dict]:
     English words mean almost the same thing.
 
     Extended to chats and documents (BACKLOG §30b's own named remaining
-    scope, after notes got this first): each carries a `"subtype"` —
-    `"note"`/`"chat"`/`"document"` — since `"kind": "shelved"` alone no
+    scope, after notes got this first): each carries a `"subtype"`, 
+    `"note"`/`"chat"`/`"document"`, since `"kind": "shelved"` alone no
     longer says which unarchive route or menu the frontend should use.
     """
     rows = session.scalars(
@@ -420,7 +458,7 @@ def _notes(session: Session) -> list[dict]:
     """Your live notes.
 
     The Notes tab is where you *work with* them; this is where you manage them
-    — the same distinction the Library draws everywhere else. It is what makes
+    - the same distinction the Library draws everywhere else. It is what makes
     the bulk controls mean anything: selecting nine notes and retagging them is
     a management act, and there was nowhere in the app to do it across kinds.
 
@@ -431,7 +469,7 @@ def _notes(session: Session) -> list[dict]:
     rows = session.execute(
         select(Entry, Category.name)
         .outerjoin(Category, Entry.category_id == Category.id)
-        # A draft is unfinished by definition — the Notes tab's own browse
+        # A draft is unfinished by definition, the Notes tab's own browse
         # list already keeps every draft out of "All notes" and every
         # category filter (`app.js`'s `!e.is_draft` throughout) for exactly
         # that reason. This query didn't match it: an unfinished draft was
@@ -446,7 +484,7 @@ def _notes(session: Session) -> list[dict]:
         .order_by(Entry.pinned.desc(), Entry.created_at.desc())
         .limit(PER_KIND_LIMIT)
     ).all()
-    # A sketch is a note whose actual content is an Attachment, not text — the
+    # A sketch is a note whose actual content is an Attachment, not text, the
     # caption is all `preview` had to show, which is why a sketch card in the
     # Library read as a bare title with nothing under it. One bulk query for
     # every image attachment on this page of notes, first-per-note kept, so
@@ -466,13 +504,13 @@ def _notes(session: Session) -> list[dict]:
     for entry, category in rows:
         private = bool(getattr(entry, "is_private", False))
         text = "" if private else (entry.content or "")
-        # A note that gave itself a heading — Capture's "Optional title"
-        # field, or an AI-generated title — is titled by that heading,
+        # A note that gave itself a heading, Capture's "Optional title"
+        # field, or an AI-generated title, is titled by that heading,
         # verbatim. The old title was a 60-character clip of the raw
         # content instead, which (for a titled note) quoted the heading
         # *and* however many words of the body fit in what was left, then
         # the preview line underneath opened with the same heading text
-        # again — a note titled "Car insurance renewal" read as "Car
+        # again: a note titled "Car insurance renewal" read as "Car
         # insurance renewal Renew the car..." over "Car insurance renewal
         # Renew the car insurance before...". Titleless notes are
         # unaffected: `extract_title` returns None for them, same fallback
@@ -481,7 +519,7 @@ def _notes(session: Session) -> list[dict]:
         preview_source = remove_title(text) if own_title else text
         items.append(
             {
-                "kind": "note",
+                "kind": _entry_kind(entry),
                 "id": entry.id,
                 "title": own_title or ((_clip(text)[:60] if text else "Private note") or "Empty note"),
                 "preview": "" if private else _clip(preview_source, NOTE_PREVIEW_CHARS),
@@ -493,19 +531,19 @@ def _notes(session: Session) -> list[dict]:
                 "pinned": bool(entry.pinned),
                 "private": private,
                 # A meeting note is tagged "meeting" at the point it's saved
-                # (saveMeetingNote in app.js) — this is what lets the
+                # (saveMeetingNote in app.js): this is what lets the
                 # toolbar's "Meetings only" toggle filter for real, rather
                 # than the earlier "Meeting Notes" sub-tab's `tag:meeting`
                 # in the search box, which matched nothing: this endpoint
                 # never sent tags at all, so it always showed an empty grid.
                 "tags": json.loads(entry.tags) if entry.tags else [],
-                # Never for a private note — hiding the text but showing a
+                # Never for a private note, hiding the text but showing a
                 # thumbnail of what it's a photo of would be the same
                 # encryption bypass showing the preview text would be.
                 "thumb_attachment_id": None if private else thumb_by_entry.get(entry.id),
                 # The other half of the same picture: a note whose image was
                 # pasted or dropped in (inline markdown, no Attachment row)
-                # rather than drawn (a sketch, an Attachment) — only checked
+                # rather than drawn (a sketch, an Attachment), only checked
                 # once there's no Attachment thumbnail, so a sketch that also
                 # happens to mention `![...]() ` in its caption still shows
                 # its own drawing, not whatever the caption points at.
@@ -542,7 +580,7 @@ _ACTION_WORDS = {
 #: The first version glued the verb to the raw `entity_type` and produced
 #: "Edited a preferences" and "Unlocked a user". A record of what you did that
 #: is written in the schema's vocabulary is a record only its author can read,
-#: which is the same reason the verbs above are translated — and getting it
+#: which is the same reason the verbs above are translated, and getting it
 #: half right is arguably worse, because it reads as a bug rather than as
 #: jargon. The article lives in the phrase so uncountable things can simply not
 #: have one, and an unknown type falls back to itself with no article rather
@@ -571,7 +609,7 @@ _ENTITY_WORDS = {
 def _drafts(session: Session) -> list[dict]:
     """Unfinished notes, as their own kind.
 
-    Drafts are *deliberately* absent from `_notes()` — an unfinished draft
+    Drafts are *deliberately* absent from `_notes()`, an unfinished draft
     showing up as a first-class card in the Library was reported and fixed,
     and that exclusion is load-bearing (see the comment on that query). So
     surfacing them here is a separate collector rather than a relaxed filter:
@@ -619,14 +657,19 @@ def _activity(session: Session) -> list[dict]:
     """What you did, as a kind rather than as a panel.
 
     It was behind a button in the Notes sidebar, which is a strange place for a
-    record of everything you did *anywhere* — and a list of things you did is
+    record of everything you did *anywhere*, and a list of things you did is
     the same shape as a list of things you made, so it costs one entry in this
     function rather than a surface of its own.
     """
     rows = session.scalars(
-        select(AuditLog).order_by(AuditLog.created_at.desc(), AuditLog.id.desc()).limit(
-            PER_KIND_LIMIT
-        )
+        select(AuditLog)
+        # The bookkeeping events (a version snapshotted before an edit, the
+        # dates re-resolved because the text changed) always accompany the
+        # edit that caused them, so a feed that shows both says everything
+        # twice and buries the half a person recognises.
+        .where(AuditLog.action.notin_(sorted(events.QUIET_ACTIONS)))
+        .order_by(AuditLog.created_at.desc(), AuditLog.id.desc())
+        .limit(PER_KIND_LIMIT)
     )
     items = []
     for row in rows:
@@ -656,16 +699,16 @@ def _tags(session: Session) -> list[dict]:
 
     A tag manager is a finding surface behind a sidebar button, which is the
     exact description of everything else that moved here. Renaming and merging
-    still happen through /tags — this is the list, not a second implementation.
+    still happen through /tags, this is the list, not a second implementation.
 
     Capped at PER_KIND_LIMIT, the same bound every other kind section in
-    this file already carries — this was the one exception, left uncapped
+    this file already carries, this was the one exception, left uncapped
     when `manager.all_tags` was made cheap (§86, a cache keyed by notebook
     fingerprint), which fixed the *cost* of computing the dict but not the
     length of what this endpoint sent to the browser. `all_tags()` is
     already most-used-first, so the slice keeps the tags anyone is actually
-    likely to be finding by. `GET /tags` (routes_tags.py) — the Tag
-    Manager's own listing, not this finder — is deliberately left
+    likely to be finding by. `GET /tags` (routes_tags.py): the Tag
+    Manager's own listing, not this finder, is deliberately left
     uncapped: its job is renaming or deleting *any* tag, including a
     rarely-used one that a length cap here would hide from it entirely.
     """
@@ -695,7 +738,7 @@ def _overview(session: Session, items: list[dict]) -> dict:
     """The state of the notebook, in the numbers a management screen opens with.
 
     Derived from the list that was just built wherever possible, so the panel
-    and the grid can never disagree — a header saying "12 documents" above a
+    and the grid can never disagree, a header saying "12 documents" above a
     grid showing 11 is worse than no header.
     """
     kinds: dict[str, int] = {}

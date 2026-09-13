@@ -7,7 +7,7 @@ notes'."*
 Retrieval cannot answer these and that is not a tuning problem: semantic search
 finds the notes most *like* a question, and "what are my most common tags" is
 not like any note. Before this, such a question retrieved five arbitrary notes
-and the model was told to answer from those alone — so it either declined or
+and the model was told to answer from those alone, so it either declined or
 invented a ranking from a five-note sample.
 
 These tests are exact on purpose. The whole argument for computing rather than
@@ -191,7 +191,7 @@ def test_an_ordinary_question_still_goes_through_search(client):
 #
 # Reported: "the stats semantic search needs to be improved and also it doesnt
 # account for spelling mistakes." Every matcher in this module is a regex over
-# literal words, so a typo did not degrade the answer — it produced the *worst*
+# literal words, so a typo did not degrade the answer, it produced the *worst*
 # available one, falling through to the retrieval path this module exists
 # because retrieval answers badly.
 
@@ -231,7 +231,7 @@ def test_every_vocabulary_word_is_one_the_matchers_look_for() -> None:
     would quietly lose a word written inside a group the scraper did not
     understand. This checks the cheap direction instead: every vocabulary word
     appears somewhere in this module's source, so a word added to the list
-    without a matcher — or left behind when a matcher is rewritten — shows up
+    without a matcher, or left behind when a matcher is rewritten, shows up
     here rather than as a silently useless correction target.
     """
     import re
@@ -240,7 +240,7 @@ def test_every_vocabulary_word_is_one_the_matchers_look_for() -> None:
     # The declaration itself does not count as a use.
     body = source.split("_VOCABULARY = (", 1)[1].split(").split()", 1)[1]
     # Every raw-string regex literal in the rest of the module. A word is
-    # "looked for" if one of them matches it — `folders?` covers both "folder"
+    # "looked for" if one of them matches it, `folders?` covers both "folder"
     # and "folders", and `most|top|common|commonest|…` covers five of the list
     # in one pattern, so a plain substring check would report those as unused.
     patterns = re.findall(r'r"([^"]+)"', body)

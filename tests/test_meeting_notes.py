@@ -8,8 +8,8 @@ Two reports, one session apart:
      feature with more capabilities and expansion which is also accessible
      throughout the app, not just from the dashboard."
 
-The first one is the interesting one. There *was* a meter — `startMicLevelMeter`
-appends six small bars to the Record button — so "already exists" was true and
+The first one is the interesting one. There *was* a meter, `startMicLevelMeter`
+appends six small bars to the Record button, so "already exists" was true and
 beside the point: at that size, on a button, next to a word, it does not read
 as a response to your voice, and a recording with no visible response is
 indistinguishable from a broken microphone. That is what was being reported,
@@ -38,7 +38,7 @@ def test_the_waveform_is_a_canvas_not_a_row_of_elements():
 
 def test_it_reads_loudness_not_frequency():
     """The button meter uses a 256-bin frequency analyser; a level *line* wants
-    the time domain and an RMS, which is steadier than a peak — a peak flickers
+    the time domain and an RMS, which is steadier than a peak, a peak flickers
     on consonants."""
     assert "fftSize = 2048" in WAVE
     assert "getByteTimeDomainData" in WAVE
@@ -53,7 +53,7 @@ def test_quiet_speech_still_moves_the_line():
 
 def test_it_survives_a_suspended_audio_context():
     """Chrome creates one suspended even inside a click handler, and the
-    analyser reads all-zero until it is running — the trap the bar meter
+    analyser reads all-zero until it is running, the trap the bar meter
     already documents."""
     assert "ctx.resume().then(tick, tick)" in WAVE
 
@@ -72,7 +72,7 @@ def test_the_canvas_is_sized_to_its_box_after_it_is_shown():
 
 def test_stopping_and_closing_both_tear_it_down():
     """A live AudioContext with nothing drawing it is a microphone nobody is
-    looking at — the same reasoning `closeMeetingRecorder` already applies to
+    looking at: the same reasoning `closeMeetingRecorder` already applies to
     the MediaRecorder."""
     for fn in ("function closeMeetingRecorder()",):
         block = JS.split(fn)[1].split("\n}")[0]
@@ -85,7 +85,7 @@ def test_stopping_and_closing_both_tear_it_down():
 
 
 def test_it_is_reachable_without_going_to_the_dashboard():
-    """"accessible throughout the app, not just from the dashboard" — a
+    """"accessible throughout the app, not just from the dashboard", a
     recording is started the moment a meeting starts, and navigating first is
     what makes it not get started at all."""
     assert '"ph:microphone Record a meeting or lecture"' in JS

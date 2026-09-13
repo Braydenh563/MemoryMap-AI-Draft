@@ -3,7 +3,7 @@
 A chat that ends every turn with a blank box asks the reader to do the work of
 knowing what else the notebook could tell them. The empty-state chips
 (`/chat/suggestions`) already solved that for the *first* question and then
-stopped — the moment a real message exists they hide, and from there on you are
+stopped: the moment a real message exists they hide, and from there on you are
 on your own.
 
 This is the same idea for the turn you just read: two or three short questions
@@ -13,7 +13,7 @@ Three rules shape the whole module, and all three exist because a bad follow-up
 is worse than none:
 
 - **It never blocks the answer.** Generating these is a second model call. It
-  runs after the turn is on screen and is allowed to fail silently — a request
+  runs after the turn is on screen and is allowed to fail silently, a request
   that returns ``[]`` costs the reader nothing, while one that delays the
   answer costs them the thing they were waiting for.
 - **It uses the utility model, not the chat model.** Writing three short
@@ -39,7 +39,7 @@ from memorymap.ai.ollama_client import OllamaClient, OllamaError
 #: most widths; four wrap and start looking like the app is nagging.
 MAX_FOLLOWUPS = 3
 
-#: Longer than this is not a chip, it is a paragraph — and a model that
+#: Longer than this is not a chip, it is a paragraph, and a model that
 #: produced one has misunderstood the instruction rather than written a long
 #: question.
 MAX_LENGTH = 90
@@ -54,7 +54,7 @@ FOLLOWUP_PROMPT = (
     "- Write ONLY the questions, one per line. No numbering, no bullets, no "
     "preamble, no commentary.\n"
     "- At most three.\n"
-    "- Each must be a question the notebook could plausibly answer — about "
+    "- Each must be a question the notebook could plausibly answer, about "
     "their own notes, not about the world.\n"
     "- Each under twelve words, phrased the way the user would type it.\n"
     "- Do not repeat the question they just asked."
@@ -72,14 +72,14 @@ _PREAMBLE = re.compile(
 
 #: A model that was told "one per line" often puts the whole list on one line
 #: anyway: ``What did I note? 2) When is it due?``. Splitting only on newlines
-#: turned that into a single chip with "? 2)" sitting in the middle of it —
+#: turned that into a single chip with "? 2)" sitting in the middle of it, 
 #: visible debris, and the reason a turn could come back with one nonsense
 #: suggestion instead of three good ones. Split after a question mark when real
 #: text follows, and at an inline list marker.
 _INLINE_SPLIT = re.compile(r"(?<=\?)\s+(?=\S)|\s+(?:\d+[.)]|[-*•])\s+")
 
 #: Small models answer this prompt with imperatives about as often as with
-#: questions — "Show my notes on the deadline", "Summarise the budget thread".
+#: questions: "Show my notes on the deadline", "Summarise the budget thread".
 #: Those are perfectly good chips, and requiring a question mark dropped every
 #: one of them, which is most of why a turn sometimes offered nothing at all.
 #: The verb list is the guard that a bare question mark used to provide: a
@@ -117,8 +117,8 @@ def _clean(line: str) -> str:
 def parse_followups(reply: str, asked: str = "") -> list[str]:
     """Model output into at most ``MAX_FOLLOWUPS`` clean questions.
 
-    Split out from ``suggest_followups`` so the scrubbing — the part that
-    actually decides what a person sees — is testable without a transport.
+    Split out from ``suggest_followups`` so the scrubbing: the part that
+    actually decides what a person sees, is testable without a transport.
     ``asked`` is the question that was just answered; a model that echoes it
     back is offering the reader a loop, so it is dropped.
     """
@@ -148,8 +148,8 @@ def suggest_followups(
 ) -> list[str]:
     """Follow-up questions for one answered turn, or ``[]``.
 
-    ``[]`` on every failure path — offline, transport error, an unusable
-    reply — because there is no honest error state for this. A row of chips
+    ``[]`` on every failure path, offline, transport error, an unusable
+    reply: because there is no honest error state for this. A row of chips
     that says "couldn't think of anything" is worse than the row simply not
     being there, which is what a reader who never noticed the feature sees
     anyway.

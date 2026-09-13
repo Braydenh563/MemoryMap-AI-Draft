@@ -1760,3 +1760,46 @@ use-case the user named.
 4. Undo across Live↔Source in Documents (D3) — the last "feels fake" seam.
 5. Run the OCR readers, translation and Tensions against a real model and
    record the hit rates (task #120).
+
+### §114 addendum, two external write-ups folded in and removed
+
+`docs/memorymap-ai-expansion-gemini.docx` and
+`docs/memorymap-ai-expansion-perplexity.md` were chat transcripts asking
+Gemini and Perplexity to analyse this repository and suggest what it is
+missing. Read in full and checked against the running code, per this
+section's own rule, before deciding what survives.
+
+**Most of both does not survive.** Neither model could actually fetch the
+repository (both say so in their own text: GitHub's crawler block, and a
+raw.githubusercontent.com permission error), so most of it reasons from a
+generic "local-first AI notebook" premise rather than this one. The
+Perplexity file and Gemini's first pass invent an architecture this app
+does not have (LlamaIndex, ChromaDB, a "Ghost Sidebar" UI, a "cinematic
+sci-fi" theme with "neural constellation" visuals, bundled models needing
+no Ollama), and Gemini's second pass, after reading the live landing page,
+gets the shape right but still cites "28 distinct tools" for the agent,
+which was already wrong when written and is 58 now (§7 of
+ARCHITECTURE.md). Several of the "missing" features in both files are
+already built and just not what the model expected to find: encryption at
+rest for private notes, daily local backups, image and audio ingestion
+through the OCR/vision pipeline, full Markdown/CSV export, and the
+context-window budgeting ARCHITECTURE.md §7 already documents at length.
+
+**What is real and not already decided:** nothing, on inspection. The one
+concrete, specific, buildable idea in either file, a local browser clipper
+extension, is already recorded, credited to Gemini by name, in
+BACKLOG.md §29. Cross-device sync (Gemini's second pass) is the
+single most-discussed deferred decision in BACKLOG.md (§"A second
+device", §29's sync note, and the "Sync / multi-device" entries later in
+that file), not a gap anyone missed. The "serendipity engine" idea
+(proactively surfacing links between notes nobody looked at) is
+substantially what the background librarian and the graph's own link
+suggestions already do. A "project bundle" exporter overlaps enough with
+the Trace panel's "generate story from path" (six shapes, already built)
+that it is not a new item so much as a request to widen that feature from
+a path to an arbitrary tag or cluster, which is a BACKLOG line worth one
+day, not a new subsystem: see BACKLOG.md's Graph section for where that
+would land if picked up.
+
+Both source files are deleted with this commit; nothing in them was left
+unrecorded.

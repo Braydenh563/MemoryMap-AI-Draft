@@ -4,7 +4,7 @@ Reported: *"i cant rename or delete files via a kebab button in the files
 subtab."* The kebab was there and Delete worked; Rename was withheld from
 `Attachment` rows on the reasoning that an attachment's name is the note's own
 file list's business. That was a judgement about where a name belongs, and the
-report overrules it — a file shown in the Library is a file you expect to
+report overrules it: a file shown in the Library is a file you expect to
 manage in the Library.
 
 The two tables take different routes and different field names, which is the
@@ -44,7 +44,7 @@ def test_an_attachment_can_be_renamed(ai_client, session):
 
 
 def test_the_rename_response_carries_the_note_not_the_attachment(ai_client, session):
-    """The shape the frontend has to read back from — it has no
+    """The shape the frontend has to read back from, it has no
     `original_name`, which is what the media route returns instead."""
     entry, _ = _note_with_file(ai_client, session)
     attachment_id = ai_client.get(f"/entries/{entry.id}").json()["attachments"][0]["id"]

@@ -1,7 +1,7 @@
 """The background librarian: a scheduled agent pass over the whole notebook.
 
 Off unless `autonomous_tasks_enabled` is set, because it runs the agent with
-nobody watching — the one place in this app where the model writes to notes
+nobody watching: the one place in this app where the model writes to notes
 without a person having just asked it to. Everything here is shaped by that:
 the destructive tools are barred rather than confirmed (there is no one to
 confirm to), a run that asks for confirmation is abandoned rather than
@@ -14,7 +14,7 @@ Three things this module learned the hard way, all worth keeping written down:
   in Settings pointed at a loop that did not exist and the feature silently
   did nothing at all. `start()` is called from the app's lifespan now.
 - **`VACUUM` must not run through a Session.** SQLite refuses to vacuum inside
-  a transaction. `session.execute(text("VACUUM"))` — how this was written —
+  a transaction. `session.execute(text("VACUUM"))`, how this was written , 
   happens to work *only* while it is the first statement in a fresh session,
   because pysqlite defers its BEGIN until the first DML; add any read or write
   before it and the same line raises `cannot VACUUM from within a
@@ -28,7 +28,7 @@ Three things this module learned the hard way, all worth keeping written down:
 - **The loop has to be woken, not just started.** It used to sleep for the
   whole interval (default 6 hours) between preference reads, so turning
   Battery Efficient Mode off, switching the toggle back on, or shortening the
-  interval did nothing until whatever sleep was already in progress ran out —
+  interval did nothing until whatever sleep was already in progress ran out, 
   reported as "background tasks skip things thinking battery mode is on [after
   it was turned off]" and "finishing a task disables automatic tasks, forcing
   a re-toggle": neither was true, the loop just hadn't looked again yet.
@@ -46,7 +46,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import select, text
 
 from memorymap.ai import agent
-from memorymap.core import deps
+from memorymap.core import deps, events
 from memorymap.core.database import Conversation
 
 logger = logging.getLogger("memorymap.autonomous")
@@ -54,7 +54,7 @@ logger = logging.getLogger("memorymap.autonomous")
 #: How long a run may take before the loop stops waiting on it at shutdown.
 _JOIN_TIMEOUT = 5.0
 
-#: The agent gets a bounded number of rounds — this is a tidy-up, not an
+#: The agent gets a bounded number of rounds, this is a tidy-up, not an
 #: open-ended session, and an unbounded one on a big notebook is a way to
 #: spend a night's CPU.
 MAX_ROUNDS = 15
@@ -73,7 +73,7 @@ STALE_REVIEW_BATCH_SIZE = 20
 
 _lock = threading.Lock()
 _stop_event: threading.Event | None = None
-#: Interrupts the interval sleep without stopping the loop — set by `wake()`
+#: Interrupts the interval sleep without stopping the loop, set by `wake()`
 #: whenever a preference the loop cares about changes, and by `stop()` itself
 #: so shutdown does not wait out the sleep too.
 _wake_event: threading.Event | None = None
@@ -91,8 +91,8 @@ _working = threading.Event()
 _cancel = threading.Event()
 
 #: Wall-clock time before which no *scheduled* pass may start. This is the
-#: second half of the same request — "and if it is an automated bg task, make
-#: sure it doesnt instantly start back up again" — and it is not hypothetical:
+#: second half of the same request, "and if it is an automated bg task, make
+#: sure it doesnt instantly start back up again", and it is not hypothetical:
 #: `wake()` exists precisely to cut the interval sleep short whenever a
 #: preference changes, so without a snooze, quitting a pass and then touching
 #: any setting the loop watches would start a new one seconds later. Quitting
@@ -111,17 +111,17 @@ _snooze_until: float = 0.0
 #: and it shouldnt reset if the user disabled it."* The first half was already
 #: true (`request_stop` reads `autonomous_tasks_interval_hours`); the second
 #: was not, and the hole is easy to miss. A hold is a wall-clock deadline, so
-#: it burns down while the feature is disabled — during which nothing could
+#: it burns down while the feature is disabled, during which nothing could
 #: have run anyway. Quit a pass, switch the feature off for a day, switch it
 #: back on, and the hold you set is long expired: a pass starts within seconds
 #: of the toggle, which is exactly the "it started straight back up" the hold
 #: exists to prevent. So the countdown is frozen while the feature is off and
-#: re-anchored when it comes back — the user gets the quiet they asked for,
+#: re-anchored when it comes back, the user gets the quiet they asked for,
 #: measured in time the feature was actually able to run.
 _snooze_frozen: float | None = None
 
 #: A floor under the hold, for the odd caller that passes an explicit one.
-#: The interval is in whole hours, so this never binds on the default path —
+#: The interval is in whole hours, so this never binds on the default path, 
 #: it is here so a future "snooze 30s" cannot make Quit look broken.
 MIN_SNOOZE_SECONDS = 15 * 60
 
@@ -129,7 +129,7 @@ MIN_SNOOZE_SECONDS = 15 * 60
 #: of it (ROADMAP §40, item 2).
 #:
 #: This is the answer to "you are asking me to let an agent edit my notebook
-#: while I am not looking". A true dry-run — run the agent, apply nothing —
+#: while I am not looking". A true dry-run, run the agent, apply nothing , 
 #: does not work here: the model decides its next call from the *result* of the
 #: last one, so a pass with every write stubbed out stops resembling the pass
 #: that would really happen, and a preview that lies is worse than none.
@@ -137,7 +137,7 @@ MIN_SNOOZE_SECONDS = 15 * 60
 #: Review-after is honest and is nearly as useful, because every write tool
 #: already captures the call that would put the note back (`tools._undo_edit`).
 #: Keeping those here turns the pass from something that happened to the
-#: notebook into something the user can read, disagree with, and reverse — one
+#: notebook into something the user can read, disagree with, and reverse, one
 #: item at a time, through the same endpoint the chat's own Undo buttons use.
 _last_pass: dict = {"finished_at": None, "outcome": None, "changes": []}
 
@@ -149,7 +149,7 @@ MAX_RECORDED_CHANGES = 200
 def is_running() -> bool:
     """Is an optimisation pass executing right now?
 
-    Deliberately not "is the scheduler alive" — the task list is showing the
+    Deliberately not "is the scheduler alive", the task list is showing the
     user work in progress, and an idle scheduler sleeping until 3am is not
     work in progress.
     """
@@ -169,7 +169,7 @@ def request_stop(snooze_seconds: float | None = None) -> bool:
     """Ask the running pass to stop, and keep the scheduler off it for a while.
 
     Returns whether there was anything to stop. Never blocks: the pass ends at
-    its next checkpoint, which is at most one model call away — the alternative
+    its next checkpoint, which is at most one model call away, the alternative
     is killing a thread mid-write to the notebook, which this app will not do.
     """
     global _snooze_until, _snooze_frozen
@@ -189,7 +189,7 @@ def request_stop(snooze_seconds: float | None = None) -> bool:
 
 
 def freeze_hold() -> None:
-    """Stop the hold counting down — the feature has been switched off.
+    """Stop the hold counting down, the feature has been switched off.
 
     Idempotent, and safe to call on every tick of the loop, which is how it is
     actually called."""
@@ -199,7 +199,7 @@ def freeze_hold() -> None:
 
 
 def thaw_hold() -> None:
-    """Start it counting down again — the feature is back on."""
+    """Start it counting down again, the feature is back on."""
     global _snooze_until, _snooze_frozen
     if _snooze_frozen is not None:
         _snooze_until = time.time() + _snooze_frozen
@@ -207,7 +207,7 @@ def thaw_hold() -> None:
 
 
 def snoozed_for() -> int:
-    """Seconds until a scheduled pass may run again — 0 when nothing is held.
+    """Seconds until a scheduled pass may run again, 0 when nothing is held.
 
     Shown to the user rather than only obeyed: a background worker that
     silently declines to run for six hours is indistinguishable from one that
@@ -231,7 +231,7 @@ def scheduler_alive() -> bool:
         return _loop_thread is not None and _loop_thread.is_alive()
 
 
-def _enabled_tasks(config) -> list[str]:  # noqa: ANN001 — config is duck-typed
+def _enabled_tasks(config) -> list[str]:  # noqa: ANN001  # config is duck-typed
     tasks = []
     if config.get_preference("auto_tag_enabled", True):
         tasks.append("tag untagged notes")
@@ -243,7 +243,14 @@ def _enabled_tasks(config) -> list[str]:  # noqa: ANN001 — config is duck-type
 
 
 def _run_optimization() -> None:
-    """One pass. Never raises — it is the top of a worker thread."""
+    """One pass. Never raises: it is the top of a worker thread.
+
+    Everything it changes is recorded as `system:librarian` (Brief 7): this
+    is the one place in the app that edits notes while nobody is looking,
+    which makes "who did this" the first thing anyone asks about it. Set
+    here rather than inherited, because a thread starts with a fresh
+    context and would otherwise record the default, `user`.
+    """
     if not _working.is_set():
         # Belt and braces: both entry points set this before starting the
         # thread, so reaching here without it means a new caller forgot.
@@ -253,13 +260,20 @@ def _run_optimization() -> None:
     # when the previous pass ended: the flag's whole job is to be readable
     # by the thread that is finishing, right up until it finishes.
     _cancel.clear()
+    started = time.monotonic()
+    with events.acting_as("system:librarian"):
+        _optimization_pass(started)
+
+
+def _optimization_pass(started: float) -> None:
+    """The body of one pass, split out so the actor above wraps all of it."""
     try:
         config = deps.get_config()
         if config.get_preference("battery_efficient_mode"):
             logger.info("skipped: battery efficient mode is on")
             return
 
-        # ROADMAP.md item 34, run separately from the agent pass below —
+        # ROADMAP.md item 34, run separately from the agent pass below, 
         # a plain per-note completion call (like suggest_tags), not a tool-
         # calling agent turn, and gated by its own preference so it isn't
         # silently skipped whenever tag/link/dedupe are all switched off.
@@ -274,19 +288,19 @@ def _run_optimization() -> None:
                     )
                 if processed:
                     logger.info("entity extraction: scanned %d note(s)", processed)
-            except Exception as exc:  # noqa: BLE001 — top of a worker thread
+            except Exception as exc:  # noqa: BLE001  # top of a worker thread
                 logger.error("entity extraction failed: %s", exc, exc_info=True)
 
         # Its own preference, deliberately separate from `auto_link_enabled`:
         # that toggle is "should the agent create/remove links at all", and
         # this one is "should already-existing links get their vague reason
-        # rewritten" — someone who wants the agent to stop making new
+        # rewritten", someone who wants the agent to stop making new
         # judgement calls about their links but is happy for existing vague
         # reasons to keep improving (or vice versa) can't say that with one
         # shared flag. Defaults to True, matching every other auto_* toggle
-        # here — opt-out, not opt-in.
+        # here: opt-out, not opt-in.
         if _cancel.is_set():
-            logger.info("stopped before link reason audit — someone quit this pass")
+            logger.info("stopped before link reason audit, someone quit this pass")
             return
 
         if config.get_preference("auto_link_reason_audit", True):
@@ -294,7 +308,7 @@ def _run_optimization() -> None:
                 from memorymap.ai.links import audit_vague_links
                 db = deps.get_db()
                 with db.session() as session:
-                    # A small, fixed batch per tick — this runs on every
+                    # A small, fixed batch per tick, this runs on every
                     # interval for as long as the server is up, so an
                     # unbounded pass over a big notebook would mean one tick
                     # never finishes before the next is due. `AUDIT_BATCH_SIZE`
@@ -311,7 +325,7 @@ def _run_optimization() -> None:
 
         # ROADMAP.md item 31: "acting on stale/orphaned notes (nothing
         # currently reviews a note nobody has touched in months)". Arithmetic
-        # like the link-reason audit above, not an agent turn — staleness and
+        # like the link-reason audit above, not an agent turn, staleness and
         # connectedness are both plain columns and joins, see
         # `entry/staleness.py`'s own docstring for why that's deliberate.
         # Tagging rather than archiving or deleting: there's nobody here to
@@ -322,7 +336,7 @@ def _run_optimization() -> None:
         # part of the agent turn below: this reads *conversations*, not
         # notes, and the agent's job list is written in terms of notes.
         if _cancel.is_set():
-            logger.info("stopped before passive capture — someone quit this pass")
+            logger.info("stopped before passive capture, someone quit this pass")
             return
 
         if config.get_preference("auto_capture_enabled", False):
@@ -339,11 +353,11 @@ def _run_optimization() -> None:
                     )
                 if captured:
                     logger.info("passive capture: wrote %d draft(s)", captured)
-            except Exception as exc:  # noqa: BLE001 — top of a worker thread
+            except Exception as exc:  # noqa: BLE001  # top of a worker thread
                 logger.error("passive capture failed: %s", exc, exc_info=True)
 
         if _cancel.is_set():
-            logger.info("stopped before stale/orphaned review — someone quit this pass")
+            logger.info("stopped before stale/orphaned review, someone quit this pass")
             return
 
         if config.get_preference("auto_stale_review_enabled", False):
@@ -367,7 +381,7 @@ def _run_optimization() -> None:
                 logger.error("stale/orphaned review failed: %s", exc, exc_info=True)
 
         if _cancel.is_set():
-            logger.info("stopped before the agent pass — someone quit this pass")
+            logger.info("stopped before the agent pass, someone quit this pass")
             return
 
         tasks = _enabled_tasks(config)
@@ -391,7 +405,7 @@ def _run_optimization() -> None:
             persona += (
                 " When you link two notes, pass a reason if the connection "
                 "isn't obvious from the titles alone (e.g. 'both about "
-                "scheduling') — it's shown on the graph and explains the "
+                "scheduling'), it's shown on the graph and explains the "
                 "link to the person who wrote the notes."
             )
 
@@ -425,12 +439,12 @@ def _run_optimization() -> None:
                         # and nothing further is asked of the model. Whatever
                         # it changed up to here is real, was recorded, and is
                         # in the review list like any other pass's changes.
-                        logger.info("stopped mid-pass — someone quit this job")
+                        logger.info("stopped mid-pass: someone quit this job")
                         outcome, detail = "cancelled", "Stopped part-way through."
                         break
                     if event.get("type") == "confirm":
                         logger.info(
-                            "paused for confirmation on %s with nobody to ask — abandoning run",
+                            "paused for confirmation on %s with nobody to ask, abandoning run",
                             event.get("name"),
                         )
                         outcome, detail = (
@@ -442,12 +456,12 @@ def _run_optimization() -> None:
                         logger.warning("tool error: %s", event.get("error"))
                     # The agent hangs a `change` off every successful write,
                     # carrying the call that would put the note back. Collected
-                    # here so the pass can be read and reversed afterwards —
+                    # here so the pass can be read and reversed afterwards, 
                     # see `_last_pass`.
                     change = event.get("change")
                     if change and len(changes) < MAX_RECORDED_CHANGES:
                         changes.append(change)
-            except Exception as exc:  # noqa: BLE001 — top of a worker thread
+            except Exception as exc:  # noqa: BLE001  # top of a worker thread
                 logger.error("autonomous execution failed: %s", exc, exc_info=True)
                 # Recording "completed" here regardless of what happened is
                 # what the first version did, and it made the task history
@@ -465,6 +479,7 @@ def _run_optimization() -> None:
             outcome,
             detail,
             name=deps.get_model_manager().utility_model(),
+            duration_ms=(time.monotonic() - started) * 1000,
         )
         logger.info("autonomous optimisation %s, %d change(s)", outcome, len(changes))
     finally:
@@ -506,7 +521,7 @@ def _vacuum() -> None:
     """Compact the database and drop vectors whose note is gone.
 
     `VACUUM` needs to be outside a transaction, which a `Session` will not give
-    you — hence the raw connection with autocommit isolation. Written as its
+    you: hence the raw connection with autocommit isolation. Written as its
     own function so the reason survives the next person who "simplifies" it
     back into `session.execute`.
     """
@@ -527,7 +542,7 @@ def purge_old_conversations() -> int:
 
     **Why this exists.** Notes have had a recycle bin with a configurable
     auto-purge for a long time; chat history had nothing. It grew forever, and
-    nothing in the app would ever have noticed — no cap, no warning, no
+    nothing in the app would ever have noticed, no cap, no warning, no
     "oldest first" anything. On a notebook used daily for a year that is the
     single largest table in the database, and every row of it is a
     conversation the user finished with months ago.
@@ -540,7 +555,7 @@ def purge_old_conversations() -> int:
     **Pinned chats are never purged, at any age.** Pinning is the existing,
     already-understood way to say "this one matters" (`Conversation.pinned`,
     used by the chat list's own sort), so it is the right signal to reuse
-    rather than inventing a second one — and a retention rule that could
+    rather than inventing a second one, and a retention rule that could
     delete the thread you deliberately kept would make pinning useless.
 
     Age is measured from `updated_at`, not `created_at`: a long-running thread
@@ -582,7 +597,7 @@ def clean_orphaned_board_cards() -> int:
     The same gap `clean_orphaned_vectors` closes, one table over: a card holds
     an `entry_id` with no cascade behind it, so purging a note from the recycle
     bin leaves the card on the board pointing at nothing. That is worse than a
-    stale vector, because a vector nobody can see just wastes a comparison — a
+    stale vector, because a vector nobody can see just wastes a comparison, a
     dead card is visible, is not removable through the UI (the thing you would
     click is the card that fails to render), and makes the board look broken.
 
@@ -614,7 +629,7 @@ def _loop(stop_event: threading.Event, wake_event: threading.Event) -> None:
         config = deps.get_config()
         enabled = config.get_preference("autonomous_tasks_enabled", False)
         # A hold must not burn down during time the feature could not have run
-        # in — see `_snooze_frozen`. Done here rather than in the settings
+        # in: see `_snooze_frozen`. Done here rather than in the settings
         # route so it holds however the preference changed (Settings, the
         # tray, a restore, an import).
         if enabled:
@@ -626,14 +641,14 @@ def _loop(stop_event: threading.Event, wake_event: threading.Event) -> None:
             pass  # nothing to do; the hold (if any) is frozen above
         elif held:
             # See `_snooze_until`: someone quit a pass, so the scheduler stays
-            # off it until the hold expires — including when `wake()` cut the
+            # off it until the hold expires, including when `wake()` cut the
             # sleep short, which is the case that made this necessary.
             logger.info("skipped: a quit pass holds the scheduler for %ds more", held)
         else:
             _working.set()
             try:
                 _run_optimization()
-            except Exception:  # noqa: BLE001 — the loop outlives one bad pass
+            except Exception:  # noqa: BLE001  # the loop outlives one bad pass
                 logger.error("autonomous loop error", exc_info=True)
                 _working.clear()
             try:
@@ -648,7 +663,7 @@ def _loop(stop_event: threading.Event, wake_event: threading.Event) -> None:
         # Waited on `wake_event`, not `stop_event`: the old version blocked on
         # `stop_event.wait()` directly, so a preference changed mid-sleep (the
         # toggle, battery mode, the interval itself) was invisible until the
-        # *whole* sleep ran out — up to six hours by default. `wake()` sets
+        # *whole* sleep ran out, up to six hours by default. `wake()` sets
         # this event to cut the sleep short without touching `stop_event`,
         # so the loop re-reads preferences on the next line without exiting.
         # `Event.wait` rather than a loop of one-second sleeps: the old version
@@ -661,7 +676,7 @@ def _loop(stop_event: threading.Event, wake_event: threading.Event) -> None:
         # before anything can run again.
         seconds = max(1, hours) * 3600
         held = snoozed_for()
-        # A frozen hold has no expiry to wake for — only the toggle coming
+        # A frozen hold has no expiry to wake for, only the toggle coming
         # back on can end it, and that fires `wake()` on its own.
         if held and _snooze_frozen is None:
             seconds = min(seconds, held + 1)
@@ -669,7 +684,7 @@ def _loop(stop_event: threading.Event, wake_event: threading.Event) -> None:
 
 
 def start() -> None:
-    """Start the interval loop. Idempotent — a second call is a no-op."""
+    """Start the interval loop. Idempotent: a second call is a no-op."""
     global _stop_event, _wake_event, _loop_thread
     with _lock:
         if _loop_thread is not None and _loop_thread.is_alive():
@@ -690,7 +705,7 @@ def stop() -> None:
         _stop_event = _wake_event = _loop_thread = None
     if event is not None:
         event.set()
-    # The loop blocks on `wake_event`, not `stop_event` — without this it
+    # The loop blocks on `wake_event`, not `stop_event`, without this it
     # would not notice `stop_event` was set until its current sleep expired.
     if wake is not None:
         wake.set()
@@ -702,7 +717,7 @@ def wake() -> None:
     """Cut the current interval sleep short so a preference change the user
     just made (enabling autonomous tasks, turning battery mode off, a shorter
     interval) is read on the next tick instead of the next scheduled one.
-    A no-op if the scheduler isn't running — `start()` always creates a fresh
+    A no-op if the scheduler isn't running: `start()` always creates a fresh
     `_wake_event`, so nothing is lost by calling this before the first start.
     """
     event = _wake_event

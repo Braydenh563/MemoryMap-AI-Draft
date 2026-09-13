@@ -13,7 +13,7 @@ from memorymap.core import crypto
 
 def test_encrypt_decrypt_round_trip():
     dek = crypto.new_dek()
-    text = "A private note — with unicode, emoji 🔐, and\nnewlines."
+    text = "A private note: with unicode, emoji 🔐, and\nnewlines."
     stored = crypto.encrypt(dek, text)
 
     assert stored != text

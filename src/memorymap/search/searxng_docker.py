@@ -53,7 +53,7 @@ def docker_available() -> bool:
     Checking only that the binary exists was wrong, and produced exactly the
     failure it should have prevented: with Docker Desktop installed but not
     started, the app picked the Docker backend, tried to create a container,
-    and reported "failed to connect to the docker API at npipe:..." — while
+    and reported "failed to connect to the docker API at npipe:...", while
     the from-source backend that would have worked was never considered.
 
     `docker info` is the cheapest question that means "is the daemon up".
@@ -61,7 +61,7 @@ def docker_available() -> bool:
     if not searxng_manager.docker_installed():
         return False
     try:
-        result = subprocess.run(  # noqa: S603 — fixed args, no shell
+        result = subprocess.run(  # noqa: S603  # fixed args, no shell
             ["docker", "info", "--format", "{{.ServerVersion}}"],
             capture_output=True,
             text=True,
@@ -92,12 +92,12 @@ def _publish_spec() -> str:
     source path: that one sets SEARXNG_BIND_ADDRESS=127.0.0.1 and is reachable
     only from this machine. Docker also writes its own iptables rules, so a
     published port is reachable from the LAN even behind a host firewall that
-    is set to refuse it — the firewall never sees the packet. Naming the
+    is set to refuse it, the firewall never sees the packet. Naming the
     interface is the whole fix.
 
     It matters here more than the port number suggests. SearXNG is an open
     proxy to the wider internet with no auth in front of it, and its /search
-    endpoint takes the query as a GET parameter — so an exposed instance is
+    endpoint takes the query as a GET parameter, so an exposed instance is
     both something a stranger on the café wifi can run searches through and a
     log of everything the owner has searched for.
     """
@@ -121,11 +121,11 @@ def _docker_publishes_beyond_localhost() -> bool:
         ]
     )
     if result.returncode != 0:
-        return False  # can't tell — don't destroy a container on a guess
+        return False  # can't tell: don't destroy a container on a guess
     bindings = [line.strip() for line in (result.stdout or "").splitlines()]
     bindings = [line for line in bindings if line]
     if not bindings:
-        # No host IP recorded at all means "all interfaces" — the same default
+        # No host IP recorded at all means "all interfaces", the same default
         # the bare `-p 8888:8080` form produces.
         return True
     return any(
@@ -136,7 +136,7 @@ def _docker_publishes_beyond_localhost() -> bool:
 
 def _remove_container() -> None:
     """Drop the container so the next start recreates it. Data is not lost:
-    SearXNG keeps nothing we care about inside it — the settings file lives on
+    SearXNG keeps nothing we care about inside it, the settings file lives on
     the host and is mounted in."""
     searxng_manager._run(["docker", "rm", "-f", CONTAINER_NAME], timeout=40)
 
@@ -145,12 +145,12 @@ def _start_docker(data_dir: Path) -> dict:
     """Start (or create) the container and wait until it answers JSON."""
     # Refreshed for every path, not only creation: the container mounts this
     # host file, so a stopped container restarted with stale settings would
-    # keep old engine defaults forever — the exact staleness rewrite-on-start
+    # keep old engine defaults forever, the exact staleness rewrite-on-start
     # exists to end.
     settings = ensure_settings(data_dir)
     state = _docker_state()
     # A container an earlier version created is published on every interface,
-    # and no amount of starting it changes that — publishing is set at create
+    # and no amount of starting it changes that, publishing is set at create
     # time. Replace it rather than hand back a LAN-visible search proxy.
     if state != "absent" and _docker_publishes_beyond_localhost():
         logging.getLogger("memorymap.searxng").info(

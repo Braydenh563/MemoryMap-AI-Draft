@@ -1,9 +1,9 @@
-"""GET /ocr-readers — the OCR workspace's reader picker.
+"""GET /ocr-readers: the OCR workspace's reader picker.
 
 Reported live: "I can only select the vision models not OCR models."
 `resolve_vision_model` and `resolve_ocr_model` both report *something* can
 read a page when any vision-capable model is installed (an OCR-family model
-is vision-capable too), so the bug was never "nothing to pick" — it was that
+is vision-capable too), so the bug was never "nothing to pick", it was that
 the endpoint named the wrong model: whichever generic vision model
 auto-detect found, never a dedicated document reader, even when one was
 installed and even when the user had explicitly set it as their OCR model.

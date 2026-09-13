@@ -114,3 +114,11 @@ This is the "text dump in your face" half.
   contract met.
 - The activity panel opens on a run list, not a wall of text.
 - Tool calls are visible in the chat transcript for all three paths.
+
+## Built — Phases A and B, backend only
+
+Moved to HISTORY.md ("Moved from the plans, 2026-09-09", AGENT_SKILLS_REFORM.md) on 2026-09-09: a plan holds open work only.
+
+## Built — Phase C, the run as a readable object
+
+Moved to HISTORY.md ("Moved from the plans, 2026-09-09", AGENT_SKILLS_REFORM.md) on 2026-09-09: a plan holds open work only.

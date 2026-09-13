@@ -35,7 +35,7 @@ def test_ask_with_working_model(ai_client, fake_ollama):
 
 
 def test_ask_never_writes_history_server_side(ai_client, fake_ollama):
-    # Two independent calls with no shared state get no cross-talk — proof
+    # Two independent calls with no shared state get no cross-talk, proof
     # this endpoint never reads a database table for context.
     fake_ollama.librarian_reply = "Answer one."
     first = ai_client.post("/help/ask", json={"question": "q1"}).json()
@@ -66,7 +66,7 @@ def test_help_chat_answer_function_is_grounded_in_app_guidance_only():
 
 
 def test_ask_grounds_the_model_in_the_matching_reference_notes(ai_client, fake_ollama):
-    # The model has no idea what MemoryMap is on its own — item 40's whole
+    # The model has no idea what MemoryMap is on its own, item 40's whole
     # "never invent a feature" instruction is only followable if the prompt
     # actually hands it real facts. Assert the reference text lands in the
     # messages sent to the model, not just that the reply looks plausible.
@@ -79,7 +79,7 @@ def test_ask_grounds_the_model_in_the_matching_reference_notes(ai_client, fake_o
 
 
 def test_ask_with_no_matching_topic_sends_no_reference_block(ai_client, fake_ollama):
-    fake_ollama.librarian_reply = "I'm not sure — try the Help topics above."
+    fake_ollama.librarian_reply = "I'm not sure: try the Help topics above."
     ai_client.post("/help/ask", json={"question": "purple elephants dance quietly"})
     sent = fake_ollama.chat_calls[-1]
     assert not any("Reference notes" in m["content"] for m in sent)
@@ -120,13 +120,13 @@ def test_every_help_topic_has_a_non_empty_body_and_badge():
 
 
 # Reported live: clicking the "Whiteboard" badge (a `data-goto-tab="whiteboard"`
-# button) blanked the whole app — `switchTab()` hides every tab panel and shows
+# button) blanked the whole app, `switchTab()` hides every tab panel and shows
 # none when given a name that matches no real tab, since "whiteboard" is a
 # Library *sub*-tab, not a top-level one, and the badge system only knows how to
 # switch to a top-level tab.
 #
 # **Read out of app.js rather than copied into a literal here.** The original
-# list was hand-copied and named "documents" among the sub-tabs — true when it
+# list was hand-copied and named "documents" among the sub-tabs: true when it
 # was written, and false since Documents was promoted to a tab of its own. So
 # this test spent that time refusing a badge that would have worked perfectly,
 # which is the failure mode a duplicated constant always eventually has. The
@@ -156,5 +156,5 @@ def test_every_badge_tab_is_a_real_top_level_tab():
         if tab is not None:
             assert tab in REAL_TOP_LEVEL_TABS, (
                 f"{topic['id']!r}'s badge points at {tab!r}, which switchTab() "
-                "can't resolve — it isn't one of the app's top-level tabs"
+                "can't resolve: it isn't one of the app's top-level tabs"
             )

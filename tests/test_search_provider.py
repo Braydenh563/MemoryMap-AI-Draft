@@ -2,7 +2,7 @@
 
 Before this, the engine was inferred from whether a SearXNG address happened
 to be filled in, and a SearXNG that failed silently sent the query to
-DuckDuckGo instead — the exact engine somebody running their own instance is
+DuckDuckGo instead: the exact engine somebody running their own instance is
 trying not to use.
 """
 
@@ -81,7 +81,7 @@ def test_searxng_only_with_no_address_says_so(monkeypatch):
 
 
 def test_auto_still_falls_back(monkeypatch):
-    """The old behaviour is kept, and is still the default — it is just no
+    """The old behaviour is kept, and is still the default, it is just no
     longer the only behaviour."""
 
     def dead(*args, **kwargs):

@@ -1,4 +1,4 @@
-"""core/media_process.py — where OCR/captioning/vision-OCR actually fire
+"""core/media_process.py: where OCR/captioning/vision-OCR actually fire
 now that they no longer run automatically on `/media/upload` itself.
 
 Asked for directly, correcting this session's own earlier choice: "the OCR
@@ -30,7 +30,7 @@ def test_process_committed_upload_triggers_all_three_readers_for_an_image(
 ):
     # `process_committed_upload` imports these three lazily (the CodeQL
     # cyclic-import fix), so the names it calls are the real modules'
-    # attributes, not attributes of `media_process` itself — patch those.
+    # attributes, not attributes of `media_process` itself: patch those.
     calls = []
     monkeypatch.setattr(ocr, "extract_in_background", lambda *a: calls.append("ocr"))
     monkeypatch.setattr(

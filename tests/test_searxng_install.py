@@ -103,7 +103,7 @@ def test_a_source_folder_with_no_project_in_it_is_not_a_checkout(tmp_path):
 
 # The four real ones, verbatim from the repository. A colon separates a drive
 # letter on Windows, so git fetches every object and then dies at the checkout
-# — "fatal: unable to checkout working tree", which is what was reported —
+#, "fatal: unable to checkout working tree", which is what was reported , 
 # leaving a half-written folder behind for pip to refuse.
 WINDOWS_HOSTILE = [
     "utils/templates/etc/nginx/default.apps-available/searxng.conf:socket",
@@ -188,9 +188,9 @@ def test_the_install_downloads_an_archive_and_never_shells_out_to_git(
 
 
 def test_venv_creation_uses_a_found_system_python_when_frozen(app_state, monkeypatch):
-    """Not `_fake_venv` — this test needs the venv-creation branch itself to
+    """Not `_fake_venv`, this test needs the venv-creation branch itself to
     run, not be skipped past. `_run` is mocked (it doesn't really create a
-    venv), so the install still ends in an error after this — the only
+    venv), so the install still ends in an error after this, the only
     thing under test is *which interpreter* the installer tried to use."""
     commands = _Commands()
     monkeypatch.setattr(searxng_manager, "_run", commands)
@@ -292,7 +292,7 @@ def test_pip_succeeding_is_not_taken_as_searxng_being_importable(
     archive = _archive(tmp_path, ["setup.py"])
 
     def run(args, timeout=None, env=None):
-        # The check is `import searx.webapp` now — the module a start actually
+        # The check is `import searx.webapp` now: the module a start actually
         # loads. `import searx` passed on Windows and the start died anyway.
         if args[-1] == "import searx.webapp":
             return subprocess.CompletedProcess(
@@ -318,7 +318,7 @@ def test_pip_succeeding_is_not_taken_as_searxng_being_importable(
 def test_the_requirements_go_in_before_the_package(app_state, tmp_path, monkeypatch):
     """`pip install -e .` alone cannot work and never could: SearXNG's
     setup.py imports `searx`, which imports `msgspec`, and pip's isolated
-    build environment has neither. Reproduced, not deduced — it fails with
+    build environment has neither. Reproduced, not deduced: it fails with
     ModuleNotFoundError before setup.py can declare a single requirement."""
     data_dir = app_state.data_dir
     _fake_venv(data_dir)
@@ -347,7 +347,7 @@ def test_the_requirements_go_in_before_the_package(app_state, tmp_path, monkeypa
 
 def test_the_generated_settings_dont_download_anything_at_boot(app_state):
     """The tracker-URL plugin fetches a rules file from clearurls.xyz during
-    startup and an error there is not caught — the process exits before it
+    startup and an error there is not caught, the process exits before it
     binds the port, which reads as "started but never answered"."""
     text = searxng_manager.ensure_settings(app_state.data_dir).read_text()
     assert "tracker_url_remover" in text
@@ -358,10 +358,10 @@ def test_the_generated_settings_dont_download_anything_at_boot(app_state):
 def test_the_generated_settings_remove_broken_engines_rather_than_disable(
     app_state,
 ):
-    """`disabled: true` still imports the engine module at startup — bilibili
+    """`disabled: true` still imports the engine module at startup, bilibili
     is disabled in SearXNG's own defaults and still crashed every Windows
     start from a module-scope ZoneInfo call. And an entry under `engines:`
-    merges over the default entry of the same name key by key — upstream's
+    merges over the default entry of the same name key by key, upstream's
     `torch` engine is really the xpath module, so an override saying
     `engine: torch` sent SearXNG after a torch.py that does not exist.
     Removal via use_default_settings has neither failure mode."""
@@ -371,12 +371,12 @@ def test_the_generated_settings_remove_broken_engines_rather_than_disable(
         removes = text.split("remove:", 1)[1].split("server:", 1)[0]
     for engine in ("google", "bing", "wikidata", "brave", "ahmia", "torch", "bilibili"):
         assert f"- {engine}" in removes, f"{engine} should be on the remove list"
-    # Engines that share a removed engine's network must go with it —
+    # Engines that share a removed engine's network must go with it, 
     # SearXNG's network init does NETWORKS[name] = NETWORKS['brave'] and
     # dies with KeyError: 'brave' if they stay. Reported from a real start.
     for engine in ("brave.images", "brave.videos", "brave.news"):
         assert f"- {engine}" in removes, f"{engine} shares brave's network"
-    # Merge entries may only flip `disabled` — an `engine:` key is what sent
+    # Merge entries may only flip `disabled`, an `engine:` key is what sent
     # SearXNG after a torch.py that does not exist.
     engines_block = text.split("\nengines:", 1)[1].split("\nplugins:", 1)[0]
     code_lines = [
@@ -423,7 +423,7 @@ def test_autocomplete_is_pinned_off(app_state):
 
 def test_result_images_are_proxied_rather_than_fetched_by_the_browser(app_state):
     """Without this, merely rendering a result page tells every pictured site
-    that someone searched and got them back — before anything is clicked."""
+    that someone searched and got them back, before anything is clicked."""
     text = searxng_manager.ensure_settings(app_state.data_dir).read_text()
     server_block = text.split("\nserver:", 1)[1].split("\nsearch:", 1)[0]
     assert "image_proxy: true" in server_block
@@ -473,7 +473,7 @@ def test_a_finished_install_starts_searxng_and_reports_the_url(
     app_state, tmp_path, monkeypatch
 ):
     """"Press Start, wait minutes, press Start again" asked the user to
-    babysit the longest wait in the app — and the second press was the step
+    babysit the longest wait in the app, and the second press was the step
     people missed. With on_ready, the install ends by starting the instance
     and handing the URL to whoever asked for it."""
     data_dir = app_state.data_dir
@@ -499,7 +499,7 @@ def test_a_finished_install_starts_searxng_and_reports_the_url(
 def test_a_failed_automatic_start_reports_instead_of_pointing_at_it(
     app_state, tmp_path, monkeypatch
 ):
-    """If the follow-on start fails, the install must say so — and never
+    """If the follow-on start fails, the install must say so, and never
     hand a dead URL to the callback."""
     data_dir = app_state.data_dir
     _passing_install(monkeypatch, tmp_path, data_dir)
@@ -571,7 +571,7 @@ def test_the_install_reports_progress_and_what_it_is_doing(
 
 
 def test_the_download_reports_bytes_as_they_arrive(app_state, monkeypatch):
-    """The one stage with a genuinely knowable percentage — GitHub sends a
+    """The one stage with a genuinely knowable percentage, GitHub sends a
     content-length, so this bar is real rather than a guess."""
     searxng_manager._install_state.update({"stage": 2, "progress": 0.2, "log": []})
 
@@ -619,7 +619,7 @@ def test_a_streamed_command_hands_back_each_line_as_it_prints(app_state):
 
 
 def test_the_pwd_shim_is_only_written_where_the_module_is_missing(app_state, monkeypatch):
-    """SearXNG imports `pwd` at module scope, and `pwd` is POSIX-only — which
+    """SearXNG imports `pwd` at module scope, and `pwd` is POSIX-only: which
     is why the install succeeded on Windows and the *start* then died. Asking
     the interpreter beats checking os.name: whether that Python can import it
     is the thing that actually breaks."""
@@ -747,7 +747,7 @@ def test_the_wipe_clears_the_read_only_bit_before_giving_up(tmp_path):
 
 def test_a_tree_that_cannot_be_deleted_is_moved_out_of_the_way(app_state, monkeypatch):
     """Being unable to remove an old install must not make a new one
-    impossible — the whole point of the reinstall button."""
+    impossible: the whole point of the reinstall button."""
     src = searxng_manager._source_dir(app_state.data_dir)
     src.mkdir(parents=True)
     (src / "setup.py").write_text("")
@@ -805,7 +805,7 @@ def test_a_failed_wipe_stops_the_reinstall_rather_than_repeating_it(
 
 def test_liveness_never_signals_the_process_on_windows(monkeypatch):
     """`os.kill(pid, 0)` is the POSIX idiom for "is it there?". On Windows any
-    signal but CTRL_C/CTRL_BREAK goes to TerminateProcess — so the status poll
+    signal but CTRL_C/CTRL_BREAK goes to TerminateProcess, so the status poll
     was shooting the SearXNG it had just started, then reporting that it
     "started but never answered"."""
     monkeypatch.setattr(searxng_manager.os, "name", "nt")
@@ -836,14 +836,14 @@ def test_a_live_process_reads_as_live_and_a_dead_one_does_not():
 
 
 def test_searxng_settings_enable_the_json_api(tmp_path):
-    """The JSON format is the step people miss — we must always write it."""
+    """The JSON format is the step people miss, we must always write it."""
     path = searxng_manager.ensure_settings(tmp_path)
     text = path.read_text()
     assert "json" in text
     assert "use_default_settings:" in text
 
     # Rewritten on each start, so fixes to the managed defaults reach
-    # installs made before those fixes existed — but the secret key
+    # installs made before those fixes existed, but the secret key
     # survives the rewrite, or every start would invalidate sessions.
     assert searxng_manager._existing_secret_key(path)  # one was generated
     # A stand-in rather than the generated secret: the property under test is
@@ -867,7 +867,7 @@ def test_searxng_settings_enable_the_json_api(tmp_path):
 # Every test above stubs `_run_streaming` out via `_Commands`, which is right
 # for testing the installer's own logic but never exercises the function's
 # actual timeout handling. It has one real job under the hood: never block
-# past `timeout`, even when the child process goes quiet without exiting —
+# past `timeout`, even when the child process goes quiet without exiting, 
 # a stalled download, a hung subprocess. That failure mode is easy to
 # reintroduce silently (the happy path looks identical either way), so it
 # gets its own direct coverage here rather than staying implicit.

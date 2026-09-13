@@ -1,4 +1,4 @@
-"""Reading a request for the tools it needs — see `ai/toolwords.py`.
+"""Reading a request for the tools it needs, see `ai/toolwords.py`.
 
 The same deterministic, no-model-call shape as `entry/timewords.py`. These
 tests are the argument for it: every false positive below was produced by the
@@ -38,7 +38,7 @@ def extras(question: str, recent: str = "") -> list[str]:
 def test_a_word_inside_another_word_is_not_a_cue(question):
     """Substring matching offered the tag tools for a question about a camera,
     and the link tools for one about lights. Each dragged three to five schemas
-    into the prompt of a model that may have four thousand tokens in total —
+    into the prompt of a model that may have four thousand tokens in total, 
     and put delete_tag in front of a model that was asked about a camera."""
     assert extras(question) == []
 
@@ -114,7 +114,7 @@ def test_a_broad_request_gets_everything():
 
 def test_a_follow_through_reads_the_previous_turn():
     """Reported: asking for category suggestions and then "implement those"
-    produced the suggestions again — the follow-up named no category, so no
+    produced the suggestions again, the follow-up named no category, so no
     category tool was offered and the model had nothing it could call.
 
     What matters is that the tool ends up reachable, not that the focus stayed
@@ -136,8 +136,8 @@ def test_a_follow_through_with_no_subject_anywhere_gets_everything():
 
 
 def test_one_cue_is_enough():
-    """This was briefly wrong the other way — a threshold a single word could
-    not clear — and "tag all my gym notes" was offered no tag tools. Trading a
+    """This was briefly wrong the other way, a threshold a single word could
+    not clear: and "tag all my gym notes" was offered no tag tools. Trading a
     false positive for a false negative is a bad trade: an unnecessary schema
     costs a few hundred characters, a missing one costs the user the thing they
     asked for."""
@@ -166,7 +166,7 @@ def test_the_reasoning_is_available_for_the_log():
 
 def test_a_narrowed_turn_tells_the_model_the_list_is_a_suggestion():
     """Asked for directly: if the words suggest tools and the AI thinks that is
-    wrong, it does not have to use them — and, the other way round, must be
+    wrong, it does not have to use them, and, the other way round, must be
     able to reach for one that was not suggested.
 
     It always *could*: `permitted` is None on an ordinary turn, so a tool the

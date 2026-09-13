@@ -6,7 +6,7 @@ notes'."*
 
 **Retrieval cannot answer these, and that is not a tuning problem.** Semantic
 search finds the notes most *like* a question. "What are my most common tags"
-is not like any note — it is a question about the collection, and the honest
+is not like any note, it is a question about the collection, and the honest
 answer is a count, not a passage. Before this, such a question went through
 retrieval, came back with five arbitrary notes, and the model was told to
 answer using only those: so it either declined or invented a ranking from a
@@ -26,7 +26,7 @@ can do is write a sentence around numbers it did not choose.
 Deliberately a heuristic matcher rather than a model call, for exactly the
 reason `intent.py` gives about its own classifier: it runs on every message, so
 it has to be instant and predictable, and anything it is not sure about falls
-through to ordinary retrieval — the worst case is the behaviour that was there
+through to ordinary retrieval, the worst case is the behaviour that was there
 before.
 """
 
@@ -54,7 +54,7 @@ TOP_N = 10
 class StatAnswer:
     """One computed answer, ready to be spoken or rendered.
 
-    `text` is a complete answer on its own — that is what makes this work with
+    `text` is a complete answer on its own, that is what makes this work with
     the model stopped. `facts` is the same information as rows, so a caller can
     render a list or hand the model something to phrase without re-parsing
     prose.
@@ -69,7 +69,7 @@ def _visible(query):
     """Live notes only: binned and private notes are nobody's statistics.
 
     Private notes are excluded for the reason the rest of the app excludes
-    them — a count that changes when a note is made private is a count that
+    them: a count that changes when a note is made private is a count that
     leaks what is in it.
     """
     return query.where(Entry.deleted_at.is_(None), Entry.is_private.is_(False))
@@ -106,14 +106,14 @@ _COUNT = r"how many|how much|number of|count of|total"
 #: doesnt account for spelling mistakes."* It did not, and could not: every
 #: matcher is a regex over literal words, so "catagories", "docuemnts" and
 #: "orphens" matched nothing at all and the question fell through to ordinary
-#: retrieval — which, as this module's own docstring explains, is exactly the
+#: retrieval: which, as this module's own docstring explains, is exactly the
 #: case retrieval answers badly. A typo therefore produced the *worst*
 #: available answer rather than a slightly worse one.
 #:
 #: Written out rather than scraped from the patterns above. Scraping a regex
 #: for its literals means parsing regex syntax, and the list would silently
 #: lose a word the day someone writes one inside a group this parser does not
-#: understand — the "a policy silently refusing the work" shape. A test asserts
+#: understand: the "a policy silently refusing the work" shape. A test asserts
 #: the two stay in step instead.
 _VOCABULARY = (
     "tag tags category categories folder folders space spaces "
@@ -129,12 +129,12 @@ _VOCABULARY = (
 ).split()
 
 #: Words shorter than this are left alone. "tp" is not a typo for "top" in any
-#: useful sense — it is as close to "to", "up" and "tag", and correcting it
+#: useful sense: it is as close to "to", "up" and "tag", and correcting it
 #: guesses at the user's meaning rather than fixing their spelling.
 _SPELLING_MIN_LENGTH = 4
 
 #: How alike a word has to be before it is treated as a misspelling.
-#: `difflib`'s ratio, so 0.8 is roughly "one edit in five characters" —
+#: `difflib`'s ratio, so 0.8 is roughly "one edit in five characters", 
 #: "catagories"/"categories" and "docuemnts"/"documents" pass, while "notepad"
 #: and "notebook" (0.67) do not, which is the pair that matters: correcting a
 #: real word into a different real word is worse than not correcting it.
@@ -146,7 +146,7 @@ def _transposition_of(word: str, known: set[str]) -> str | None:
 
     Handled separately because `difflib` underrates exactly this typo, which is
     the most common one there is: "tgas"/"tags" scores 0.750 and "notse"/
-    "notes" 0.800, both at or under the cutoff — while "task"/"tags", which
+    "notes" 0.800, both at or under the cutoff, while "task"/"tags", which
     must *not* be corrected ("how many tasks do I have" is a different
     question), also scores 0.750. So the cutoff cannot be lowered to catch
     transpositions without also catching that, and this closes the gap exactly
@@ -167,7 +167,7 @@ def _despell(text: str) -> str:
     nothing installed, and a word that is already in the vocabulary is returned
     untouched without any comparison at all.
 
-    Only the *matcher's* copy of the message is corrected — the user's question
+    Only the *matcher's* copy of the message is corrected, the user's question
     is never rewritten anywhere they can see it, so a wrong correction costs at
     most a fallthrough to retrieval, which is what would have happened anyway.
     """
@@ -201,7 +201,7 @@ def looks_like_a_question_about_the_notebook(message: str) -> bool:
         or re.search(r"\bnotes?\b|\bdocuments?\b|notebook", text)
         #: The topics added alongside the spelling pass. Without these the
         #: pre-filter rejected "how many words have I written" before any
-        #: matcher saw it — a question the module now answers exactly, refused
+        #: matcher saw it: a question the module now answers exactly, refused
         #: by the gate in front of it. That is this repo's "a policy silently
         #: refusing the work" shape, and it was caught by the test for the new
         #: matcher rather than by reading the code.
@@ -213,7 +213,7 @@ def looks_like_a_question_about_the_notebook(message: str) -> bool:
 def answer(message: str, session: Session) -> StatAnswer | None:
     """The computed answer to this question, or None to fall through to search."""
     #: Spelling is fixed once, here, and every matcher below sees the corrected
-    #: text — including `_recent_count`, which reads the string itself.
+    #: text: including `_recent_count`, which reads the string itself.
     text = _despell((message or "").strip().lower())
     if not text or not looks_like_a_question_about_the_notebook(text):
         return None
@@ -420,8 +420,8 @@ def _recent_count(session: Session, text: str) -> StatAnswer:
     )
 
 
-#: A note shorter than this is a fragment — a link, a phone number, a one-word
-#: reminder — and listing the "longest" notes is only interesting against
+#: A note shorter than this is a fragment, a link, a phone number, a one-word
+#: reminder: and listing the "longest" notes is only interesting against
 #: things somebody actually wrote. Not a filter on the count, only on the list.
 _LONGEST_MIN_CHARS = 40
 
@@ -435,8 +435,8 @@ def _word_count(session: Session) -> StatAnswer:
     """How much you have actually written.
 
     Counted in Python rather than in SQL because SQLite has no word-count
-    function and the alternatives — `length(x) - length(replace(x, ' ', ''))`
-    — count *spaces*, so they are off by one on every note and badly wrong on
+    function and the alternatives, `length(x) - length(replace(x, ' ', ''))`
+    - count *spaces*, so they are off by one on every note and badly wrong on
     any note with double spacing or a list. A notebook is thousands of rows,
     not millions; this is a millisecond.
     """
@@ -447,7 +447,7 @@ def _word_count(session: Session) -> StatAnswer:
     average = round(words / len(rows))
     return StatAnswer(
         "word-count",
-        f"You have written about {words:,} words across {_plural(len(rows), 'note')} — "
+        f"You have written about {words:,} words across {_plural(len(rows), 'note')}, "
         f"roughly {average} words a note.",
         [{"label": "words", "count": words}, {"label": "notes", "count": len(rows)}],
     )
@@ -480,7 +480,7 @@ def _longest_notes(session: Session) -> StatAnswer:
     lead = facts[0]
     return StatAnswer(
         "longest-notes",
-        f"Your longest note is about {lead['count']} words — “{lead['label']}”. "
+        f"Your longest note is about {lead['count']} words: “{lead['label']}”. "
         f"The top {len(facts)} are listed below.",
         facts,
     )
@@ -507,7 +507,7 @@ def _stale_notes(session: Session) -> StatAnswer:
     if not total:
         return StatAnswer(
             "stale-notes",
-            f"Nothing has gone untouched for {_STALE_DAYS} days — every note has been "
+            f"Nothing has gone untouched for {_STALE_DAYS} days: every note has been "
             "opened or edited more recently than that.",
         )
     facts = [
@@ -534,7 +534,7 @@ def _tag_pairs(session: Session) -> StatAnswer:
     either one idea filed under two names, or a real seam in the notebook. Both
     are worth seeing, and neither is visible from a list of tag counts.
 
-    Pairs are ordered within themselves so `(a, b)` and `(b, a)` are one pair —
+    Pairs are ordered within themselves so `(a, b)` and `(b, a)` are one pair: 
     without that, every co-occurrence would be counted twice and the ranking
     would still be right but the numbers would all be doubled, which is the
     kind of wrong that nobody notices.

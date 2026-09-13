@@ -1,9 +1,9 @@
-"""A document's edit history — asked for by name: "can the document have edit
+"""A document's edit history: asked for by name: "can the document have edit
 history like git logs??"
 
 Notes have had `EntryRevision` for a long time; documents had nothing. Rewriting
 one destroyed what it used to say, with nothing but the session's own undo
-stack, which forgets on reload. `DocumentAiEdit` covered the *AI's* edits only —
+stack, which forgets on reload. `DocumentAiEdit` covered the *AI's* edits only: 
 a person's own rewrite left no trace at all.
 
 The interesting behaviour, and what these tests pin down, is the coalescing.
@@ -131,7 +131,7 @@ def test_deleting_a_document_takes_its_history_with_it(client):
     """A real foreign key with no ORM cascade: the delete failed outright.
 
     Caught by the whole suite rather than by the tests for the thing I touched
-    — `test_documents_api.py::test_create_read_update_delete` started raising
+    - `test_documents_api.py::test_create_read_update_delete` started raising
     `FOREIGN KEY constraint failed` the moment revisions began being written.
     Kept here as well, close to the cause.
     """

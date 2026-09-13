@@ -1,0 +1,5 @@
+frontend/dashboard.js:2965 class="muted dash-tension-explain" (149)
+	Similar-notes search finds what belongs together. This reads pairs with your local model and looks for the opposite: claims that can't both be right.
+frontend/library.js:1612 class="muted text-sm" (172)
+	Lets the AI work through your notebook on its own, on a schedule you set in Settings. Everything it changes is listed there afterwards and can be undone one item at a time.
+TOTAL 2

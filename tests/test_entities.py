@@ -1,8 +1,8 @@
-"""ROADMAP.md item 34 — a lightweight entity/concept layer above notes.
+"""ROADMAP.md item 34: a lightweight entity/concept layer above notes.
 
 Fakes the model layer (a plain object with a `.chat()`/`.utility_model()`
 shape, same convention `test_model_specs.py`'s own `ollama` fixture uses)
-rather than needing a real Ollama — this suite runs fully offline.
+rather than needing a real Ollama, this suite runs fully offline.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ class _FakeModelManager:
 
 
 class _FakeOllama:
-    """Replies with whatever `next_reply` is currently set to — good enough
+    """Replies with whatever `next_reply` is currently set to, good enough
     for one note at a time, which is all `extract_entities_pass` ever asks
     of it per call."""
 

@@ -18,14 +18,21 @@ from sqlalchemy.orm import Session
 
 from memorymap.ai.model_manager import ModelManager
 from memorymap.ai.ollama_client import OllamaClient
-from memorymap.core.database import Entity, EntityMention, Entry, utcnow
+from memorymap.core.database import (
+    LIKE_ESCAPE,
+    Entity,
+    EntityMention,
+    Entry,
+    like_escape,
+    utcnow,
+)
 
-# A note this short rarely names anything worth its own node — cheaper to
+# A note this short rarely names anything worth its own node, cheaper to
 # skip than to spend a model call finding nothing, the same reasoning
 # `suggest_tags`' caller already applies before asking for tags.
 MIN_CONTENT_LENGTH = 20
 
-# Per note, per pass — a name-dropping note ("thanks Sam, Priya and Jo for
+# Per note, per pass, a name-dropping note ("thanks Sam, Priya and Jo for
 # the trip") shouldn't flood the entity table any more than five topic tags
 # would.
 MAX_ENTITIES_PER_NOTE = 5
@@ -38,11 +45,11 @@ def suggest_entities(
     limit: int = MAX_ENTITIES_PER_NOTE,
 ) -> list[str]:
     """Named people/projects/things this note actually mentions, model's
-    own words. Raises OllamaError if the model is unavailable — the caller
+    own words. Raises OllamaError if the model is unavailable, the caller
     decides what to do, same contract as `suggest_tags`.
     """
     system = (
-        "You extract named entities from a note — real people, projects, "
+        "You extract named entities from a note, real people, projects, "
         "places or things it names, not generic topics (a topic is a tag, "
         "not an entity: 'baking' is a topic, 'the sourdough starter' is a "
         "thing). Reply with ONLY a comma-separated list of "
@@ -75,14 +82,16 @@ def _find_or_create_entity(session: Session, name: str, cache: dict[str, Entity]
     """Case-folded exact match within this pass's own cache first (so the
     same note's five names don't each hit the database), then the table
     itself, then a new row. Two different real-world Sarahs proposed as
-    "Sarah" across two notes are merged into one entity — a real ambiguity
+    "Sarah" across two notes are merged into one entity, a real ambiguity
     this MVP accepts rather than solves (ROADMAP.md item 34's own scope
     cut); a later pass can add disambiguation without changing this shape.
     """
     key = name.lower()
     if key in cache:
         return cache[key]
-    existing = session.scalars(select(Entity).where(Entity.name.ilike(name))).first()
+    existing = session.scalars(
+        select(Entity).where(Entity.name.ilike(like_escape(name), escape=LIKE_ESCAPE))
+    ).first()
     entity = existing or Entity(name=name)
     if not existing:
         session.add(entity)
@@ -98,7 +107,7 @@ def extract_entities_pass(
     limit: int = 5,
 ) -> int:
     """Entity-extract up to `limit` not-yet-scanned notes. Returns how many
-    were processed (successfully or not — a note that fails still gets
+    were processed (successfully or not: a note that fails still gets
     marked scanned, the same "don't retry forever" reasoning
     `entities_extracted_at` exists for at all).
 
@@ -138,7 +147,7 @@ def extract_entities_pass(
                     ).first()
                     if not already:
                         session.add(EntityMention(entity_id=entity.id, entry_id=entry.id))
-        except Exception:  # noqa: BLE001 — one bad note must not stop the pass
+        except Exception:  # noqa: BLE001  # one bad note must not stop the pass
             pass
         finally:
             entry.entities_extracted_at = utcnow()

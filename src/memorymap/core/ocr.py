@@ -1,7 +1,7 @@
 """Local OCR text extraction for uploaded images (ROADMAP.md item 30d).
 
 A whiteboard photo or a scanned page attached via `POST /media/upload`
-attaches today as an opaque file nothing reads — "what was on that
+attaches today as an opaque file nothing reads, "what was on that
 whiteboard photo from March" is unanswerable by search. This reads the
 image once, in the background, and stores what it found on
 `MediaUpload.ocr_text`, so the Library's Image Gallery search (client-side,
@@ -9,17 +9,17 @@ same as the rest of the Library's own search box) can find it.
 
 `pytesseract`/Pillow (the thin Python wrapper this module imports) are
 listed as the "ocr" entry in `core/extras.py`'s installable-extras
-registry — pip installable, so `_run_install` handles that half exactly
+registry: pip installable, so `_run_install` handles that half exactly
 like every other extra. The `tesseract` **system binary** itself is a
 different problem: no PyPI wheel ships it, so `pip install` alone can
 never make it appear. `attempt_binary_install` below (asked for directly:
 "automate it if possible") tries the platform's own package manager
-non-interactively — winget/brew/apt/dnf/pacman — and `core/extras.py`'s
+non-interactively, winget/brew/apt/dnf/pacman, and `core/extras.py`'s
 `_run_install` calls it, best-effort, right after the pip half succeeds
 for this one extra specifically. When neither the automated attempt nor a
 manual `apt install tesseract-ocr` (INSTALL.md) has happened yet, this
 degrades to "extracts nothing," logged once per process rather than once
-per upload, never a failed upload — the same "never blocks or fails the
+per upload, never a failed upload, the same "never blocks or fails the
 thing it's attached to" contract `ai/embeddings.py`'s own background retry
 already follows.
 """
@@ -32,14 +32,14 @@ import logging
 import os
 import re
 import shutil
-import subprocess  # noqa: S404 — fixed args from a hardcoded table below, no shell, no user input
+import subprocess  # noqa: S404  # fixed args from a hardcoded table below, no shell, no user input
 import sys
 import threading
 from pathlib import Path
 
 logger = logging.getLogger("memorymap.ocr")
 
-#: Only raster formats Tesseract/Pillow can open directly — deliberately
+#: Only raster formats Tesseract/Pillow can open directly, deliberately
 #: excludes PDF (`MEDIA_SUFFIXES` in routes_files.py allows it too), which
 #: would need page rasterisation (a poppler/pdf2image dependency this
 #: feature doesn't pull in) before Tesseract could see anything at all.
@@ -52,12 +52,12 @@ def tesseract_available() -> bool:
 @functools.lru_cache(maxsize=1)
 def _log_binary_missing() -> None:
     """Called on every missing-binary path but only ever logs once per
-    process — `lru_cache` runs the body on the first call and returns the
+    process: `lru_cache` runs the body on the first call and returns the
     cached `None` on every later one, which needs no mutable module-level
     flag at all (CodeQL flagged the plain-bool version of this as an
     unused-global-variable note: `py/unused-global-variable`)."""
     logger.info(
-        "the 'tesseract' binary isn't on PATH — uploaded images won't "
+        "the 'tesseract' binary isn't on PATH: uploaded images won't "
         "get searchable OCR text until Tesseract OCR is installed "
         "separately (see INSTALL.md); this is not an error"
     )
@@ -69,12 +69,12 @@ def _log_package_missing() -> None:
     other gap: the binary is there but `pytesseract`/Pillow aren't."""
     logger.info(
         "tesseract is installed but the pytesseract/Pillow Python "
-        "packages aren't — run: pip install pytesseract Pillow"
+        "packages aren't: run: pip install pytesseract Pillow"
     )
 
 
 def extract_text(image_path: Path) -> str:
-    """Best-effort OCR text for one image file. Never raises — a missing
+    """Best-effort OCR text for one image file. Never raises: a missing
     binary, a corrupt image, or an unsupported format all just mean no text
     was found, exactly as if the image genuinely had none."""
     if not tesseract_available():
@@ -85,7 +85,7 @@ def extract_text(image_path: Path) -> str:
         from PIL import Image
     except ImportError:
         # The tesseract *binary* is on PATH (checked above) but the
-        # `pytesseract`/`Pillow` Python packages aren't installed — a
+        # `pytesseract`/`Pillow` Python packages aren't installed: a
         # different gap than the binary-missing one, worth its own message.
         _log_package_missing()
         return ""
@@ -97,7 +97,7 @@ def extract_text(image_path: Path) -> str:
         # A single unreadable image (corrupt file, an animated GIF Tesseract
         # chokes on, a format Pillow can't decode) must never take down the
         # background thread it runs on or be mistaken for the binary being
-        # missing — logged with the traceback so a real recurring failure is
+        # missing: logged with the traceback so a real recurring failure is
         # still diagnosable, just not surfaced to the person who uploaded it.
         logger.warning("OCR failed for %s", image_path.name, exc_info=True)
         return ""
@@ -112,7 +112,7 @@ REGION_MIN_CONFIDENCE = 30
 
 #: A word taller than this multiple of the page's median word height is read
 #: as a heading rather than body text. Purely a *presentation* hint for the
-#: region list — nothing downstream depends on it being right, which is why a
+#: region list: nothing downstream depends on it being right, which is why a
 #: ratio is honest here and a "table"/"formula" classifier would not be:
 #: Tesseract reports boxes and confidences, not semantic structure, and
 #: labelling a region "table" from box geometry alone would be a guess
@@ -125,12 +125,12 @@ def extract_regions(image_path: Path) -> dict | None:
     box it occupies on the page.
 
     Asked for directly, with three screenshots of Baidu's Unlimited-OCR:
-    *"for the document ocr I want smth like this"* — a page beside its
+    *"for the document ocr I want smth like this"*, a page beside its
     regions, each region typed and its text separately readable, rather than
     one wall of text under the picture with no way to tell which part of the
     page a line came from.
 
-    Returns `None` — not an empty result — when the OCR stack is missing or
+    Returns `None`, not an empty result, when the OCR stack is missing or
     the image cannot be read, so a caller can tell "nothing is installed"
     apart from "this page has no text on it" and say so. Boxes are
     **normalised to 0–1** against the image's own pixel size, because the
@@ -229,7 +229,7 @@ def extract_regions(image_path: Path) -> dict | None:
 
 #: A line this many characters or fewer, with no closing punctuation, is a
 #: heading rather than a one-line paragraph. Twelve words at a generous average
-#: — long enough for a real section title, short enough that a sentence which
+#:, long enough for a real section title, short enough that a sentence which
 #: happens to end without a full stop is not mistaken for one.
 READING_HEADING_CHARS = 72
 
@@ -238,12 +238,12 @@ def regions_from_reading(text: str) -> list[dict]:
     """Split a page's *reading* into typed blocks, with no image involved.
 
     **Why this exists: "the regions dont work without tesseract but surely
-    there's a better way."** They did not, and the fallback said so honestly —
+    there's a better way."** They did not, and the fallback said so honestly, 
     one region covering the whole page and a message telling you to go install
     a binary. That is a correct answer to the wrong question. This app's
     primary reader is a vision model, not Tesseract (see `read_page`), so on
     the path most people actually use, the page *was* read, in order, with its
-    structure intact in the text — and the workspace threw all of that away
+    structure intact in the text, and the workspace threw all of that away
     because it could not draw a rectangle around it.
 
     Regions are two different things wearing one name: **where a block sits on
@@ -251,13 +251,13 @@ def regions_from_reading(text: str) -> list[dict]:
     are, in order**, which does not. This computes the second from the reading
     itself, so every page gets regions whatever is installed: a heading is
     still a heading, a table is still a table, and "this sentence came from
-    block 4 of page 2" is answerable — which is what "make it so extracted
+    block 4 of page 2" is answerable: which is what "make it so extracted
     text is visually linked to the page or section it was extracted from"
     actually asks for. Where Tesseract *is* installed, `extract_regions` above
     still supplies real boxes and this is not used.
 
-    Blocks are separated by blank lines, which is what every reader — vision
-    model, Tesseract's own `--psm 1`, a PDF text layer — already emits between
+    Blocks are separated by blank lines, which is what every reader, vision
+    model, Tesseract's own `--psm 1`, a PDF text layer, already emits between
     paragraphs. `box` is None rather than a full-page rectangle: a box that
     claims to be the whole page is a *wrong* answer, and the UI can draw a
     list without one but cannot un-draw a lie.
@@ -292,7 +292,7 @@ def _reading_block_kind(body: str) -> str:
     lines = [line for line in body.splitlines() if line.strip()]
     first = lines[0].strip() if lines else ""
 
-    #: A fenced block, or a run of lines that are all indented four spaces —
+    #: A fenced block, or a run of lines that are all indented four spaces, 
     #: the two ways every markdown reader writes code.
     if first.startswith("```") or all(line.startswith("    ") for line in lines):
         return "code"
@@ -333,7 +333,7 @@ def extract_and_store(upload_id: int, image_path: Path) -> None:
     # exists on PATH.
     #
     # `deps` specifically goes through `importlib` rather than an `import`
-    # statement, because a statement is what CodeQL py/cyclic-import counts —
+    # statement, because a statement is what CodeQL py/cyclic-import counts, 
     # deferring it into the function body does not clear the finding, only
     # dropping the statement does (`entry/manager.py` records the same). The
     # cycle here is `ai.embeddings -> core.extras -> core.ocr -> core.deps ->
@@ -355,7 +355,7 @@ def extract_and_store(upload_id: int, image_path: Path) -> None:
 def extract_in_background(upload_id: int, image_path: Path) -> None:
     """Fire-and-forget: never blocks the `POST /media/upload` response.
     Tesseract can take a second or two per image, and the upload itself is
-    already done by the time this runs — the same "don't make the caller
+    already done by the time this runs, the same "don't make the caller
     wait for something that isn't the point of the request" reasoning as
     `ai/embeddings.py`'s background reinstall-and-retry."""
     threading.Thread(
@@ -367,7 +367,7 @@ def extract_in_background(upload_id: int, image_path: Path) -> None:
 
 
 #: Per platform, the first package manager found on PATH gets tried. Every
-#: command is fixed and non-interactive — no shell, no string built from
+#: command is fixed and non-interactive, no shell, no string built from
 #: user input, and every flag exists specifically to prevent a prompt this
 #: process has no way to answer (a password, a EULA dialog, an "are you
 #: sure?"). Linux tries three, in order, since which one exists varies by
@@ -401,17 +401,17 @@ BINARY_INSTALL_TIMEOUT = 90
 
 def attempt_binary_install(timeout: int = BINARY_INSTALL_TIMEOUT) -> tuple[bool, str]:
     """Best-effort, non-interactive install of the `tesseract` system binary
-    itself — the one part `pip install pytesseract` can never do, since it
+    itself: the one part `pip install pytesseract` can never do, since it
     isn't a Python package. Asked for directly: "add the option for install
     assistance for the tesseract program installation, automate it if
     possible."
 
     Tries the platform's own package manager with fully non-interactive
     flags. Never prompts, never hangs waiting on a password or a UAC dialog
-    it has no way to answer — every attempt is wall-clock bounded — and
+    it has no way to answer, every attempt is wall-clock bounded, and
     never raises; any failure is reported back as an honest, actionable
     message rather than a crash. `installed` is only ever `True` once
-    `tesseract_available()` is confirmed **after** the attempt — the
+    `tesseract_available()` is confirmed **after** the attempt, the
     installer's own exit code is not trusted alone, the same "a POST
     response can lie about stored state" caution this app applies
     everywhere else that reports success.
@@ -425,11 +425,11 @@ def attempt_binary_install(timeout: int = BINARY_INSTALL_TIMEOUT) -> tuple[bool,
     if not available:
         return False, (
             "Couldn't find a package manager to install Tesseract "
-            "automatically on this system — install it by hand (see "
+            "automatically on this system, install it by hand (see "
             "INSTALL.md)."
         )
 
-    # Linux package managers need root. Tried as-is first (already root —
+    # Linux package managers need root. Tried as-is first (already root: 
     # common inside a container) and, only if that's not the case, once
     # more through `sudo -n`, which fails immediately rather than prompting
     # for a password this non-interactive process has no way to answer,
@@ -442,11 +442,11 @@ def attempt_binary_install(timeout: int = BINARY_INSTALL_TIMEOUT) -> tuple[bool,
     last_error = ""
     for attempt in attempts:
         try:
-            result = subprocess.run(  # noqa: S603 — fixed args from the table above, no shell
+            result = subprocess.run(  # noqa: S603  # fixed args from the table above, no shell
                 attempt, capture_output=True, text=True, timeout=timeout
             )
         except FileNotFoundError:
-            continue  # `sudo` itself isn't installed — fall through to the bare command
+            continue  # `sudo` itself isn't installed: fall through to the bare command
         except subprocess.TimeoutExpired:
             last_error = f"{attempt[0]} timed out after {timeout}s"
             continue
@@ -457,5 +457,5 @@ def attempt_binary_install(timeout: int = BINARY_INSTALL_TIMEOUT) -> tuple[bool,
 
     return False, (
         f"Couldn't install Tesseract automatically ({last_error or 'unknown error'}) "
-        "— install it by hand (see INSTALL.md)."
+        ", install it by hand (see INSTALL.md)."
     )
